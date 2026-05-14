@@ -20,11 +20,13 @@
   },
   "bin": {
     "apkit": "./bin/apkit.js",
-    "agent-project-kit": "./bin/apkit.js"
+    "agent-project-kit": "./bin/apkit.js",
+    "apkit-web": "./bin/apkit-web.js"
   },
   "files": [
     "bin",
     "src",
+    "public",
     "docs",
     "examples",
     "prompts",
@@ -35,6 +37,7 @@
     "CHANGELOG.md"
   ],
   "scripts": {
+    "web": "node bin/apkit-web.js",
     "test": "node --test",
     "test:coverage": "node --test --experimental-test-coverage"
   },

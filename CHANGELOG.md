@@ -13,3 +13,4 @@
 - Prompt library for spec-driven workflows.
 - Web SaaS, FastAPI API, and iOS Habit App examples.
 - README, guide, standards, release readiness, and CI coverage.
+- Localhost web interface for onboarding, file editing, feature specs, decisions, and context packs.

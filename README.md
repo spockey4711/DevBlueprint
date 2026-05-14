@@ -37,6 +37,20 @@ node bin/apkit.js context user-authentication --target ./my-project
 
 Prints a copyable context pack for the next AI-coding session.
 
+## Local Web Interface
+
+```bash
+npm run web
+```
+
+Opens a localhost workflow for onboarding a project, editing generated Markdown files, adding feature specs and decision records, and building context packs.
+
+Optional target and port:
+
+```bash
+npm run web -- --target /private/tmp/apkit-ui-project --port 4317
+```
+
 ## Prompt Library
 
 Reusable prompts live in `prompts/`:

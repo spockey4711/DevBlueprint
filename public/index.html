@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Agent Project Kit</title>
+    <link rel="stylesheet" href="/app.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <section class="intro">
+        <div>
+          <p class="eyebrow">Local workspace</p>
+          <h1>Agent Project Kit</h1>
+          <p class="lede">
+            Create an agent-ready project, edit its spec files, and generate features, decisions, and context packs from one local interface.
+          </p>
+        </div>
+        <div class="status-panel" aria-live="polite">
+          <span class="status-dot" id="statusDot"></span>
+          <span id="statusText">Ready</span>
+        </div>
+      </section>
+
+      <section class="setup-band" aria-labelledby="setupTitle">
+        <div>
+          <h2 id="setupTitle">Onboarding</h2>
+          <p>Choose a target folder, then create or open the project structure.</p>
+        </div>
+        <form id="initForm" class="setup-grid">
+          <label>
+            Target folder
+            <input id="targetDir" name="targetDir" value="/private/tmp/apkit-ui-project" />
+          </label>
+          <label>
+            Project name
+            <input id="projectName" name="projectName" value="apkit-ui-project" />
+          </label>
+          <label>
+            Project type
+            <select id="projectType" name="projectType">
+              <option value="web-app">Web App</option>
+              <option value="api-backend">API Backend</option>
+              <option value="ios-app">iOS App</option>
+              <option value="portfolio">Portfolio</option>
+              <option value="custom">Custom</option>
+            </select>
+          </label>
+          <label>
+            Framework
+            <input id="framework" name="framework" value="nextjs" />
+          </label>
+          <label>
+            AI tool
+            <select id="aiTool" name="aiTool">
+              <option value="codex">Codex</option>
+              <option value="claude-code">Claude Code</option>
+              <option value="cursor">Cursor</option>
+              <option value="github-copilot">GitHub Copilot</option>
+              <option value="generic-llm">Generic LLM</option>
+            </select>
+          </label>
+          <label>
+            Mode
+            <select id="mode" name="mode">
+              <option value="balanced">Balanced</option>
+              <option value="lightweight">Lightweight</option>
+              <option value="strict">Strict</option>
+            </select>
+          </label>
+          <div class="actions">
+            <button type="submit">Create Project</button>
+            <button type="button" id="refreshButton" class="secondary">Open Folder</button>
+          </div>
+        </form>
+      </section>
+
+      <section class="workspace">
+        <aside class="files-pane" aria-label="Project files">
+          <div class="pane-header">
+            <div>
+              <p class="eyebrow">Files</p>
+              <h2>Project Docs</h2>
+            </div>
+            <button type="button" id="doctorButton" class="icon-button" title="Run doctor">Check</button>
+          </div>
+          <div id="doctorResult" class="doctor"></div>
+          <div id="fileList" class="file-list"></div>
+        </aside>
+
+        <section class="editor-pane" aria-label="File editor">
+          <div class="pane-header">
+            <div>
+              <p class="eyebrow">Editor</p>
+              <h2 id="activeFileTitle">Select a file</h2>
+            </div>
+            <button type="button" id="saveButton">Save</button>
+          </div>
+          <textarea id="editor" spellcheck="false" placeholder="Open a Markdown file to edit it."></textarea>
+        </section>
+
+        <aside class="tools-pane" aria-label="Project actions">
+          <div class="tool-section">
+            <p class="eyebrow">Add</p>
+            <h2>Feature</h2>
+            <form id="featureForm" class="stack">
+              <input name="name" placeholder="Feature name" value="User Authentication" />
+              <textarea name="problem" placeholder="Problem"></textarea>
+              <textarea name="goal" placeholder="Goal"></textarea>
+              <button type="submit">Add Feature</button>
+            </form>
+          </div>
+
+          <div class="tool-section">
+            <p class="eyebrow">Add</p>
+            <h2>Decision</h2>
+            <form id="decisionForm" class="stack">
+              <input name="title" placeholder="Decision title" value="Use Next.js" />
+              <input name="status" placeholder="Status" value="Accepted" />
+              <textarea name="context" placeholder="Context"></textarea>
+              <textarea name="decision" placeholder="Decision"></textarea>
+              <button type="submit">Add Decision</button>
+            </form>
+          </div>
+
+          <div class="tool-section">
+            <p class="eyebrow">Generate</p>
+            <h2>Context Pack</h2>
+            <form id="contextForm" class="stack">
+              <input name="topic" placeholder="Topic" value="user-authentication" />
+              <button type="submit">Build Context</button>
+            </form>
+            <pre id="contextOutput"></pre>
+          </div>
+        </aside>
+      </section>
+    </main>
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>

@@ -23,6 +23,7 @@ npm pack --dry-run
 The npm package should include:
 - CLI entry points in `bin/`
 - Runtime source in `src/`
+- Local web interface assets in `public/`
 - Product and quality docs in `docs/`
 - Prompt library in `prompts/`
 - Example projects in `examples/`

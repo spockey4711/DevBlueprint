@@ -14,6 +14,8 @@ test("package metadata supports npm CLI distribution", async () => {
   assert.equal(packageJson.type, "module");
   assert.equal(packageJson.bin.apkit, "./bin/apkit.js");
   assert.equal(packageJson.bin["agent-project-kit"], "./bin/apkit.js");
+  assert.equal(packageJson.bin["apkit-web"], "./bin/apkit-web.js");
+  assert.equal(packageJson.scripts.web, "node bin/apkit-web.js");
   assert.equal(packageJson.scripts.test, "node --test");
   assert.equal(packageJson.repository.type, "git");
   assert.equal(packageJson.repository.url, "git+https://github.com/spockey4711/DevBlueprint.git");
@@ -23,6 +25,7 @@ test("package metadata supports npm CLI distribution", async () => {
   assert.deepEqual(packageJson.files, [
     "bin",
     "src",
+    "public",
     "docs",
     "examples",
     "prompts",
