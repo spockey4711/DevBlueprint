@@ -1,4 +1,4 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 export const baseRequiredFiles = [
@@ -157,6 +157,105 @@ export async function doctorProject({ targetDir }) {
   };
 }
 
+export async function addFeature(config) {
+  const targetDir = path.resolve(config.targetDir ?? ".");
+  const name = config.name ?? "Untitled Feature";
+  const relativePath = `docs/03-features/${slugify(name)}.feature.md`;
+  const status = await writeProjectFile(targetDir, relativePath, renderFeatureSpec(config, name), {
+    force: config.force ?? false,
+  });
+
+  return {
+    file: relativePath,
+    status,
+  };
+}
+
+export async function addDecision(config) {
+  const targetDir = path.resolve(config.targetDir ?? ".");
+  const title = config.title ?? "Untitled Decision";
+  const decisionsDir = path.join(targetDir, "docs", "02-architecture", "decisions");
+  const number = await nextDecisionNumber(decisionsDir);
+  const relativePath = `docs/02-architecture/decisions/${String(number).padStart(4, "0")}-${slugify(title)}.md`;
+  const status = await writeProjectFile(targetDir, relativePath, renderDecisionRecord(config, title), {
+    force: config.force ?? false,
+  });
+
+  return {
+    file: relativePath,
+    status,
+  };
+}
+
+export async function buildContextPack(config) {
+  const targetDir = path.resolve(config.targetDir ?? ".");
+  const topic = config.topic ?? "current task";
+  const files = unique([
+    "AGENTS.md",
+    "docs/01-product/PRD.md",
+    "docs/01-product/MVP-FREEZE.md",
+    "docs/05-quality/TEST-PLAN.md",
+    ...(await findTopicFiles(targetDir, topic)),
+  ]);
+  const instruction = `Implement only the ${topic} scope described in the loaded project files.
+Do not modify unrelated features.
+Update docs/04-tasks/NOW.md after completion.`;
+
+  return {
+    files,
+    instruction,
+    toString() {
+      return renderContextPack(this.files, this.instruction);
+    },
+  };
+}
+
+async function findTopicFiles(targetDir, topic) {
+  const normalizedTopic = slugify(topic);
+  const candidates = [
+    ["docs/03-features", (entry) => entry.endsWith(".feature.md")],
+    ["docs/02-architecture", (entry) => entry.endsWith(".md")],
+  ];
+  const matches = [];
+
+  for (const [relativeDir, includeEntry] of candidates) {
+    const absoluteDir = path.join(targetDir, relativeDir);
+
+    try {
+      const entries = await readdir(absoluteDir, { withFileTypes: true });
+
+      for (const entry of entries) {
+        if (!entry.isFile() || !includeEntry(entry.name)) {
+          continue;
+        }
+
+        const entrySlug = slugify(entry.name.replace(/\.feature\.md$|\.md$/g, ""));
+        if (entrySlug.includes(normalizedTopic) || normalizedTopic.includes(entrySlug)) {
+          matches.push(`${relativeDir}/${entry.name}`);
+        }
+      }
+    } catch (error) {
+      if (error.code !== "ENOENT") {
+        throw error;
+      }
+    }
+  }
+
+  return matches;
+}
+
+function renderContextPack(files, instruction) {
+  const fileList = files.map((file, index) => `${index + 1}. ${file}`).join("\n");
+
+  return `For the next AI coding session, load these files:
+
+${fileList}
+
+Task instruction:
+${instruction}
+`;
+}
+
 function normalizeConfig(config) {
   const projectType = config.projectType ?? "custom";
 
@@ -286,6 +385,130 @@ Draft
 
 TBD.
 `;
+}
+
+function renderFeatureSpec(config, name) {
+  return `# Feature Spec: ${name}
+
+## Status
+
+${config.status ?? "Draft"}
+
+## Problem
+
+${config.problem ?? ""}
+
+## Goal
+
+${config.goal ?? ""}
+
+## Users
+
+${config.users ?? ""}
+
+## MVP Relevance
+
+${config.mvpRelevance ?? ""}
+
+## Non-Goals
+
+${renderList(config.nonGoals)}
+
+## User Stories
+
+${renderList(config.userStories)}
+
+## Acceptance Criteria
+
+${renderList(config.acceptanceCriteria)}
+
+## Affected Files or Modules
+
+${renderList(config.affectedFiles)}
+
+## Dependencies
+
+${renderList(config.dependencies)}
+
+## Open Questions
+
+${renderList(config.openQuestions)}
+`;
+}
+
+function renderDecisionRecord(config, title) {
+  return `# Decision: ${title}
+
+## Status
+
+${config.status ?? "Proposed"}
+
+## Context
+
+${config.context ?? ""}
+
+## Decision
+
+${config.decision ?? ""}
+
+## Alternatives Considered
+
+${renderList(config.alternatives)}
+
+## Consequences
+
+Positive:
+${renderList(config.positiveConsequences)}
+
+Negative:
+${renderList(config.negativeConsequences)}
+`;
+}
+
+async function nextDecisionNumber(decisionsDir) {
+  try {
+    const entries = await readdir(decisionsDir);
+    const existingNumbers = entries
+      .map((entry) => entry.match(/^(\d{4})-/)?.[1])
+      .filter(Boolean)
+      .map(Number);
+
+    return existingNumbers.length === 0 ? 1 : Math.max(...existingNumbers) + 1;
+  } catch (error) {
+    if (error.code === "ENOENT") {
+      return 1;
+    }
+
+    throw error;
+  }
+}
+
+function renderList(value) {
+  if (Array.isArray(value) && value.length > 0) {
+    return value.map((item) => `- ${item}`).join("\n");
+  }
+
+  if (typeof value === "string" && value.trim() !== "") {
+    return `- ${value}`;
+  }
+
+  return "- TBD";
+}
+
+function unique(values) {
+  return [...new Set(values)];
+}
+
+function slugify(value) {
+  const slug = value
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[.'’]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+
+  return slug || "untitled";
 }
 
 function titleFromPath(relativePath) {
