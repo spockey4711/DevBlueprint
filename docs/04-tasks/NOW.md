@@ -54,7 +54,7 @@ Verification:
 ## Next To-dos
 
 - [x] Review generated examples manually for voice and usefulness.
-- [ ] Decide whether to publish as npm package or keep local-only for now.
+- [x] Decide whether to publish as npm package or keep local-only for now.
 - [x] Add CI workflow when the repo is pushed to GitHub.
 
 ## Post-Foundation Result
@@ -64,3 +64,12 @@ Example quality and CI readiness are complete for the current repository state.
 Verification:
 - `npm test`
 - `npm run test:coverage`
+
+## Publishing Decision
+
+Version 0.1 is prepared for public npm distribution while preserving local CLI usage.
+
+Verification:
+- `npm test`
+- `npm run test:coverage`
+- `npm pack --dry-run --cache /private/tmp/apkit-npm-cache`
