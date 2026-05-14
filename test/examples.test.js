@@ -14,6 +14,13 @@ const requiredExampleFiles = [
   "docs/04-tasks/NOW.md",
   "docs/05-quality/TEST-PLAN.md",
 ];
+const polishedExampleFiles = [
+  "docs/01-product/PRD.md",
+  "docs/01-product/MVP-FREEZE.md",
+  "docs/02-architecture/ARCHITECTURE.md",
+  "docs/03-features/core-workflow.feature.md",
+  "docs/05-quality/TEST-PLAN.md",
+];
 
 test("repository includes user-facing guide and standards docs", async () => {
   const guide = await readFile(path.join(rootDir, "GUIDE.md"), "utf8");
@@ -36,6 +43,18 @@ for (const exampleName of exampleNames) {
       );
 
       assert.notEqual(content.trim(), "");
+    }
+  });
+
+  test(`${exampleName} example replaces placeholders in key docs`, async () => {
+    for (const relativeFile of polishedExampleFiles) {
+      const content = await readFile(
+        path.join(rootDir, "examples", exampleName, relativeFile),
+        "utf8",
+      );
+
+      assert.doesNotMatch(content, /TBD|Describe the user problem|Describe the product goal|List the smallest useful scope/);
+      assert.match(content, /Acceptance|MVP|Test|Architecture|Goal|Problem/i);
     }
   });
 }

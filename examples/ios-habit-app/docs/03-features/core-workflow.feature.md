@@ -6,40 +6,51 @@ Draft
 
 ## Problem
 
-Users need a low-friction habit check-in
+Users need a low-friction habit check-in that is faster than editing a detailed tracker.
 
 ## Goal
 
-Create, view, and complete daily habits
+Let a user add a habit, see it in the list, complete it for today, and see streak feedback.
 
 ## Users
 
-
+- Habit tracker user.
+- SwiftUI learner.
 
 ## MVP Relevance
 
-
+The check-in workflow is the core behavior of the app.
 
 ## Non-Goals
 
-- TBD
+- Notifications.
+- Widgets.
+- Cloud sync.
 
 ## User Stories
 
-- TBD
+- As a user, I want to add a habit.
+- As a user, I want to complete a habit for today.
+- As a user, I want to see my streak.
 
 ## Acceptance Criteria
 
-- TBD
+- Habit names cannot be empty.
+- Completing a habit marks only the current day.
+- Re-completing the same day does not double-count streaks.
+- Tests cover creation, completion, and streak calculation.
 
 ## Affected Files or Modules
 
-- TBD
+- `Sources/Features`
+- `Sources/Core`
+- `Tests/UnitTests`
+- `Tests/UITests`
 
 ## Dependencies
 
-- TBD
+- Local persistence abstraction.
 
 ## Open Questions
 
-- TBD
+- Should the MVP allow editing habit names?

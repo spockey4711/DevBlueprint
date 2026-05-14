@@ -2,20 +2,24 @@
 
 ## MVP Goal
 
-Build the smallest version that validates the core product value.
+Validate a maintainable backend API structure for a single project resource.
 
 ## Allowed in MVP
 
-- Project initialization
-- Base documentation generation
-- AGENTS.md generation
+- Project CRUD endpoints.
+- Validation schemas.
+- Consistent API errors.
+- In-memory or simple repository implementation.
+- Unit and integration tests.
 
 ## Not Allowed in MVP
 
-- Cloud sync
-- User accounts
-- Web dashboard
+- Auth.
+- Billing.
+- Background workers.
+- Admin dashboard.
+- External service integrations.
 
 ## Rule
 
-If a feature does not directly support the MVP goal, move it to BACKLOG.md.
+If work does not improve the project-resource API workflow, move it to `docs/04-tasks/BACKLOG.md`.

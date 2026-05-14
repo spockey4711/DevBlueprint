@@ -2,20 +2,24 @@
 
 ## MVP Goal
 
-Build the smallest version that validates the core product value.
+Validate that founders can manage trial-account activation from one focused workspace.
 
 ## Allowed in MVP
 
-- Project initialization
-- Base documentation generation
-- AGENTS.md generation
+- Account list and detail views.
+- Manual notes.
+- Qualification status.
+- Activation milestone status.
+- Simple dashboard metrics.
 
 ## Not Allowed in MVP
 
-- Cloud sync
-- User accounts
-- Web dashboard
+- Billing.
+- Email campaigns.
+- AI scoring.
+- Team roles.
+- Third-party CRM sync.
 
 ## Rule
 
-If a feature does not directly support the MVP goal, move it to BACKLOG.md.
+If work does not help a founder qualify and activate trial accounts, move it to `docs/04-tasks/BACKLOG.md`.

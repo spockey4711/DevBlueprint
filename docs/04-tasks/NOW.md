@@ -53,6 +53,14 @@ Verification:
 
 ## Next To-dos
 
-- [ ] Review generated examples manually for voice and usefulness.
+- [x] Review generated examples manually for voice and usefulness.
 - [ ] Decide whether to publish as npm package or keep local-only for now.
-- [ ] Add CI workflow when the repo is pushed to GitHub.
+- [x] Add CI workflow when the repo is pushed to GitHub.
+
+## Post-Foundation Result
+
+Example quality and CI readiness are complete for the current repository state.
+
+Verification:
+- `npm test`
+- `npm run test:coverage`

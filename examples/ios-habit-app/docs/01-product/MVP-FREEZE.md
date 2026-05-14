@@ -2,20 +2,24 @@
 
 ## MVP Goal
 
-Build the smallest version that validates the core product value.
+Validate a simple daily habit check-in flow with clear SwiftUI structure.
 
 ## Allowed in MVP
 
-- Project initialization
-- Base documentation generation
-- AGENTS.md generation
+- Habit list.
+- Add habit.
+- Complete habit for today.
+- Streak calculation.
+- Local persistence abstraction.
 
 ## Not Allowed in MVP
 
-- Cloud sync
-- User accounts
-- Web dashboard
+- iCloud sync.
+- Push notifications.
+- Widgets.
+- Social features.
+- Paywall.
 
 ## Rule
 
-If a feature does not directly support the MVP goal, move it to BACKLOG.md.
+If work does not make daily habit check-in clearer or more reliable, move it to `docs/04-tasks/BACKLOG.md`.
