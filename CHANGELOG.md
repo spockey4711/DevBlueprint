@@ -12,6 +12,9 @@ All notable changes are documented here, following
 
 ### Added
 
+- ADR scaffolding in `docs/decisions/`: a `README.md` explaining the flow, an `NNNN-template.md`,
+  and `0001-record-architecture-decisions.md`; linked from `docs/engineering/conventions.md`.
+  Refs: P2-2.
 - Optional community-health templates, opt-in via `init --community`: a `SECURITY.md` reporting
   policy and a Contributor Covenant 2.1 `CODE_OF_CONDUCT.md`. `--contact <method>` fills the
   reporting address in both (an `INSERT CONTACT METHOD` placeholder otherwise). Off by default and
