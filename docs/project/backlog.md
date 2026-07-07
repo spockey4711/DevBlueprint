@@ -87,7 +87,7 @@ Conflict rules:
 
 - [x] P2-9: `doctor` beyond file existence - optionally run the quality gate and report git state
   (`--strict` / `--run-gate`). **Owns:** `bin/devblueprint` (`cmd_doctor`), `test/`.
-- [ ] P2-10: Dependency automation + toolchain pin for the `generic` variant: `dependabot.yml`
+- [x] P2-10: Dependency automation + toolchain pin for the `generic` variant: `dependabot.yml`
   or `renovate.json` + `.tool-versions` (asdf/mise) or `.devcontainer/`, dropped under
   `variants/generic/extras/`. **Owns:** `variants/generic/`. (dep: P2-1)
 - [x] P2-11: Same config backfill for the `backend-python` variant. **Owns:**
