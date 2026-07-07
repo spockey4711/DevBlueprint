@@ -12,7 +12,9 @@ read it and follow it exactly. This file is the short operating procedure.
 ## Procedure
 
 1. **List variants.** Run `devblueprint list` (or `bin/devblueprint list` from the kit) to get
-   the real variant names and titles. Never offer a variant that is not printed.
+   the real variant names and titles; add `--json` to parse them
+   (`{"variants":[{name,title,gate}]}`) rather than the human table. Never offer a variant that
+   is not printed.
 2. **Interview.** Ask the five questions from `setup-interview.md`, in order, one at a time:
    1. Purpose and name
    2. Stack -> variant

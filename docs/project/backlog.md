@@ -150,7 +150,7 @@ Conflict rules (same discipline as P2):
 
 ### Wave 2 - deepen + widen
 
-- [ ] P3-5: Machine-readable CLI output for the agent: `list --json`, `doctor --json`,
+- [x] P3-5: Machine-readable CLI output for the agent: `list --json`, `doctor --json`,
   `version --json`, so the agent can parse available variants and post-setup health instead of
   scraping human text. **Owns:** `bin/devblueprint` (`cmd_list`, `cmd_doctor`, `cmd_version`),
   `test/`.

@@ -19,6 +19,13 @@ All notable changes are documented here, following
 
 ### Added
 
+- Machine-readable CLI output: `list`, `doctor` and `version` accept `--json`, so an agent can
+  parse state instead of scraping the human tables. `list --json` emits
+  `{"variants":[{name,title,gate}]}`; `version --json` emits `{"version":...}`; `doctor --json`
+  emits `{ok,target,scaffoldVersion,kitVersion,failures,checks[]}` (each check `{name,status,message}`)
+  and still exits non-zero when a check fails. The default human output is unchanged. Values are
+  escaped with a dependency-free encoder, so quality gates carrying quotes (e.g. backend-go's
+  `test -z "$(gofumpt -l .)"`) stay well-formed JSON. Refs: P3-5.
 - `devblueprint detect --target <dir>`: inspect an existing repo's stack fingerprints
   (`package.json`, `go.mod`, `Cargo.toml`, `Package.swift`, `pyproject.toml`) and recommend the
   variant to scaffold from, so adopting the workflow in an existing project needs no guesswork.
