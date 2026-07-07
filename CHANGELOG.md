@@ -32,7 +32,9 @@ All notable changes are documented here, following
 - Per-variant `setup.sh`, dropped into every scaffolded project by `init`: an idempotent
   one-shot that turns the variant's "after init" checklist into a single command (tool config
   files, package-manifest scripts, pre-commit hook and dependency install). Non-Node variants
-  use a committable `.githooks/pre-commit` via `core.hooksPath`.
+  use a committable `.githooks/pre-commit` via `core.hooksPath`. `doctor` reports whether the
+  hook is wired (advisory, since `setup.sh` wires it after `init`), and the bats suite asserts
+  `setup.sh` writes an executable `.githooks/pre-commit` and sets `core.hooksPath`. Refs: P1-4.
 - Bats CLI test suite under `test/`, run by `make test` and enforced in CI alongside shellcheck:
   covers `init` + `doctor` for every variant, overwrite safety (skip vs. `--force`), branch
   modes (two-branch default and `--base master`), and token substitution in the rendered docs
