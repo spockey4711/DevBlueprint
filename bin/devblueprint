@@ -306,6 +306,16 @@ cmd_doctor() {
       printf '  MISS  %s\n' "$f"; missing=$((missing + 1))
     fi
   done
+
+  # The pre-commit hook is wired by ./setup.sh (not by init), so report it as
+  # advisory: note whether the quality gate is enforced locally, but never fail
+  # doctor over it - a freshly scaffolded project has not run setup.sh yet.
+  if [ -f "$target/.githooks/pre-commit" ] || [ -f "$target/.pre-commit-config.yaml" ] \
+     || [ -f "$target/.husky/pre-commit" ]; then
+    printf '  ok    pre-commit hook wired\n'
+  else
+    printf '  note  pre-commit hook not wired yet - run ./setup.sh\n'
+  fi
   echo
   if [ "$missing" -eq 0 ]; then
     local stamped
