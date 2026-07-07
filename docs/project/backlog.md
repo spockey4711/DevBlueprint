@@ -137,7 +137,7 @@ Conflict rules (same discipline as P2):
   The agent asks only these questions - never invents scope. **Owns:** `agent/setup-interview.md`,
   `agent/skills/devblueprint-setup/`, one "Agent-driven setup" section in `GUIDE.md`.
   (targets the P3-1 schema)
-- [ ] P3-3: PRD -> intake + backlog. Ship `agent/prd-to-backlog.md`: a prompt/skill that reads an
+- [x] P3-3: PRD -> intake + backlog. Ship `agent/prd-to-backlog.md`: a prompt/skill that reads an
   uploaded PRD (Markdown/PDF), pre-fills `.devblueprint-intake.yml` (stack detection, deploy
   target) so the interview skips answered questions, and - post-init - turns the PRD into real
   P0/P1 tasks in `docs/project/backlog.md` (existing format) plus optional seed ADRs. Pure

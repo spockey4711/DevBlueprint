@@ -19,6 +19,10 @@ All notable changes are documented here, following
 
 ### Added
 
+- `agent/prd-to-backlog.md`: a prompt/skill that turns an uploaded PRD (Markdown/PDF) into a
+  pre-filled `.devblueprint-intake.yml` (stack detection, deploy target) so the setup interview
+  skips answered questions, and - after `init` - into real P0/P1 tasks in
+  `docs/project/backlog.md` plus optional seed ADRs. Documentation only, no CLI. Refs: P3-3.
 - Config backfill for the `web-nextjs` and `ios-swift` variants: each now ships `.tool-versions`
   (toolchain pin) and `.github/dependabot.yml` (web-nextjs: npm + github-actions; ios-swift: swift
   + github-actions), matching the newer variants. Refs: P2-12.
