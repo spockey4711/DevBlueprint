@@ -235,8 +235,11 @@ cmd_doctor() {
     fi
   done
   echo
-  [ "$missing" -eq 0 ] && echo "doctor: all foundation files present" \
-    || die "$missing file(s) missing"
+  if [ "$missing" -eq 0 ]; then
+    echo "doctor: all foundation files present"
+  else
+    die "$missing file(s) missing"
+  fi
 }
 
 usage() {
@@ -245,7 +248,7 @@ usage() {
 
 main() {
   local cmd="${1:-help}"
-  [ "$#" -ge 1 ] && shift || true
+  if [ "$#" -ge 1 ]; then shift; fi
   case "$cmd" in
     list) cmd_list "$@" ;;
     init) cmd_init "$@" ;;
