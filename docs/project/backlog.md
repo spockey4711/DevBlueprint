@@ -161,3 +161,99 @@ Conflict rules (same discipline as P2):
   `go.mod`, `Cargo.toml`, `Package.swift`, `pyproject.toml`) and recommend a variant, so adding
   the workflow to an existing project needs no guesswork. CLI hot path, so it lands in its own
   wave apart from P3-5. **Owns:** `bin/devblueprint` (new `cmd_detect`), `test/`.
+
+## The 12-month roadmap (P4 - P7)
+
+P4-P7 are the quarters after the P3 agent-native MVP. Same discipline as before, plus one
+extra rule that dominates this stretch:
+
+- **`(CLI)`-tagged tasks edit `bin/devblueprint` + `test/` - the only hot shared paths.**
+  Schedule at most one per wave; they are the serialization bottleneck across the whole
+  roadmap. Everything untagged (new variants, per-variant config, `core/templates/`,
+  `agent/`, `packaging/`) is parallel-safe and never touches the CLI.
+- **Per-variant fan-out**: tasks that add a file across many variants (security CI, release
+  automation, ops artifacts) can be split one-worktree-per-variant; each owns only its
+  `variants/<name>/` subtree.
+- **North star unchanged**: the agent is the runtime; the kit stays plain files with no
+  lock-in. An MCP server or a hosted web service are deliberately out of scope - the closest
+  we go is a static, backend-less config builder (P5-4).
+
+### P4 - distribution & lifecycle (Q1: make it installable)
+
+The biggest adoption lever - today you must clone the repo to run `bin/devblueprint`.
+
+- [ ] P4-1: Installability. Ship `npx devblueprint` (root `package.json` with a `bin` field),
+  a Homebrew tap, and a `curl | sh` installer, so the kit runs without a clone. Update the
+  README install section. No CLI-internals change. **Owns:** `packaging/`, `install.sh`,
+  root `package.json`, README install section.
+- [ ] P4-2: (CLI) `devblueprint upgrade` - self-update the installed kit, with stable/next
+  version channels and pinning, so `update` targets stay reproducible. **Owns:**
+  `bin/devblueprint` (new `cmd_upgrade`), `test/`.
+- [ ] P4-3: Kit self-CI. A matrix workflow that scaffolds every variant into a throwaway dir,
+  runs its `setup.sh` and quality gate in a container, and fails on any red - catches variant
+  rot before release. **Owns:** `.github/workflows/scaffold-matrix.yml`,
+  `scripts/scaffold-check.sh`.
+
+### P5 - sustainability & reach (Q2: drift, multi-agent, non-agent DX)
+
+CLI tasks P5-1, P5-3, P5-5 each take their own wave.
+
+- [ ] P5-1: (CLI) `devblueprint diff --target` - report where a project has drifted from the
+  current kit, using the `.devblueprint` version stamp as the base. The read-only precursor to
+  a smarter `update`. **Owns:** `bin/devblueprint` (new `cmd_diff`), `test/`.
+- [ ] P5-2: Multi-agent instruction templates. Author `AGENTS.md`, `.cursor/rules/`, and
+  `.github/copilot-instructions.md` templates from the same canonical workflow guidance that
+  drives `CLAUDE.md`, so the process is not Claude-only. Templates only, no CLI wiring yet.
+  **Owns:** `core/templates/agents/`.
+- [ ] P5-3: (CLI) Wire `init --agents claude,cursor,codex` to emit the P5-2 templates and keep
+  them in sync on `update`. **Owns:** `bin/devblueprint` (`cmd_init`, `cmd_update`), `test/`.
+  (dep: P5-2; separate wave from P5-1)
+- [ ] P5-4: Static config builder - a single backend-less HTML page that produces a
+  `.devblueprint-intake.yml` from form input, for users who do not drive setup through an
+  agent. Respects the no-runtime principle (nothing hosted). **Owns:** `web/config-builder/`.
+  (dep: P3-1 schema)
+- [ ] P5-5: (CLI) Three-way merge for `update` - preserve local edits to managed files instead
+  of overwriting, using the stamped version as the merge base; fall back to reporting a
+  conflict. Makes long-lived projects safe to update. **Owns:** `bin/devblueprint`
+  (`cmd_update`), `test/`. (own wave; builds on P5-1's diff logic)
+
+### P6 - breadth & hardening (Q3: monorepo, more stacks, security)
+
+- [ ] P6-1: (CLI) Monorepo / multi-variant init - one repo, multiple packages, per-package
+  quality gates, aggregated CI. The one large structural change; everything is single-variant
+  today. **Owns:** `bin/devblueprint` (init multi-variant path), `test/`.
+- [ ] P6-2: New variants, each a self-contained `variants/<name>/` mirroring P2-4 and fully
+  parallel: `flutter`, `spring-java`, `dotnet`, `rails`, `laravel`, `sveltekit`,
+  `elixir-phoenix`, `terraform-iac`. Split one worktree per variant. **Owns:**
+  `variants/<name>/` (one per task). (dep: P2-1)
+- [ ] P6-3: (CLI) Variant add-on/flavor mechanism - orthogonal overlays (db, auth, container)
+  layered onto a base variant at init, e.g. `--flavor postgres,docker`. **Owns:**
+  `bin/devblueprint` (flavor resolution), `test/`, `variants/_flavors/`. (separate wave
+  from P6-1)
+- [ ] P6-4: Security-gate baseline across variants: gitleaks (secret scan), semgrep (SAST),
+  dependency-review and CodeQL workflows, commitlint + PR-title check, and coverage
+  thresholds - added to each variant's CI. Fan out per variant. **Owns:** `variants/*/github/`
+  (one variant subtree per task).
+- [ ] P6-5: (CLI) `doctor --fix` - auto-repair missing or corrupted foundation files instead
+  of only reporting them. **Owns:** `bin/devblueprint` (`cmd_doctor`), `test/`. (separate
+  wave from P6-1/P6-3)
+
+### P7 - automation & team-scale (Q4)
+
+- [ ] P7-1: Release automation per variant - Conventional-Commits-driven versioning, CHANGELOG
+  generation and GitHub releases (release-please or semantic-release), wired into each
+  variant's CI. Closes the loop on the existing changelog discipline. Fan out per variant.
+  **Owns:** `variants/*/github/` + release config (one variant subtree per task).
+- [ ] P7-2: Provider-agnostic + richer CI - GitLab CI templates alongside GitHub Actions, plus
+  preview-deploy and dependency-review workflows. **Owns:** `variants/*/gitlab/`,
+  `variants/*/github/` (one variant subtree per task).
+- [ ] P7-3: Ops artifacts beyond the runbook (builds on P3-4/P3-6): optional `Dockerfile`,
+  `docker-compose.yml`, Fly/Vercel/Render config and Terraform snippets, plus `.env.example`
+  promoted to a validated env schema checked in the gate. **Owns:** `variants/*/extras/`
+  (one variant subtree per task).
+- [ ] P7-4: (CLI) Org baseline / config inheritance - a company default that projects extend
+  (`extends: org-baseline`), turning the kit from a solo tool into a team standardizer.
+  **Owns:** `bin/devblueprint` (config resolution), `test/`.
+- [ ] P7-5: Governance scaffolding - a `CODEOWNERS` template and an opt-in
+  branch-protection setup script (`gh api`), so the documented workflow is also technically
+  enforced. **Owns:** `core/templates/CODEOWNERS.tmpl`, `scripts/protect-branches.sh`.
