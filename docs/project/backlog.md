@@ -57,7 +57,7 @@ Conflict rules:
 
 ### Wave 1 - enabler + standalone
 
-- [ ] P2-1: Generic variant-extras copy in the CLI (enabler). Today `init` copies a fixed set
+- [x] P2-1: Generic variant-extras copy in the CLI (enabler). Today `init` copies a fixed set
   of variant files (`ci.yml`, `gitignore`, `Makefile`, `setup.sh`) by name, so shipping any new
   per-variant config needs a CLI edit - the coupling that would force every config task into
   this one file. Generalize it: recursively copy `variants/<name>/extras/` -> project root and
