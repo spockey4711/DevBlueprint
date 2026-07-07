@@ -16,6 +16,7 @@ ruff check . && ruff format --check . && mypy . && pytest
 - `CLAUDE.md`, `CONTRIBUTING.md`, `CHANGELOG.md` filled in for this stack.
 - `scripts/wt.sh` + `scripts/wt.conf` (post-create runs `uv sync`).
 - `.github/workflows/ci.yml` (ruff + mypy + pytest).
+- `.github/dependabot.yml` (pip + github-actions updates) and `.tool-versions` (toolchain pin).
 - `.gitignore` for Python.
 - `app/` and `tests/` skeleton.
 

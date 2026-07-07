@@ -16,6 +16,9 @@ All notable changes are documented here, following
   commented template for the project's own language ecosystem) and an `extras/.tool-versions`
   toolchain-pin stub, so language-agnostic projects get dependency automation and a pinned
   toolchain out of the box. Refs: P2-10.
+- Config backfill for the `backend-python` variant: `extras/.tool-versions` (Python + uv toolchain
+  pin) and `github/dependabot.yml` (pip + github-actions updates), bringing it in line with the
+  other variants now that `init` copies `extras/` and `github/` generically. Refs: P2-11.
 - New `backend-go` variant: a Go backend stack (gofumpt, golangci-lint, go vet, `go test -race`,
   Go modules) with a `cmd/`+`internal/`+`pkg/` layout, `Makefile` gate, CI, and `extras/`
   (`.tool-versions` toolchain pin + `.github/dependabot.yml` for gomod + actions). `setup.sh`
