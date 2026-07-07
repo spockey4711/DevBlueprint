@@ -19,6 +19,13 @@ All notable changes are documented here, following
 
 ### Added
 
+- Machine-readable CLI output: `list`, `doctor` and `version` accept `--json`, so an agent can
+  parse state instead of scraping the human tables. `list --json` emits
+  `{"variants":[{name,title,gate}]}`; `version --json` emits `{"version":...}`; `doctor --json`
+  emits `{ok,target,scaffoldVersion,kitVersion,failures,checks[]}` (each check `{name,status,message}`)
+  and still exits non-zero when a check fails. The default human output is unchanged. Values are
+  escaped with a dependency-free encoder, so quality gates carrying quotes (e.g. backend-go's
+  `test -z "$(gofumpt -l .)"`) stay well-formed JSON. Refs: P3-5.
 - Intake files + `plan`: `init --from <intake.yml>` seeds the scaffold from a small, documented
   `.devblueprint-intake.yml` (name, variant, main/base branch, community/contact, deploy target),
   mapping keys onto the existing flags. Explicit CLI flags override the file, so a conversation can
