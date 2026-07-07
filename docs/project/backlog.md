@@ -5,7 +5,7 @@ commits and PRs (e.g. `Refs: P0-1`).
 
 ## P0 - core promise (init/update must be trustworthy)
 
-- [ ] P0-1: CLI test suite (bats). Run `init` into a tmp dir, assert `doctor` passes; cover
+- [x] P0-1: CLI test suite (bats). Run `init` into a tmp dir, assert `doctor` passes; cover
   overwrite-safety (skip vs. `--force`), `--base master` single-branch mode, and token
   substitution in `CLAUDE.md`/`CONTRIBUTING.md`. Wire into CI alongside shellcheck.
 - [ ] P0-2: `devblueprint update` command. Re-sync `docs/engineering/*` and `scripts/wt.sh`
