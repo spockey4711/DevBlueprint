@@ -19,6 +19,15 @@ All notable changes are documented here, following
 
 ### Added
 
+- Installability: DevBlueprint now runs without a clone via three channels. A root `package.json`
+  exposes `npx devblueprint` through a Node launcher (`packaging/npm/launch.cjs`); a Homebrew
+  formula (`packaging/homebrew/devblueprint.rb`) installs the kit into `libexec`; and a
+  `curl | sh` installer (`install.sh`) downloads the kit into `~/.devblueprint` and drops a
+  `devblueprint` command on `PATH`. All three ship the whole kit and invoke the real
+  `bin/devblueprint` by its real path (a launcher/wrapper, never a bare symlink), because the CLI
+  resolves `core/` and `variants/` relative to its own path without following symlinks - so the
+  CLI internals are untouched. README gains an Install section;
+  `packaging/homebrew/README.md` documents the tap and release runbook. Refs: P4-1.
 - Intake files + `plan`: `init --from <intake.yml>` seeds the scaffold from a small, documented
   `.devblueprint-intake.yml` (name, variant, main/base branch, community/contact, deploy target),
   mapping keys onto the existing flags. Explicit CLI flags override the file, so a conversation can

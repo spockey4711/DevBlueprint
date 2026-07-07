@@ -182,7 +182,7 @@ extra rule that dominates this stretch:
 
 The biggest adoption lever - today you must clone the repo to run `bin/devblueprint`.
 
-- [ ] P4-1: Installability. Ship `npx devblueprint` (root `package.json` with a `bin` field),
+- [x] P4-1: Installability. Ship `npx devblueprint` (root `package.json` with a `bin` field),
   a Homebrew tap, and a `curl | sh` installer, so the kit runs without a clone. Update the
   README install section. No CLI-internals change. **Owns:** `packaging/`, `install.sh`,
   root `package.json`, README install section.

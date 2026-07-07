@@ -38,6 +38,30 @@ workflow, a `.gitignore`, a `wt.conf` (branches + post-create install hook), a c
 overlay, the `CLAUDE.md` stack-notes block, and a `setup.sh` that wires the toolchain (tool
 configs, pre-commit hook, dependency install) in one command after `init`.
 
+## Install
+
+Pick one - all three ship the whole kit, so `devblueprint` runs without a clone.
+
+```bash
+# 1. npx (no install; needs Node)
+npx devblueprint list
+
+# 2. Homebrew (macOS / Linux)
+brew install spockey4711/devblueprint/devblueprint
+
+# 3. curl | sh - installs into ~/.devblueprint and drops a `devblueprint` on your PATH
+curl -fsSL https://raw.githubusercontent.com/spockey4711/DevBlueprint/master/install.sh | sh
+```
+
+The installer honours `DEVBLUEPRINT_PREFIX` (kit location), `DEVBLUEPRINT_BIN` (where the
+command lands) and `DEVBLUEPRINT_VERSION` (git ref) if you want to override the defaults.
+
+Prefer a clone? `git clone` the repo and run `bin/devblueprint` directly. Maintainers: see
+[`packaging/homebrew/README.md`](packaging/homebrew/README.md) for the tap and release runbook.
+
+The examples below use `bin/devblueprint` (the in-clone path); with any install method above the
+command is just `devblueprint`.
+
 ## Usage
 
 ```bash
@@ -67,7 +91,10 @@ bin/devblueprint update --target ~/Projects/myapp
 bin/devblueprint version
 ```
 
-Add DevBlueprint to your `PATH` (or symlink `bin/devblueprint`) to drop the `bin/` prefix.
+Add the repo's `bin/` to your `PATH` to drop the `bin/` prefix. (Add the directory to `PATH`
+rather than symlinking the script - the CLI locates `core/` and `variants/` relative to its own
+real path, so a bare symlink would not resolve them. The install methods above handle this for
+you with a wrapper.)
 
 `init` is overwrite-safe: it never clobbers an existing file unless you pass `--force`, so you
 can run it on an existing repo to add the workflow without losing your code.
