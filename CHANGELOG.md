@@ -12,6 +12,11 @@ All notable changes are documented here, following
 
 ### Added
 
+- Generic variant-extras copy: `init` now copies a variant's `github/` tree into `.github/` and
+  its root-level `extras/` into the project root recursively, so a variant can ship new config
+  (`dependabot.yml`, `renovate.json`, `.tool-versions`, `.devcontainer/`, ...) just by dropping a
+  file in - no CLI edit. Both trees keep the existing overwrite safety, and `DEVBLUEPRINT_VARIANTS`
+  can point the CLI at an alternate variants dir. Refs: P2-1.
 - Variant-author guide in `core/README.md`: how core and variant files layer (a per-file
   source/composition table) and a step-by-step "Adding a variant" walkthrough, including the
   changelog + quality-gate expectations for contributors. Refs: P2-3.
