@@ -12,6 +12,10 @@ All notable changes are documented here, following
 
 ### Added
 
+- Config backfill for the `generic` variant: `.github/dependabot.yml` (github-actions enabled, a
+  commented template for the project's own language ecosystem) and an `extras/.tool-versions`
+  toolchain-pin stub, so language-agnostic projects get dependency automation and a pinned
+  toolchain out of the box. Refs: P2-10.
 - Config backfill for the `backend-python` variant: `extras/.tool-versions` (Python + uv toolchain
   pin) and `github/dependabot.yml` (pip + github-actions updates), bringing it in line with the
   other variants now that `init` copies `extras/` and `github/` generically. Refs: P2-11.
