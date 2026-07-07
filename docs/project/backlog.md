@@ -81,7 +81,7 @@ Conflict rules:
 - [ ] P2-5: New variant `backend-go`, shipped complete like P2-4. **Owns:** `variants/backend-go/`.
 - [ ] P2-6: New variant `rust`, shipped complete like P2-4. **Owns:** `variants/rust/`.
 - [ ] P2-7: New variant `node-express`, shipped complete like P2-4. **Owns:** `variants/node-express/`.
-- [ ] P2-8: New variant `android-kotlin`, shipped complete like P2-4. **Owns:** `variants/android-kotlin/`.
+- [x] P2-8: New variant `android-kotlin`, shipped complete like P2-4. **Owns:** `variants/android-kotlin/`.
 
 ### Wave 3 - deepen the CLI + backfill config for existing variants
 

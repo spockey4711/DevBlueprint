@@ -12,6 +12,10 @@ All notable changes are documented here, following
 
 ### Added
 
+- New `android-kotlin` variant: an Android app stack (Kotlin + Compose, ktlint, detekt, Android
+  Lint, JUnit) built through the Gradle wrapper, with a feature-first `app/src/{main,test,androidTest}`
+  scaffold, `Makefile` gate, CI on JDK 17, and `extras/` (`.tool-versions` toolchain pin +
+  `.github/dependabot.yml` for gradle + github-actions). Refs: P2-8.
 - Generic variant-extras copy: `init` now copies a variant's `github/` tree into `.github/` and
   its root-level `extras/` into the project root recursively, so a variant can ship new config
   (`dependabot.yml`, `renovate.json`, `.tool-versions`, `.devcontainer/`, ...) just by dropping a
