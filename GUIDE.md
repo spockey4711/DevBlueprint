@@ -23,6 +23,26 @@ git switch -c develop
 wt new feat/first-task
 ```
 
+## Agent-driven setup
+
+Prefer to answer a few questions instead of remembering flags? Open the kit in Claude Code and
+run the setup skill:
+
+```
+/devblueprint-setup
+```
+
+The agent runs a short, ordered interview - purpose and name, stack (mapped to a variant),
+deploy target, solo vs. team (branch strategy), and license/community - then writes a
+reproducible `.devblueprint-intake.yml`, previews the scaffold with
+`devblueprint plan --from .devblueprint-intake.yml`, and on your confirmation runs
+`devblueprint init --from .devblueprint-intake.yml`. It asks only those questions and never
+invents scope; the intake file is a plain file you own and can re-run or hand-edit.
+
+The skill lives in [`agent/skills/devblueprint-setup/`](agent/skills/devblueprint-setup/SKILL.md)
+and the full question flow in [`agent/setup-interview.md`](agent/setup-interview.md). Same
+result as the manual `init` above - just conversational.
+
 ## What `init` produces
 
 Into the target directory:

@@ -19,6 +19,13 @@ All notable changes are documented here, following
 
 ### Added
 
+- Agent-driven setup: a canonical setup interview (`agent/setup-interview.md`) packaged as a
+  Claude Code skill (`agent/skills/devblueprint-setup/SKILL.md`, invoked with
+  `/devblueprint-setup`). It runs a short, ordered question flow - purpose/name, stack -> variant,
+  deploy target, solo vs. team -> branch strategy, license/community - then writes a reproducible
+  `.devblueprint-intake.yml`, previews with `plan --from`, and scaffolds with `init --from` on
+  confirmation. The agent asks only these questions and never invents scope. Documented in a new
+  "Agent-driven setup" section of `GUIDE.md`. Refs: P3-2.
 - Config backfill for the `web-nextjs` and `ios-swift` variants: each now ships `.tool-versions`
   (toolchain pin) and `.github/dependabot.yml` (web-nextjs: npm + github-actions; ios-swift: swift
   + github-actions), matching the newer variants. Refs: P2-12.
