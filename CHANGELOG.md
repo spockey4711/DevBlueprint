@@ -19,6 +19,10 @@ All notable changes are documented here, following
 
 ### Added
 
+- `agent/prd-to-backlog.md`: a prompt/skill that turns an uploaded PRD (Markdown/PDF) into a
+  pre-filled `.devblueprint-intake.yml` (stack detection, deploy target) so the setup interview
+  skips answered questions, and - after `init` - into real P0/P1 tasks in
+  `docs/project/backlog.md` plus optional seed ADRs. Documentation only, no CLI. Refs: P3-3.
 - Deploy runbook artifacts for the `web-nextjs` and `generic` variants: each ships
   `extras/docs/ops/deployment.md` (a runbook covering managed/Docker/VPS targets with DB and
   env-var checklists) and `extras/.env.example` (committed template; real `.env*` stay ignored),
