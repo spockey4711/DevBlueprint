@@ -1,0 +1,11 @@
+# Toolchain pin for asdf / mise. Keeps local, CI and teammates on one set of tool
+# versions instead of "works on my machine". Each line is `<tool> <version>`.
+#
+# This is the language-agnostic variant, so nothing is pinned yet - add the tools
+# your stack actually uses and keep the versions in sync with the CI workflow.
+# Examples (uncomment and set real versions):
+#
+# nodejs 22.11.0
+# python 3.12.6
+# golang 1.23.4
+# rust 1.83.0

@@ -12,6 +12,10 @@ All notable changes are documented here, following
 
 ### Added
 
+- Config backfill for the `generic` variant: `.github/dependabot.yml` (github-actions enabled, a
+  commented template for the project's own language ecosystem) and an `extras/.tool-versions`
+  toolchain-pin stub, so language-agnostic projects get dependency automation and a pinned
+  toolchain out of the box. Refs: P2-10.
 - New `backend-go` variant: a Go backend stack (gofumpt, golangci-lint, go vet, `go test -race`,
   Go modules) with a `cmd/`+`internal/`+`pkg/` layout, `Makefile` gate, CI, and `extras/`
   (`.tool-versions` toolchain pin + `.github/dependabot.yml` for gomod + actions). `setup.sh`
