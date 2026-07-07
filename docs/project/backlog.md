@@ -23,7 +23,8 @@ commits and PRs (e.g. `Refs: P0-1`).
 
 ## P1 - repo hygiene shipped with every variant
 
-- [ ] P1-1: Stack-agnostic files in `core/`: `.editorconfig`, `.gitattributes`.
+- [x] P1-1: Stack-agnostic files in `core/`: `.editorconfig`, `.gitattributes`. `init` drops both
+  into new projects, `doctor` checks them, and `update` keeps them in sync as core-owned files.
 - [ ] P1-2: GitHub meta: `.github/pull_request_template.md`, issue templates.
 - [ ] P1-3: Optional templates: `SECURITY.md`, `CODE_OF_CONDUCT.md`.
 - [ ] P1-4: Pre-commit hook that runs the quality gate. `scripts/install-hooks.sh` or

@@ -20,6 +20,8 @@ load helper
   [ -f "$TARGET/CONTRIBUTING.md" ]
   [ -f "$TARGET/CHANGELOG.md" ]
   [ -f "$TARGET/.gitignore" ]
+  [ -f "$TARGET/.editorconfig" ]
+  [ -f "$TARGET/.gitattributes" ]
   [ -f "$TARGET/scripts/wt.sh" ]
   [ -f "$TARGET/scripts/wt.conf" ]
   [ -f "$TARGET/.github/workflows/ci.yml" ]
