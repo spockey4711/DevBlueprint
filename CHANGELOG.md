@@ -19,6 +19,10 @@ All notable changes are documented here, following
 
 ### Added
 
+- Deploy runbook artifacts for the `web-nextjs` and `generic` variants: each ships
+  `extras/docs/ops/deployment.md` (a runbook covering managed/Docker/VPS targets with DB and
+  env-var checklists) and `extras/.env.example` (committed template; real `.env*` stay ignored),
+  copied to project root by the generic extras mechanism. Refs: P3-4.
 - Agent-driven setup: a canonical setup interview (`agent/setup-interview.md`) packaged as a
   Claude Code skill (`agent/skills/devblueprint-setup/SKILL.md`, invoked with
   `/devblueprint-setup`). It runs a short, ordered question flow - purpose/name, stack -> variant,
