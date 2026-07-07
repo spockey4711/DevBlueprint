@@ -1,0 +1,47 @@
+# Byte-compiled / caches
+__pycache__/
+*.py[cod]
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.ipynb_checkpoints/
+
+# Virtualenvs
+.venv/
+venv/
+
+# Build / packaging
+build/
+dist/
+*.egg-info/
+
+# Coverage
+.coverage
+htmlcov/
+coverage.xml
+
+# Data - keep the tree, never commit the contents (data lives in DVC/object
+# storage, not git). Drop a .gitkeep in each dir you want tracked.
+data/raw/*
+data/processed/*
+data/external/*
+!data/**/.gitkeep
+
+# Notebook + experiment artifacts
+*.ckpt
+*.pkl
+*.joblib
+mlruns/
+wandb/
+outputs/
+
+# Env (keep the example)
+.env
+.env.*
+!.env.example
+
+# OS / editor cruft
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/extensions.json
