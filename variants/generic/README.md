@@ -16,6 +16,8 @@ make check   # you wire the lint / typecheck / test / build targets
 - `scripts/wt.sh` + `scripts/wt.conf` (no-op post-create hook).
 - `.github/workflows/ci.yml` (runs `make check`).
 - `Makefile` with stub gate targets to fill in.
+- `docs/ops/deployment.md` (deploy runbook: managed/Docker/VPS + DB + env checklists) and
+  `.env.example` (committed template; real `.env*` stay ignored).
 - `.gitignore` and a `src/` + `tests/` skeleton.
 
 ## After init

@@ -18,6 +18,8 @@ pnpm lint && pnpm typecheck && pnpm test && pnpm build
 - `.github/workflows/ci.yml` (quality + Playwright smoke).
 - `.github/dependabot.yml` (npm + github-actions updates) and `.tool-versions` (toolchain pin).
 - `.gitignore` for Node/Next.
+- `docs/ops/deployment.md` (deploy runbook: managed/Docker/VPS + DB + env checklists) and
+  `.env.example` (committed template; real `.env*` stay ignored).
 - `src/` and `tests/` skeleton.
 
 ## After init (wire the toolchain)

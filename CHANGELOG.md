@@ -26,6 +26,21 @@ All notable changes are documented here, following
   init's real code path with every write short-circuited to a `would ...` line, printing exactly
   what init would create without touching disk - so an agent can confirm before scaffolding. Ships
   an annotated `agent/intake.example.yml` and `docs/agent/intake-schema.md`. Refs: P3-1.
+- `agent/prd-to-backlog.md`: a prompt/skill that turns an uploaded PRD (Markdown/PDF) into a
+  pre-filled `.devblueprint-intake.yml` (stack detection, deploy target) so the setup interview
+  skips answered questions, and - after `init` - into real P0/P1 tasks in
+  `docs/project/backlog.md` plus optional seed ADRs. Documentation only, no CLI. Refs: P3-3.
+- Deploy runbook artifacts for the `web-nextjs` and `generic` variants: each ships
+  `extras/docs/ops/deployment.md` (a runbook covering managed/Docker/VPS targets with DB and
+  env-var checklists) and `extras/.env.example` (committed template; real `.env*` stay ignored),
+  copied to project root by the generic extras mechanism. Refs: P3-4.
+- Agent-driven setup: a canonical setup interview (`agent/setup-interview.md`) packaged as a
+  Claude Code skill (`agent/skills/devblueprint-setup/SKILL.md`, invoked with
+  `/devblueprint-setup`). It runs a short, ordered question flow - purpose/name, stack -> variant,
+  deploy target, solo vs. team -> branch strategy, license/community - then writes a reproducible
+  `.devblueprint-intake.yml`, previews with `plan --from`, and scaffolds with `init --from` on
+  confirmation. The agent asks only these questions and never invents scope. Documented in a new
+  "Agent-driven setup" section of `GUIDE.md`. Refs: P3-2.
 - Config backfill for the `web-nextjs` and `ios-swift` variants: each now ships `.tool-versions`
   (toolchain pin) and `.github/dependabot.yml` (web-nextjs: npm + github-actions; ios-swift: swift
   + github-actions), matching the newer variants. Refs: P2-12.
