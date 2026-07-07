@@ -12,6 +12,9 @@ All notable changes are documented here, following
 
 ### Added
 
+- Config backfill for the `web-nextjs` and `ios-swift` variants: each now ships `.tool-versions`
+  (toolchain pin) and `.github/dependabot.yml` (web-nextjs: npm + github-actions; ios-swift: swift
+  + github-actions), matching the newer variants. Refs: P2-12.
 - `doctor` now checks beyond file existence with two opt-in flags. `--strict` reports the
   project's git state (repo present, current branch, clean/dirty) and escalates the advisory
   pre-commit note to a hard failure, so an unwired scaffold no longer passes. `--run-gate`

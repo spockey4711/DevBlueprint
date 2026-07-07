@@ -16,6 +16,7 @@ pnpm lint && pnpm typecheck && pnpm test && pnpm build
 - `CLAUDE.md`, `CONTRIBUTING.md`, `CHANGELOG.md` filled in for this stack.
 - `scripts/wt.sh` + `scripts/wt.conf` (post-create runs `pnpm install`).
 - `.github/workflows/ci.yml` (quality + Playwright smoke).
+- `.github/dependabot.yml` (npm + github-actions updates) and `.tool-versions` (toolchain pin).
 - `.gitignore` for Node/Next.
 - `src/` and `tests/` skeleton.
 

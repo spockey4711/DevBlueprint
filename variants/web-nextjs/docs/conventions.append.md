@@ -9,6 +9,8 @@
   + narrowing. No non-null `!` assertions without a reason.
 - **Prettier** owns formatting; **ESLint** (Next config + `jsx-a11y` + import ordering) is the
   lint gate. Zero warnings in CI.
+- Target one Node LTS and one pnpm; pin them in `.nvmrc`, `.tool-versions` and the
+  `packageManager` field of `package.json` so local, CI and teammates match.
 
 ### Naming
 

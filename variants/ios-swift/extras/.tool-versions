@@ -1,0 +1,6 @@
+# Toolchain pin for asdf / mise. Keeps local, CI and teammates on one SwiftFormat
+# and one SwiftLint - the two tools the quality gate runs. Match these to the
+# versions the CI workflow brew-installs. Swift itself comes from the selected
+# Xcode (see .swiftformat's --swiftversion), so it is not pinned here.
+swiftformat 0.54.6
+swiftlint 0.57.1
