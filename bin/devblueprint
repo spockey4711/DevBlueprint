@@ -5,7 +5,7 @@
 # Usage:
 #   devblueprint list
 #   devblueprint init --target <dir> --name <name> --variant <variant> \
-#       [--base <branch>] [--main <branch>] [--force]
+#       [--base <branch>] [--main <branch>] [--community] [--contact <method>] [--force]
 #   devblueprint update --target <dir> [--variant <variant>] [--dry-run]
 #   devblueprint doctor --target <dir>
 #   devblueprint version
@@ -15,8 +15,9 @@
 # and the chosen variant's overlay, fills in CLAUDE.md / CONTRIBUTING.md, drops in
 # the worktree script, CI workflow and .gitignore. It never overwrites existing
 # files unless --force is given. `update` re-syncs only the core-owned files
-# (the agnostic engineering docs + wt.sh) into an existing project, so old
-# projects can pick up core changes without touching their CLAUDE.md or code.
+# (the agnostic engineering docs, wt.sh, and the GitHub PR/issue templates) into
+# an existing project, so old projects can pick up core changes without touching
+# their CLAUDE.md or code.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -42,8 +43,8 @@ kit_version() {
 
 # render <template-file> <dest-file> : substitute {{TOKENS}} from the current
 # environment (PROJECT_NAME, MAIN_BRANCH, BASE_BRANCH, WT_CMD, QUALITY_GATE,
-# COPY_LANGUAGE_NOTE, VARIANT_NOTES) using bash parameter expansion (literal, no
-# escaping pitfalls). Respects FORCE for overwrite safety.
+# COPY_LANGUAGE_NOTE, VARIANT_NOTES, CONTACT) using bash parameter expansion
+# (literal, no escaping pitfalls). Respects FORCE for overwrite safety.
 #
 # Templates may also carry conditional blocks delimited by their own lines:
 #   {{#TWO_BRANCH}} ... {{/TWO_BRANCH}}      (kept for develop -> master flow)
@@ -61,6 +62,7 @@ render() {
   content="${content//\{\{QUALITY_GATE\}\}/$QUALITY_GATE}"
   content="${content//\{\{COPY_LANGUAGE_NOTE\}\}/$COPY_LANGUAGE_NOTE}"
   content="${content//\{\{VARIANT_NOTES\}\}/$VARIANT_NOTES}"
+  content="${content//\{\{CONTACT\}\}/$CONTACT}"
   mkdir -p "$(dirname "$dest")"
   printf '%s\n' "$content" > "$dest"
   info "wrote $rel_dest"
@@ -148,6 +150,7 @@ cmd_list() {
 
 cmd_init() {
   TARGET="" PROJECT_NAME="" VARIANT="" MAIN_BRANCH="master" BASE_BRANCH="develop" FORCE=0
+  COMMUNITY=0 CONTACT=""
   while [ "$#" -gt 0 ]; do
     case "$1" in
       --target) TARGET="$2"; shift 2 ;;
@@ -155,10 +158,16 @@ cmd_init() {
       --variant) VARIANT="$2"; shift 2 ;;
       --main) MAIN_BRANCH="$2"; shift 2 ;;
       --base) BASE_BRANCH="$2"; shift 2 ;;
+      --community) COMMUNITY=1; shift ;;
+      --contact) CONTACT="$2"; shift 2 ;;
       --force) FORCE=1; shift ;;
       *) die "unknown option: $1" ;;
     esac
   done
+  # {{CONTACT}} appears only in the optional community templates, but render()
+  # substitutes it unconditionally, so it must always be defined. When the caller
+  # gives no --contact, leave a visible placeholder for the maintainer to fill in.
+  [ -n "$CONTACT" ] || CONTACT="INSERT CONTACT METHOD"
 
   [ -n "$TARGET" ] || die "missing --target <dir>"
   [ -n "$VARIANT" ] || die "missing --variant <variant> (see: devblueprint list)"
@@ -241,11 +250,31 @@ EOF
   copy "$vdir/gitignore" "$TARGET/.gitignore"
   [ -f "$vdir/Makefile" ] && copy "$vdir/Makefile" "$TARGET/Makefile"
 
+  # 5a. Stack-agnostic repo hygiene shared by every variant.
+  copy "$CORE/.editorconfig"  "$TARGET/.editorconfig"
+  copy "$CORE/.gitattributes" "$TARGET/.gitattributes"
+
+  # 5a-ii. GitHub meta: PR template + issue templates. Stack-agnostic, so they live
+  # in core/ and ship with every variant (unlike the per-variant CI workflow).
+  copy "$CORE/github/pull_request_template.md"        "$TARGET/.github/pull_request_template.md"
+  copy "$CORE/github/ISSUE_TEMPLATE/bug_report.md"    "$TARGET/.github/ISSUE_TEMPLATE/bug_report.md"
+  copy "$CORE/github/ISSUE_TEMPLATE/feature_request.md" "$TARGET/.github/ISSUE_TEMPLATE/feature_request.md"
+  copy "$CORE/github/ISSUE_TEMPLATE/config.yml"       "$TARGET/.github/ISSUE_TEMPLATE/config.yml"
+
   # 5b. The toolchain setup script - turns the variant's "after init" checklist
   # (configs, pre-commit hook, dependency install) into a single command.
   if [ -f "$vdir/setup.sh" ]; then
     copy "$vdir/setup.sh" "$TARGET/setup.sh"
     chmod +x "$TARGET/setup.sh" 2>/dev/null || true
+  fi
+
+  # 5c. Optional community-health files (opt-in with --community): a security
+  # policy and a Contributor Covenant code of conduct. Off by default because a
+  # solo or private project rarely needs them; --contact fills the reporting
+  # address in both.
+  if [ "$COMMUNITY" -eq 1 ]; then
+    render "$CORE/templates/SECURITY.md.tmpl"        "$TARGET/SECURITY.md"
+    render "$CORE/templates/CODE_OF_CONDUCT.md.tmpl" "$TARGET/CODE_OF_CONDUCT.md"
   fi
 
   # 6. Source/test skeleton + a backlog stub.
@@ -296,7 +325,11 @@ cmd_doctor() {
   [ -n "$target" ] || die "missing --target <dir>"
   local missing=0 f
   for f in CLAUDE.md CONTRIBUTING.md CHANGELOG.md .gitignore .devblueprint \
+           .editorconfig .gitattributes \
            scripts/wt.sh scripts/wt.conf .github/workflows/ci.yml \
+           .github/pull_request_template.md \
+           .github/ISSUE_TEMPLATE/bug_report.md \
+           .github/ISSUE_TEMPLATE/feature_request.md \
            docs/engineering/git-workflow.md docs/engineering/conventions.md \
            docs/engineering/quality-and-testing.md \
            docs/engineering/engineering-standards.md; do
@@ -364,10 +397,16 @@ cmd_update() {
   local eng="$TARGET/docs/engineering"
   sync_file "$CORE/git-workflow.md"          "$eng/git-workflow.md"
   sync_file "$CORE/engineering-standards.md" "$eng/engineering-standards.md"
+  sync_file "$CORE/.editorconfig"            "$TARGET/.editorconfig"
+  sync_file "$CORE/.gitattributes"           "$TARGET/.gitattributes"
   sync_file "$ROOT/scripts/wt.sh"            "$TARGET/scripts/wt.sh"
   if [ -f "$TARGET/scripts/wt.sh" ]; then
     chmod +x "$TARGET/scripts/wt.sh" 2>/dev/null || true
   fi
+  sync_file "$CORE/github/pull_request_template.md"        "$TARGET/.github/pull_request_template.md"
+  sync_file "$CORE/github/ISSUE_TEMPLATE/bug_report.md"    "$TARGET/.github/ISSUE_TEMPLATE/bug_report.md"
+  sync_file "$CORE/github/ISSUE_TEMPLATE/feature_request.md" "$TARGET/.github/ISSUE_TEMPLATE/feature_request.md"
+  sync_file "$CORE/github/ISSUE_TEMPLATE/config.yml"       "$TARGET/.github/ISSUE_TEMPLATE/config.yml"
 
   # conventions.md is core base + a variant overlay, and quality-and-testing.md is
   # variant-owned, so refreshing them needs the variant. Only touch them when the

@@ -12,6 +12,14 @@ All notable changes are documented here, following
 
 ### Added
 
+- Optional community-health templates, opt-in via `init --community`: a `SECURITY.md` reporting
+  policy and a Contributor Covenant 2.1 `CODE_OF_CONDUCT.md`. `--contact <method>` fills the
+  reporting address in both (an `INSERT CONTACT METHOD` placeholder otherwise). Off by default and
+  not required by `doctor`. Refs: P1-3.
+- Stack-agnostic repo hygiene in `core/`: `.editorconfig` (charset, LF, final newline, indent
+  baseline) and `.gitattributes` (line-ending normalization + binary-type hints). `init` drops
+  both into new projects and `doctor` checks them; being project-independent, `update` keeps
+  them in sync like the other core-owned files. Refs: P1-1.
 - Tech-agnostic `core/`: git-workflow, engineering-standards, conventions and quality-and-testing
   docs, plus `CLAUDE.md` and `CONTRIBUTING.md` templates.
 - Parametrized `scripts/wt.sh` worktree manager driven by an optional `wt.conf` (branches,
@@ -35,6 +43,11 @@ All notable changes are documented here, following
   use a committable `.githooks/pre-commit` via `core.hooksPath`. `doctor` reports whether the
   hook is wired (advisory, since `setup.sh` wires it after `init`), and the bats suite asserts
   `setup.sh` writes an executable `.githooks/pre-commit` and sets `core.hooksPath`. Refs: P1-4.
+- GitHub meta shipped with every variant: `core/github/` holds a `pull_request_template.md`
+  (mirroring the CONTRIBUTING.md PR checklist) and an `ISSUE_TEMPLATE/` with bug-report and
+  feature-request forms plus a `config.yml`. `init` drops them under the project's `.github/`,
+  `doctor` verifies the PR template and issue forms landed, and `update` re-syncs them as
+  core-owned files. Refs: P1-2.
 - Bats CLI test suite under `test/`, run by `make test` and enforced in CI alongside shellcheck:
   covers `init` + `doctor` for every variant, overwrite safety (skip vs. `--force`), branch
   modes (two-branch default and `--base master`), and token substitution in the rendered docs

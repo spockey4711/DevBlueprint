@@ -19,3 +19,4 @@ CI installs it and runs the suite on every PR.
 - `init.bats` - `init` + `doctor` for every variant, plus argument and error handling.
 - `overwrite.bats` - overwrite safety: skip existing files vs. `--force`.
 - `tokens.bats` - token substitution and branch modes (two-branch default, `--base master`).
+- `update.bats` - `update` re-syncs core-owned files into an existing project (with `--dry-run`).

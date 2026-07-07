@@ -23,9 +23,12 @@ commits and PRs (e.g. `Refs: P0-1`).
 
 ## P1 - repo hygiene shipped with every variant
 
-- [ ] P1-1: Stack-agnostic files in `core/`: `.editorconfig`, `.gitattributes`.
-- [ ] P1-2: GitHub meta: `.github/pull_request_template.md`, issue templates.
-- [ ] P1-3: Optional templates: `SECURITY.md`, `CODE_OF_CONDUCT.md`.
+- [x] P1-1: Stack-agnostic files in `core/`: `.editorconfig`, `.gitattributes`. `init` drops both
+  into new projects, `doctor` checks them, and `update` keeps them in sync as core-owned files.
+- [x] P1-2: GitHub meta: `.github/pull_request_template.md`, issue templates. Core-owned, so
+  `init` drops them into new projects, `doctor` checks them, and `update` keeps them in sync.
+- [x] P1-3: Optional templates: `SECURITY.md`, `CODE_OF_CONDUCT.md`. Opt-in via
+  `init --community`; `--contact <method>` fills the reporting address in both.
 - [x] P1-4: Pre-commit hook that runs the quality gate. Each variant's `setup.sh` wires it
   (`.githooks/pre-commit` + `core.hooksPath` for generic/ios, husky and the pre-commit framework
   for Node/Python), `doctor` reports whether it is wired, and the bats suite asserts it - so the
