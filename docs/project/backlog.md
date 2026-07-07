@@ -64,13 +64,13 @@ Conflict rules:
   `variants/<name>/github/` -> `.github/`, so variants can ship `dependabot.yml` / `renovate.json`
   / `.tool-versions` / `.devcontainer/` / `.editorconfig` with no further CLI changes. Cover it
   in the bats suite. **Owns:** `bin/devblueprint` (init copy step), `test/`.
-- [ ] P2-2: ADR scaffolding. Add `docs/decisions/0001-record-architecture-decisions.md` plus a
+- [x] P2-2: ADR scaffolding. Add `docs/decisions/0001-record-architecture-decisions.md` plus a
   `NNNN-template.md` and a short index/README explaining the ADR flow; reference it from
   `docs/engineering/`. **Owns:** `docs/decisions/`, one link line in an existing `docs/engineering`
   file.
-- [ ] P2-3: Variant-author changelog + contributor note in `core/README.md` - how core vs.
+- [x] P2-3: Variant-author changelog + contributor note in `core/README.md` - how core vs.
   variant files are layered, and how to add a variant. **Owns:** `core/README.md`.
-- [ ] P2-4: New variant `data-python` (data-science stack), shipped complete: `manifest.env`,
+- [x] P2-4: New variant `data-python` (data-science stack), shipped complete: `manifest.env`,
   `setup.sh`, `github/workflows/ci.yml`, `gitignore`, `Makefile`, `docs/quality-and-testing.md`,
   `docs/conventions.append.md`, `variant-notes.md`, `wt.conf`, plus its `extras/` (dependency
   automation + toolchain pin). Mirror an existing variant's file set. **Owns:**
