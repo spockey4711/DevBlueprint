@@ -87,7 +87,7 @@ Conflict rules:
 
 - [x] P2-9: `doctor` beyond file existence - optionally run the quality gate and report git state
   (`--strict` / `--run-gate`). **Owns:** `bin/devblueprint` (`cmd_doctor`), `test/`.
-- [ ] P2-10: Dependency automation + toolchain pin for the `generic` variant: `dependabot.yml`
+- [x] P2-10: Dependency automation + toolchain pin for the `generic` variant: `dependabot.yml`
   or `renovate.json` + `.tool-versions` (asdf/mise) or `.devcontainer/`, dropped under
   `variants/generic/extras/`. **Owns:** `variants/generic/`. (dep: P2-1)
 - [x] P2-11: Same config backfill for the `backend-python` variant. **Owns:**
@@ -129,7 +129,7 @@ Conflict rules (same discipline as P2):
   `agent/intake.example.yml` and a schema doc. Cover parsing + precedence + plan output in bats.
   **Owns:** `bin/devblueprint` (`cmd_init`, new `cmd_plan`), `test/`, `docs/agent/intake-schema.md`,
   `agent/intake.example.yml`. (enabler - merge first)
-- [ ] P3-2: Setup-interview skill. Ship `agent/setup-interview.md` - a canonical, ordered
+- [x] P3-2: Setup-interview skill. Ship `agent/setup-interview.md` - a canonical, ordered
   question flow (purpose, stack -> variant, deploy target, solo vs. team -> branch strategy,
   license/community) that ends by writing `.devblueprint-intake.yml` and calling `plan` then
   `init --from`. Package it as a Claude Code skill (`agent/skills/devblueprint-setup/SKILL.md`)
