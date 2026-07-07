@@ -1,0 +1,27 @@
+# Dependency automation. Dependabot opens PRs for outdated dependencies so the
+# quality gate (not a human's memory) keeps the toolchain current. Grouped to
+# avoid a flood of single-package PRs.
+#
+# This is the language-agnostic variant, so only the github-actions ecosystem is
+# enabled out of the box - every scaffolded project ships the CI workflow. Add
+# your language's ecosystem below (uncomment and adjust): pip, npm, gomod, cargo,
+# bundler, maven, gradle, composer, ... See the Dependabot docs for the full list.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ["*"]
+
+  # --- Add your language's package ecosystem, for example: --------------------
+  # - package-ecosystem: npm
+  #   directory: "/"
+  #   schedule:
+  #     interval: weekly
+  #   open-pull-requests-limit: 5
+  #   groups:
+  #     deps:
+  #       patterns: ["*"]

@@ -15,6 +15,19 @@ All notable changes are documented here, following
 - Config backfill for the `web-nextjs` and `ios-swift` variants: each now ships `.tool-versions`
   (toolchain pin) and `.github/dependabot.yml` (web-nextjs: npm + github-actions; ios-swift: swift
   + github-actions), matching the newer variants. Refs: P2-12.
+- `doctor` now checks beyond file existence with two opt-in flags. `--strict` reports the
+  project's git state (repo present, current branch, clean/dirty) and escalates the advisory
+  pre-commit note to a hard failure, so an unwired scaffold no longer passes. `--run-gate`
+  resolves the project's quality gate from the variant recorded in its `.devblueprint` stamp
+  (falling back to `make check` when a Makefile is present) and runs it, failing `doctor` when
+  the gate is red. The no-flag default is unchanged. Refs: P2-9.
+- Config backfill for the `generic` variant: `.github/dependabot.yml` (github-actions enabled, a
+  commented template for the project's own language ecosystem) and an `extras/.tool-versions`
+  toolchain-pin stub, so language-agnostic projects get dependency automation and a pinned
+  toolchain out of the box. Refs: P2-10.
+- Config backfill for the `backend-python` variant: `extras/.tool-versions` (Python + uv toolchain
+  pin) and `github/dependabot.yml` (pip + github-actions updates), bringing it in line with the
+  other variants now that `init` copies `extras/` and `github/` generically. Refs: P2-11.
 - New `backend-go` variant: a Go backend stack (gofumpt, golangci-lint, go vet, `go test -race`,
   Go modules) with a `cmd/`+`internal/`+`pkg/` layout, `Makefile` gate, CI, and `extras/`
   (`.tool-versions` toolchain pin + `.github/dependabot.yml` for gomod + actions). `setup.sh`

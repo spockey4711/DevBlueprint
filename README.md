@@ -49,6 +49,10 @@ bin/devblueprint init --target ~/Projects/myapp --name myapp --variant web-nextj
 # Verify the foundation files landed (reports the kit version it was scaffolded from)
 bin/devblueprint doctor --target ~/Projects/myapp
 
+# Go further: --strict also checks git state and that the pre-commit hook is wired;
+# --run-gate runs the project's quality gate (resolved from its variant)
+bin/devblueprint doctor --target ~/Projects/myapp --strict --run-gate
+
 # Later, pull core changes into an existing project (preview with --dry-run)
 bin/devblueprint update --target ~/Projects/myapp
 

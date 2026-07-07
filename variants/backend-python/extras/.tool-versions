@@ -1,0 +1,4 @@
+# Toolchain pin for asdf / mise. Keeps local, CI and teammates on one Python and
+# one uv. Match the version to `.python-version` and `pyproject.toml`.
+python 3.12.6
+uv 0.4.20
