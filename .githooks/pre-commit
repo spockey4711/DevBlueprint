@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# Fast checks before commit. `make lint` should be quick; heavier gates run in CI.
+set -euo pipefail
+make lint
