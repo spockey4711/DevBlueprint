@@ -18,6 +18,13 @@ All notable changes are documented here, following
   resolves the project's quality gate from the variant recorded in its `.devblueprint` stamp
   (falling back to `make check` when a Makefile is present) and runs it, failing `doctor` when
   the gate is red. The no-flag default is unchanged. Refs: P2-9.
+- Config backfill for the `generic` variant: `.github/dependabot.yml` (github-actions enabled, a
+  commented template for the project's own language ecosystem) and an `extras/.tool-versions`
+  toolchain-pin stub, so language-agnostic projects get dependency automation and a pinned
+  toolchain out of the box. Refs: P2-10.
+- Config backfill for the `backend-python` variant: `extras/.tool-versions` (Python + uv toolchain
+  pin) and `github/dependabot.yml` (pip + github-actions updates), bringing it in line with the
+  other variants now that `init` copies `extras/` and `github/` generically. Refs: P2-11.
 - New `backend-go` variant: a Go backend stack (gofumpt, golangci-lint, go vet, `go test -race`,
   Go modules) with a `cmd/`+`internal/`+`pkg/` layout, `Makefile` gate, CI, and `extras/`
   (`.tool-versions` toolchain pin + `.github/dependabot.yml` for gomod + actions). `setup.sh`
