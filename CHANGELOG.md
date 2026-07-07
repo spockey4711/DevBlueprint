@@ -12,6 +12,11 @@ All notable changes are documented here, following
 
 ### Added
 
+- Generic variant-extras copy: `init` now copies a variant's `github/` tree into `.github/` and
+  its root-level `extras/` into the project root recursively, so a variant can ship new config
+  (`dependabot.yml`, `renovate.json`, `.tool-versions`, `.devcontainer/`, ...) just by dropping a
+  file in - no CLI edit. Both trees keep the existing overwrite safety, and `DEVBLUEPRINT_VARIANTS`
+  can point the CLI at an alternate variants dir. Refs: P2-1.
 - Optional community-health templates, opt-in via `init --community`: a `SECURITY.md` reporting
   policy and a Contributor Covenant 2.1 `CODE_OF_CONDUCT.md`. `--contact <method>` fills the
   reporting address in both (an `INSERT CONTACT METHOD` placeholder otherwise). Off by default and

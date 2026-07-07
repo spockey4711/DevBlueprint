@@ -13,7 +13,8 @@
 #
 # The blueprint is documentation-first: `init` copies the tech-agnostic core docs
 # and the chosen variant's overlay, fills in CLAUDE.md / CONTRIBUTING.md, drops in
-# the worktree script, CI workflow and .gitignore. It never overwrites existing
+# the worktree script, the variant's github/ tree (CI workflow + any .github meta),
+# its root-level extras/, and .gitignore. It never overwrites existing
 # files unless --force is given. `update` re-syncs only the core-owned files
 # (the agnostic engineering docs, wt.sh, and the GitHub PR/issue templates) into
 # an existing project, so old projects can pick up core changes without touching
@@ -22,7 +23,10 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 CORE="$ROOT/core"
-VARIANTS="$ROOT/variants"
+# Where variants live. Overridable so the test suite can point at a throwaway
+# variants dir without touching the developer's working tree; defaults to the
+# kit's own variants/.
+VARIANTS="${DEVBLUEPRINT_VARIANTS:-$ROOT/variants}"
 VERSION_FILE="$ROOT/VERSION"
 
 die() { echo "devblueprint: $*" >&2; exit 1; }
@@ -98,6 +102,21 @@ copy() {
   mkdir -p "$(dirname "$2")"
   cp "$1" "$2"
   info "wrote $rel_dest"
+}
+
+# copy_tree <src-dir> <dest-dir> : recursively copy every file under src-dir into
+# dest-dir, preserving the relative layout, so a variant ships arbitrary config
+# (dependabot.yml, renovate.json, .tool-versions, .devcontainer/, ...) just by
+# dropping a file under github/ or extras/ - no CLI change. Each file goes through
+# copy(), so overwrite safety (place_guard/FORCE) and reporting stay consistent
+# with the by-name copies. A missing src-dir is a no-op; .DS_Store noise is skipped.
+copy_tree() {
+  local src="$1" dest="$2" f rel
+  [ -d "$src" ] || return 0
+  while IFS= read -r -d '' f; do
+    rel="${f#"$src"/}"
+    copy "$f" "$dest/$rel"
+  done < <(find "$src" -type f ! -name .DS_Store -print0)
 }
 
 # append_if <src> <dest> : append src to dest if src exists (used for the
@@ -245,10 +264,16 @@ EOF
     ' "$wtconf" > "$tmp" && mv "$tmp" "$wtconf"
   fi
 
-  # 5. CI, gitignore, and any variant extras (e.g. a Makefile).
-  copy "$vdir/github/workflows/ci.yml" "$TARGET/.github/workflows/ci.yml"
+  # 5. The variant's github/ tree (CI workflow + any .github metadata) and its
+  # root-level extras/, both copied recursively so a variant can ship new config
+  # by dropping a file in - no CLI change. gitignore keeps a by-name copy because
+  # it is renamed from the un-dotted source, and Makefile is a named top-level
+  # file. extras/ lands before the core hygiene below, so a variant that ships its
+  # own .editorconfig via extras/ wins over the agnostic core one.
+  copy_tree "$vdir/github" "$TARGET/.github"
   copy "$vdir/gitignore" "$TARGET/.gitignore"
   [ -f "$vdir/Makefile" ] && copy "$vdir/Makefile" "$TARGET/Makefile"
+  copy_tree "$vdir/extras" "$TARGET"
 
   # 5a. Stack-agnostic repo hygiene shared by every variant.
   copy "$CORE/.editorconfig"  "$TARGET/.editorconfig"
