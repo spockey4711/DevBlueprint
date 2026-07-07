@@ -1,0 +1,43 @@
+# Gradle
+.gradle/
+build/
+*/build/
+!gradle/wrapper/gradle-wrapper.jar
+
+# Android build outputs
+*.apk
+*.aab
+*.ap_
+*.aar
+*.dex
+captures/
+.externalNativeBuild/
+.cxx/
+
+# Local SDK path + machine-specific config - never commit (holds the local SDK
+# location and sometimes signing/API keys).
+local.properties
+
+# Signing - keep keys out of git
+*.jks
+*.keystore
+keystore.properties
+
+# Android Studio / IntelliJ
+*.iml
+.idea/
+!.idea/codeStyles/
+!.idea/icon.png
+
+# Reports / caches
+lint/
+*.hprof
+
+# Env / secrets (keep the example)
+.env
+.env.*
+!.env.example
+google-services.json
+
+# OS / editor cruft
+.DS_Store

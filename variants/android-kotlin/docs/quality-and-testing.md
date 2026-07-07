@@ -1,0 +1,59 @@
+# Quality and testing
+
+**Purpose:** the quality bar and how it is enforced for this Android/Kotlin app. Concrete overlay
+of the blueprint's [shared quality shape](engineering-standards.md).
+
+## The quality gate (must be green to merge)
+
+Run locally before pushing (`make check`); CI runs the identical set on every PR:
+
+```bash
+./gradlew ktlintCheck        # lint + formatting is canonical - zero warnings
+./gradlew detekt             # static analysis - findings fail the build
+./gradlew lintDebug          # Android Lint - platform/resource/manifest issues
+./gradlew testDebugUnitTest  # JVM unit tests
+```
+
+Everything runs through the Gradle wrapper (`./gradlew`) so the build is reproducible across local,
+CI and teammates. Install the pre-commit hook (`./setup.sh`) and ktlint + detekt run on commit.
+
+## Testing strategy
+
+Test what has logic or can silently break; do not chase coverage on Composable layout code.
+
+- **Unit (JUnit, on the JVM):** `ViewModel`s, use-cases/reducers, mappers, formatters, repository
+  logic behind interfaces. Fast and deterministic - fake the data sources, control coroutine
+  dispatchers with a test dispatcher, seed any randomness.
+- **Instrumented / UI (androidTest), a few only:** critical Compose flows via `createComposeRule`
+  and a smoke test that the app launches and primary navigation works. Keep the suite small -
+  instrumented tests are slow and flaky by nature.
+- Inject dependencies via interfaces so units test without the network, the real DB or the emulator.
+
+Target: meaningful coverage of `ViewModel`s and the domain/data layer, not a global percentage or
+Compose UI code.
+
+## Tooling
+
+- **ktlint** - lint + formatter for Kotlin, wired via the Gradle plugin; config in `.editorconfig`.
+- **detekt** - static analysis; config in `config/detekt/detekt.yml`, findings fail the build.
+- **Android Lint** - `lintDebug` for platform, resource and manifest problems.
+- **JUnit** - unit specs in `app/src/test`; instrumented specs in `app/src/androidTest`.
+- **pre-commit** - a committable `.githooks/pre-commit` (via `core.hooksPath`) runs ktlint + detekt
+  on staged Kotlin.
+- **Gradle** - the wrapper (`./gradlew`) pins the build; `gradle/actions/setup-gradle` caches it in CI.
+- **CI** - `.github/workflows/ci.yml` runs the full gate on JDK 17 for every PR into
+  `develop`/`master`.
+
+## Accessibility & release
+
+- Manual accessibility pass before a release: TalkBack labels on interactive elements, sufficient
+  contrast, large-font and dark-theme layouts, touch targets >= 48dp.
+- Release checklist: `versionCode`/`versionName` bumped, ProGuard/R8 rules verified on a release
+  build, a signed `assembleRelease` / `bundleRelease` produced, and an internal-track smoke pass.
+
+## Definition of done
+
+1. It works and matches the design/Material/accessibility specs.
+2. ktlint, detekt, Android Lint and the unit tests are green.
+3. Docs are updated and `CHANGELOG.md` has an entry.
+4. It is merged via a reviewed PR and is shippable to an internal track.

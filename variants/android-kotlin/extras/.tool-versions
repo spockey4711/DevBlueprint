@@ -1,0 +1,5 @@
+# Toolchain pin for asdf / mise. Keeps local, CI and teammates on one JDK, one
+# Kotlin and one Gradle. Match the JDK to the one CI and the Gradle wrapper use.
+java temurin-17.0.11+9
+kotlin 2.0.21
+gradle 8.9
