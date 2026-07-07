@@ -70,7 +70,7 @@ Conflict rules:
   file.
 - [x] P2-3: Variant-author changelog + contributor note in `core/README.md` - how core vs.
   variant files are layered, and how to add a variant. **Owns:** `core/README.md`.
-- [ ] P2-4: New variant `data-python` (data-science stack), shipped complete: `manifest.env`,
+- [x] P2-4: New variant `data-python` (data-science stack), shipped complete: `manifest.env`,
   `setup.sh`, `github/workflows/ci.yml`, `gitignore`, `Makefile`, `docs/quality-and-testing.md`,
   `docs/conventions.append.md`, `variant-notes.md`, `wt.conf`, plus its `extras/` (dependency
   automation + toolchain pin). Mirror an existing variant's file set. **Owns:**
