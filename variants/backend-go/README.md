@@ -22,6 +22,8 @@ Or, with the shipped Makefile: `make check`.
 - `.github/workflows/ci.yml` (gofumpt + go vet + golangci-lint + build + race tests).
 - `.github/dependabot.yml` (gomod + github-actions updates) and `.tool-versions` (toolchain pin).
 - `.gitignore` for Go binaries, coverage and build artifacts.
+- `docs/ops/deployment.md` (deploy runbook: managed/Docker/VPS + DB + env checklists) and
+  `.env.example` (committed template; real `.env*` stay ignored).
 - `cmd/`, `internal/`, `pkg/` scaffold.
 
 ## After init (wire the toolchain)
