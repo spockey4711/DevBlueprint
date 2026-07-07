@@ -4,8 +4,12 @@
 # there is no separate typecheck.
 .PHONY: check lint test build
 
-# Every shell script in the kit: the CLI, the worktree manager, variant setups.
-SHELL_FILES := bin/devblueprint scripts/wt.sh $(wildcard variants/*/setup.sh)
+# Every shell script in the kit: the CLI, the worktree manager, the curl|sh
+# installer, and the variant setups.
+SHELL_FILES := bin/devblueprint scripts/wt.sh install.sh $(wildcard variants/*/setup.sh)
+
+# The npm launcher is the kit's only JavaScript (npm channel only).
+JS_FILES := packaging/npm/launch.cjs
 
 check: lint test
 
@@ -16,6 +20,11 @@ lint:
 	  echo "shellcheck $(SHELL_FILES)"; shellcheck $(SHELL_FILES); \
 	else \
 	  echo "shellcheck not installed - skipping (CI enforces it)"; \
+	fi
+	@if command -v node >/dev/null 2>&1; then \
+	  for f in $(JS_FILES); do echo "node --check $$f"; node --check "$$f"; done; \
+	else \
+	  echo "node not installed - skipping launcher check (CI enforces it)"; \
 	fi
 
 # CLI test suite (bats): scaffolds into temp dirs and asserts init/doctor,

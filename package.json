@@ -1,0 +1,47 @@
+{
+  "name": "devblueprint",
+  "version": "0.1.0",
+  "description": "A documentation-first engineering-setup kit: git workflow, quality gate and AI-assistant guidance scaffolded into any project.",
+  "bin": {
+    "devblueprint": "packaging/npm/launch.cjs"
+  },
+  "files": [
+    "bin/",
+    "core/",
+    "variants/",
+    "scripts/",
+    "packaging/npm/launch.cjs",
+    "VERSION",
+    "README.md",
+    "GUIDE.md",
+    "LICENSE",
+    "CHANGELOG.md"
+  ],
+  "engines": {
+    "node": ">=14"
+  },
+  "os": [
+    "darwin",
+    "linux"
+  ],
+  "keywords": [
+    "scaffold",
+    "boilerplate",
+    "git-workflow",
+    "quality-gate",
+    "conventions",
+    "ai-assistant",
+    "claude",
+    "worktree",
+    "cli"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/spockey4711/DevBlueprint.git"
+  },
+  "homepage": "https://github.com/spockey4711/DevBlueprint#readme",
+  "bugs": {
+    "url": "https://github.com/spockey4711/DevBlueprint/issues"
+  },
+  "license": "MIT"
+}
