@@ -15,3 +15,15 @@ templates; a variant only adds stack-specific detail on top.
 
 Templates use `{{TOKENS}}` (`PROJECT_NAME`, `MAIN_BRANCH`, `BASE_BRANCH`, `WT_CMD`,
 `QUALITY_GATE`, `COPY_LANGUAGE_NOTE`, `VARIANT_NOTES`) that the CLI substitutes at init time.
+
+Templates also carry two conditional workflow blocks, each delimited by markers on their own
+lines:
+
+```
+{{#TWO_BRANCH}} ... {{/TWO_BRANCH}}        kept for the staged develop -> master flow
+{{#SINGLE_BRANCH}} ... {{/SINGLE_BRANCH}}  kept for a trunk flow (init'd with base == main)
+```
+
+`init` keeps whichever block matches the chosen workflow (single-branch when
+`BASE_BRANCH == MAIN_BRANCH`, e.g. `--base master`) and drops the other, so the prose never
+reads "`master` is promoted ... to `master`".

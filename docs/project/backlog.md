@@ -13,7 +13,7 @@ commits and PRs (e.g. `Refs: P0-1`).
   projects pick up core changes instead of being scaffold-once-and-forget.
 - [ ] P0-3: `--version` flag + embed the kit version in scaffolded files, so `update` can tell
   what is stale.
-- [ ] P0-4: Single-branch rendering bug. With `--base master` (or any `BASE_BRANCH ==
+- [x] P0-4: Single-branch rendering bug. With `--base master` (or any `BASE_BRANCH ==
   MAIN_BRANCH`), `CLAUDE.md`/`CONTRIBUTING.md` render garbled two-branch prose ("`master` is
   promoted ... to `master`"). Add a single-branch variant of the workflow blocks in
   `core/templates/CLAUDE.md.tmpl` and `CONTRIBUTING.md.tmpl` (trunk flow, no release-PR step)

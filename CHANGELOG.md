@@ -28,3 +28,10 @@ All notable changes are documented here, following
 ### Removed
 
 - The `apkit` Node CLI, its web interface, examples, prompt library and templates.
+
+### Fixed
+
+- Single-branch scaffolding (`init --base master`, or any `BASE_BRANCH == MAIN_BRANCH`) no longer
+  renders garbled two-branch prose in `CLAUDE.md`/`CONTRIBUTING.md`. The templates now carry
+  `{{#TWO_BRANCH}}`/`{{#SINGLE_BRANCH}}` conditional blocks, and `init` keeps the trunk-flow
+  variant (no release-PR step) when base equals main.
