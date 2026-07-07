@@ -23,6 +23,7 @@ depend on. There is no runtime, no lock-in; delete DevBlueprint afterwards and n
 devblueprint/
   core/              tech-agnostic source of truth (copied into every project)
     git-workflow.md  engineering-standards.md  conventions.md  quality-and-testing.md
+    .editorconfig    .gitattributes    (stack-agnostic repo hygiene)
     templates/       CLAUDE.md + CONTRIBUTING.md templates ({{TOKENS}} filled at init)
     github/          PR template + issue templates (shipped with every variant)
   scripts/wt.sh      the worktree manager (parametrized via scripts/wt.conf)
@@ -61,14 +62,16 @@ Add DevBlueprint to your `PATH` (or symlink `bin/devblueprint`) to drop the `bin
 can run it on an existing repo to add the workflow without losing your code.
 
 `update` is the counterpart for projects already scaffolded: it re-syncs only the core-owned
-files (the agnostic engineering docs, `scripts/wt.sh`, and the GitHub PR/issue templates) so
-old projects pick up improvements to `core/`, and deliberately never touches your `CLAUDE.md`,
-`wt.conf`, CI or code. Pass
+files (the agnostic engineering docs, `.editorconfig`, `.gitattributes`, `scripts/wt.sh`, and
+the GitHub PR/issue templates) so old projects pick up improvements to `core/`, and
+deliberately never touches your `CLAUDE.md`, `wt.conf`, CI or code. Pass
 `--variant <name>` to also refresh the variant-overlaid `conventions.md` and
 `quality-and-testing.md`, and `--dry-run` to preview the changes first.
 
 Options: `--target <dir>` `--name <name>` `--variant <variant>` `--main <branch>`
-`--base <branch>` `--force`. Use `--base master` for a single-branch trunk workflow.
+`--base <branch>` `--community` `--contact <method>` `--force`. Use `--base master` for a
+single-branch trunk workflow, and `--community` to add optional `SECURITY.md` and
+`CODE_OF_CONDUCT.md` (with `--contact` filling the reporting address in both).
 
 ## Variants
 
