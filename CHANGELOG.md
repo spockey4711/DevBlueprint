@@ -12,6 +12,10 @@ All notable changes are documented here, following
 
 ### Added
 
+- Optional community-health templates, opt-in via `init --community`: a `SECURITY.md` reporting
+  policy and a Contributor Covenant 2.1 `CODE_OF_CONDUCT.md`. `--contact <method>` fills the
+  reporting address in both (an `INSERT CONTACT METHOD` placeholder otherwise). Off by default and
+  not required by `doctor`. Refs: P1-3.
 - Tech-agnostic `core/`: git-workflow, engineering-standards, conventions and quality-and-testing
   docs, plus `CLAUDE.md` and `CONTRIBUTING.md` templates.
 - Parametrized `scripts/wt.sh` worktree manager driven by an optional `wt.conf` (branches,
