@@ -23,6 +23,11 @@ All notable changes are documented here, following
 - New `data-python` variant: a data-science stack (uv, ruff, nbqa + nbstripout for notebooks,
   mypy strict over `src/`, pytest) with a `src/`+`notebooks/` split, `data/` scaffold, `Makefile`
   gate, CI, and `extras/` (`.tool-versions` toolchain pin + `.github/dependabot.yml`). Refs: P2-4.
+- New `node-express` variant: a typed HTTP API stack (Express + TypeScript strict, ESLint
+  type-checked + Prettier, Vitest + supertest, `tsc` build) with a layered
+  `src/{routes,middleware,services,lib}` scaffold, a minimal working `/health` app so the gate is
+  green from day one, husky + lint-staged pre-commit, `Makefile` gate, CI, and `extras/`
+  (`.tool-versions` toolchain pin + `.github/dependabot.yml`). Refs: P2-7.
 - ADR scaffolding in `docs/decisions/`: a `README.md` explaining the flow, an `NNNN-template.md`,
   and `0001-record-architecture-decisions.md`; linked from `docs/engineering/conventions.md`.
   Refs: P2-2.
