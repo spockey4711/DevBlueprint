@@ -12,6 +12,7 @@ years. This file is the short version; the full detail lives in
 
 ## Workflow
 
+{{#TWO_BRANCH}}
 Two long-lived branches: feature work integrates on `{{BASE_BRANCH}}`, and `{{BASE_BRANCH}}` is
 promoted to the always-deployable `{{MAIN_BRANCH}}` via a periodic release PR.
 
@@ -19,6 +20,16 @@ promoted to the always-deployable `{{MAIN_BRANCH}}` via a periodic release PR.
    Never commit directly to `{{BASE_BRANCH}}` or `{{MAIN_BRANCH}}`; the main clone stays on
    `{{MAIN_BRANCH}}` and each feature branch gets its own directory.
    - `feat/login`, `fix/scroll-jitter`, `docs/deployment`, `chore/deps`.
+{{/TWO_BRANCH}}
+{{#SINGLE_BRANCH}}
+One long-lived branch: feature work integrates directly on the always-deployable
+`{{MAIN_BRANCH}}`. There is no separate integration branch or periodic release PR.
+
+1. **Branch** off `{{MAIN_BRANCH}}` into its own worktree: `{{WT_CMD}} new <type>/<slug>`.
+   Never commit directly to `{{MAIN_BRANCH}}`; the main clone stays on `{{MAIN_BRANCH}}` and
+   each feature branch gets its own directory.
+   - `feat/login`, `fix/scroll-jitter`, `docs/deployment`, `chore/deps`.
+{{/SINGLE_BRANCH}}
 2. **Build the change.** Keep it focused on one thing.
 3. **Keep quality green** before pushing:
    ```bash
@@ -28,8 +39,10 @@ promoted to the always-deployable `{{MAIN_BRANCH}}` via a periodic release PR.
 5. **Open a PR into `{{BASE_BRANCH}}`** and fill in the checklist below.
 6. **Merge** with a merge commit once CI is green. The merged feature branch is auto-deleted;
    run `{{WT_CMD}} gc` to remove its worktree.
+{{#TWO_BRANCH}}
 7. **Release** by opening a `{{BASE_BRANCH}}` -> `{{MAIN_BRANCH}}` PR every few days once
    `{{BASE_BRANCH}}` is worth shipping.
+{{/TWO_BRANCH}}
 
 ## Commit messages — Conventional Commits
 
