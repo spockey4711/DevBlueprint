@@ -19,6 +19,10 @@ All notable changes are documented here, following
 
 ### Added
 
+- Deploy runbook artifacts for the `web-nextjs` and `generic` variants: each ships
+  `extras/docs/ops/deployment.md` (a runbook covering managed/Docker/VPS targets with DB and
+  env-var checklists) and `extras/.env.example` (committed template; real `.env*` stay ignored),
+  copied to project root by the generic extras mechanism. Refs: P3-4.
 - Config backfill for the `web-nextjs` and `ios-swift` variants: each now ships `.tool-versions`
   (toolchain pin) and `.github/dependabot.yml` (web-nextjs: npm + github-actions; ios-swift: swift
   + github-actions), matching the newer variants. Refs: P2-12.

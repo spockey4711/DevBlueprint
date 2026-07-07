@@ -142,7 +142,7 @@ Conflict rules (same discipline as P2):
   target) so the interview skips answered questions, and - post-init - turns the PRD into real
   P0/P1 tasks in `docs/project/backlog.md` (existing format) plus optional seed ADRs. Pure
   documentation/prompt, no CLI. **Owns:** `agent/prd-to-backlog.md`. (targets the P3-1 schema)
-- [ ] P3-4: Deploy runbook artifacts for `web-nextjs` + `generic`. Via the P2-1 extras mechanism,
+- [x] P3-4: Deploy runbook artifacts for `web-nextjs` + `generic`. Via the P2-1 extras mechanism,
   each ships `extras/docs/ops/deployment.md` (a runbook covering the common deploy targets -
   VPS/Docker/managed - with the DB and env-var checklist) plus `extras/.env.example`. The
   interview's deploy-target answer tells the agent which section to keep. Documentation-first:
