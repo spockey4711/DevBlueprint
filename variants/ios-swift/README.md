@@ -19,6 +19,7 @@ swiftformat --lint . && swiftlint --strict && swift build && swift test
 - `CLAUDE.md`, `CONTRIBUTING.md`, `CHANGELOG.md` filled in for this stack.
 - `scripts/wt.sh` + `scripts/wt.conf` (post-create runs `swift package resolve`).
 - `.github/workflows/ci.yml` (format + lint + build + test on macOS).
+- `.github/dependabot.yml` (swift + github-actions updates) and `.tool-versions` (toolchain pin).
 - `.gitignore` for Xcode/Swift.
 - `Sources/` and `Tests/` skeleton.
 

@@ -9,6 +9,8 @@
   without a reason. Avoid force-unwraps (`!`) and force-`try!` outside tests - handle `nil` and
   errors deliberately.
 - **SwiftFormat** owns formatting; **SwiftLint `--strict`** is the lint gate. Zero warnings.
+- Pin the SwiftFormat and SwiftLint versions in `.tool-versions` so local, CI and teammates run
+  the same formatter/linter; keep them in step with what CI brew-installs.
 
 ### Naming & structure
 

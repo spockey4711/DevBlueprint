@@ -12,6 +12,9 @@ All notable changes are documented here, following
 
 ### Added
 
+- Config backfill for the `web-nextjs` and `ios-swift` variants: each now ships `.tool-versions`
+  (toolchain pin) and `.github/dependabot.yml` (web-nextjs: npm + github-actions; ios-swift: swift
+  + github-actions), matching the newer variants. Refs: P2-12.
 - New `backend-go` variant: a Go backend stack (gofumpt, golangci-lint, go vet, `go test -race`,
   Go modules) with a `cmd/`+`internal/`+`pkg/` layout, `Makefile` gate, CI, and `extras/`
   (`.tool-versions` toolchain pin + `.github/dependabot.yml` for gomod + actions). `setup.sh`

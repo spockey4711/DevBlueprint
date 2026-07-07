@@ -36,7 +36,7 @@ Target: meaningful coverage of view models and the domain layer, not a global pe
 - **XCTest / Swift Testing** - unit tests in `Tests/UnitTests`, UI in `Tests/UITests`.
 - **pre-commit** - a git hook runs SwiftFormat + SwiftLint on staged files.
 - **CI** - `.github/workflows/ci.yml` runs format, lint, build and test on a macOS runner for
-  every PR into `develop`/`master`.
+  every PR into `develop`/`master`; `.github/dependabot.yml` keeps Swift packages + Actions current.
 
 ## Accessibility & release
 

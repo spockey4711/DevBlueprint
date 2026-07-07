@@ -43,7 +43,7 @@ Target: meaningful coverage of `lib/` and critical components, not a global perc
 - **lint-staged + husky** - a `pre-commit` hook formats and lints only staged files. Husky
   no-ops outside a git repo, so container and CI installs are unaffected.
 - **CI** - `.github/workflows/ci.yml` runs the four gates plus the Playwright smoke suite on
-  every PR into `develop`/`master`.
+  every PR into `develop`/`master`; `.github/dependabot.yml` keeps npm + Actions deps current.
 
 ## Definition of done
 

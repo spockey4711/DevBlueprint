@@ -92,5 +92,5 @@ Conflict rules:
   `variants/generic/extras/`. **Owns:** `variants/generic/`. (dep: P2-1)
 - [ ] P2-11: Same config backfill for the `backend-python` variant. **Owns:**
   `variants/backend-python/`. (dep: P2-1)
-- [ ] P2-12: Same config backfill for the `web-nextjs` and `ios-swift` variants (both under one
+- [x] P2-12: Same config backfill for the `web-nextjs` and `ios-swift` variants (both under one
   owner since neither collides). **Owns:** `variants/web-nextjs/`, `variants/ios-swift/`. (dep: P2-1)
