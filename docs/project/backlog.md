@@ -64,7 +64,7 @@ Conflict rules:
   `variants/<name>/github/` -> `.github/`, so variants can ship `dependabot.yml` / `renovate.json`
   / `.tool-versions` / `.devcontainer/` / `.editorconfig` with no further CLI changes. Cover it
   in the bats suite. **Owns:** `bin/devblueprint` (init copy step), `test/`.
-- [ ] P2-2: ADR scaffolding. Add `docs/decisions/0001-record-architecture-decisions.md` plus a
+- [x] P2-2: ADR scaffolding. Add `docs/decisions/0001-record-architecture-decisions.md` plus a
   `NNNN-template.md` and a short index/README explaining the ADR flow; reference it from
   `docs/engineering/`. **Owns:** `docs/decisions/`, one link line in an existing `docs/engineering`
   file.

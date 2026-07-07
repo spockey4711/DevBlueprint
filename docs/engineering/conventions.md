@@ -56,4 +56,4 @@ Related: [git workflow](git-workflow.md) · [quality & testing](quality-and-test
 - Add a dependency only when it clearly beats a small amount of local code. Prefer the platform
   standard library over a package.
 - Pin versions; review lockfile changes. Record notable additions in the changelog and, if
-  architectural, an ADR.
+  architectural, an [ADR](../decisions/README.md).
