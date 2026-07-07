@@ -15,3 +15,9 @@ templates; a variant only adds stack-specific detail on top.
 
 Templates use `{{TOKENS}}` (`PROJECT_NAME`, `MAIN_BRANCH`, `BASE_BRANCH`, `WT_CMD`,
 `QUALITY_GATE`, `COPY_LANGUAGE_NOTE`, `VARIANT_NOTES`) that the CLI substitutes at init time.
+
+`devblueprint update --target <dir>` re-syncs the project-independent core files
+(`git-workflow.md`, `engineering-standards.md`, and `scripts/wt.sh`) into a project scaffolded
+earlier, so edits here reach old projects too. It leaves the rendered templates (`CLAUDE.md`,
+`CONTRIBUTING.md`) and `wt.conf` alone; `conventions.md` and `quality-and-testing.md` are
+refreshed only when `update` is given a `--variant`, since they carry a variant overlay.

@@ -73,4 +73,8 @@ Full detail lands in the target project's `docs/engineering/git-workflow.md`.
   `docs/quality-and-testing.md`, `docs/conventions.append.md`, `variant-notes.md`, the CI
   workflow and `.gitignore`. It shows up in `devblueprint list` automatically.
 - **Change the shared workflow once, everywhere:** edit `core/`. New projects pick it up at
-  their next `init`.
+  their next `init`; existing projects pull it in with
+  `devblueprint update --target <dir>` (add `--variant <name>` to also refresh the
+  variant-overlaid `conventions.md` / `quality-and-testing.md`, `--dry-run` to preview).
+  `update` only rewrites the core-owned files, so it never disturbs a project's `CLAUDE.md`,
+  `wt.conf`, CI or code.

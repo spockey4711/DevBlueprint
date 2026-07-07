@@ -8,9 +8,11 @@ commits and PRs (e.g. `Refs: P0-1`).
 - [ ] P0-1: CLI test suite (bats). Run `init` into a tmp dir, assert `doctor` passes; cover
   overwrite-safety (skip vs. `--force`), `--base master` single-branch mode, and token
   substitution in `CLAUDE.md`/`CONTRIBUTING.md`. Wire into CI alongside shellcheck.
-- [ ] P0-2: `devblueprint update` command. Re-sync `docs/engineering/*` and `scripts/wt.sh`
-  from `core/` into an existing project; never touch `CLAUDE.md`, code, or `wt.conf`. Lets old
-  projects pick up core changes instead of being scaffold-once-and-forget.
+- [x] P0-2: `devblueprint update` command. Re-syncs the core-owned files
+  (`docs/engineering/git-workflow.md`, `engineering-standards.md`, `scripts/wt.sh`) from `core/`
+  into an existing project; never touches `CLAUDE.md`, code, or `wt.conf`. `--variant` also
+  refreshes the variant-overlaid `conventions.md`/`quality-and-testing.md`; `--dry-run` previews.
+  Lets old projects pick up core changes instead of being scaffold-once-and-forget.
 - [ ] P0-3: `--version` flag + embed the kit version in scaffolded files, so `update` can tell
   what is stale.
 - [ ] P0-4: Single-branch rendering bug. With `--base master` (or any `BASE_BRANCH ==
