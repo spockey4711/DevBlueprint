@@ -23,6 +23,10 @@ All notable changes are documented here, following
 - New `data-python` variant: a data-science stack (uv, ruff, nbqa + nbstripout for notebooks,
   mypy strict over `src/`, pytest) with a `src/`+`notebooks/` split, `data/` scaffold, `Makefile`
   gate, CI, and `extras/` (`.tool-versions` toolchain pin + `.github/dependabot.yml`). Refs: P2-4.
+- New `rust` variant: a cargo stack (rustfmt, clippy `pedantic` with warnings denied, `cargo test`)
+  with a library-first layout, pinned toolchain (`rust-toolchain.toml` + `.tool-versions`), `Makefile`
+  gate, CI, and `extras/` (`.tool-versions` toolchain pin + `.github/dependabot.yml` for cargo).
+  Refs: P2-6.
 - ADR scaffolding in `docs/decisions/`: a `README.md` explaining the flow, an `NNNN-template.md`,
   and `0001-record-architecture-decisions.md`; linked from `docs/engineering/conventions.md`.
   Refs: P2-2.

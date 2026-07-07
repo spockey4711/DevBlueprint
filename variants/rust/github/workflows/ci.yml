@@ -1,0 +1,47 @@
+name: CI
+
+# The quality gate for every change: rustfmt (formatting), clippy (lint + type-aware
+# analysis, warnings denied), cargo test. Must be green before a PR can merge.
+# Gates both integration branches: feature PRs into `develop` and the periodic
+# `develop` -> `master` release PR.
+
+on:
+  pull_request:
+    branches: [develop, master]
+  push:
+    branches: [develop, master]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  RUSTFLAGS: "-D warnings"
+
+jobs:
+  quality:
+    name: Lint, typecheck, test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        # rust-toolchain.toml pins the channel; install its rustfmt + clippy.
+        run: rustup component add rustfmt clippy
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+
+      - name: Format check
+        run: cargo fmt --check
+
+      - name: Clippy
+        run: cargo clippy --all-targets --all-features -- -D warnings
+
+      - name: Tests
+        run: cargo test --all-features

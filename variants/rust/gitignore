@@ -1,0 +1,25 @@
+# Cargo build output
+/target/
+
+# Backup files from rustfmt / rustc
+**/*.rs.bk
+
+# Coverage (grcov / llvm-cov / tarpaulin)
+*.profraw
+lcov.info
+tarpaulin-report.*
+
+# Env (keep the example)
+.env
+.env.*
+!.env.example
+
+# OS / editor cruft
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# Note: Cargo.lock is committed - it pins the exact dependency graph for
+# binaries and reproducible CI. Delete this note (not the file) if you publish a
+# library crate and prefer to leave it untracked.
