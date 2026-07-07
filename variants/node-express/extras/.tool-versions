@@ -1,0 +1,4 @@
+# Toolchain pin for asdf / mise. Keeps local, CI and teammates on one Node.
+# Match the major version to .nvmrc (written by setup.sh) and the "engines"
+# field in package.json. npm ships with Node, so no separate pin is needed.
+nodejs 22.11.0

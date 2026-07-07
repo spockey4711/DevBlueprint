@@ -1,0 +1,4 @@
+# Toolchain pin for asdf / mise. Keeps local, CI and teammates on one Go and one
+# golangci-lint. Match the Go version to `go.mod` and the CI workflow.
+golang 1.23.4
+golangci-lint 1.62.2

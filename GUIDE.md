@@ -31,8 +31,13 @@ Into the target directory:
 CLAUDE.md                          workflow + standards for AI assistants (and you)
 CONTRIBUTING.md                    the short contributor guide
 CHANGELOG.md                       fresh, Keep-a-Changelog format
+.devblueprint                      scaffold stamp: kit version + variant (for `update`)
 .gitignore                         stack-appropriate
+.editorconfig                      stack-agnostic editor baseline (charset, LF, indent)
+.gitattributes                     stack-agnostic line-ending normalization
 .github/workflows/ci.yml           the quality gate in CI
+.github/pull_request_template.md   the PR checklist, prefilled on every PR
+.github/ISSUE_TEMPLATE/            bug-report + feature-request forms (and config)
 Makefile                           (generic variant only) gate targets to fill in
 setup.sh                           one-shot toolchain wiring (configs, hooks, deps)
 scripts/wt.sh                      the worktree manager
@@ -45,6 +50,17 @@ docs/engineering/
 docs/project/backlog.md            a stub task list
 src/... tests/...                  the source/test skeleton for the stack
 ```
+
+Pass `--community` to also drop in two optional community-health files:
+
+```
+SECURITY.md                        how to report a vulnerability privately
+CODE_OF_CONDUCT.md                 Contributor Covenant 2.1
+```
+
+`--contact <method>` fills the reporting address in both (an email or a URL); without it they
+carry an `INSERT CONTACT METHOD` placeholder for you to replace. These are off by default and are
+not required by `doctor`.
 
 Everything is a plain file you own. Edit freely - DevBlueprint is not a dependency.
 
@@ -69,8 +85,14 @@ Full detail lands in the target project's `docs/engineering/git-workflow.md`.
 
 - **Solo / lightweight:** run `init --base master` for a single-branch trunk workflow (still
   worktrees, still PRs, still the gate). Or keep both branches but skip the dev auto-deploy.
+- **Open source / collaborative:** add `--community --contact <email-or-url>` to scaffold
+  `SECURITY.md` and a Contributor Covenant `CODE_OF_CONDUCT.md`.
 - **Add a stack:** copy an existing folder under `variants/`, adjust `manifest.env`, `wt.conf`,
   `docs/quality-and-testing.md`, `docs/conventions.append.md`, `variant-notes.md`, the CI
   workflow and `.gitignore`. It shows up in `devblueprint list` automatically.
 - **Change the shared workflow once, everywhere:** edit `core/`. New projects pick it up at
-  their next `init`.
+  their next `init`; existing projects pull it in with
+  `devblueprint update --target <dir>` (add `--variant <name>` to also refresh the
+  variant-overlaid `conventions.md` / `quality-and-testing.md`, `--dry-run` to preview).
+  `update` only rewrites the core-owned files, so it never disturbs a project's `CLAUDE.md`,
+  `wt.conf`, CI or code.

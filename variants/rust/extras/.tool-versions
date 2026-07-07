@@ -1,0 +1,4 @@
+# Toolchain pin for asdf / mise. Keeps local, CI and teammates on one Rust
+# toolchain. Match the version to `rust-toolchain.toml` and `Cargo.toml`'s
+# `rust-version`.
+rust 1.83.0
