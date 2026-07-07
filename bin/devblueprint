@@ -10,6 +10,7 @@
 #   devblueprint plan --target <dir> --from <intake.yml> [init flags]
 #   devblueprint update --target <dir> [--variant <variant>] [--dry-run]
 #   devblueprint doctor --target <dir> [--strict] [--run-gate]
+#   devblueprint detect --target <dir>
 #   devblueprint version
 #   devblueprint help
 #
@@ -24,7 +25,9 @@
 # with the user first. `update` re-syncs only the core-owned files (the agnostic
 # engineering docs, wt.sh, and the GitHub PR/issue templates) into an existing
 # project, so old projects can pick up core changes without touching their CLAUDE.md
-# or code.
+# or code. `detect` inspects an existing repo's stack fingerprints (package.json,
+# go.mod, Cargo.toml, Package.swift, pyproject.toml) and recommends the variant to
+# scaffold from, so adopting the workflow in an existing project needs no guesswork.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -580,6 +583,88 @@ stamp_variant() {
   sed -n 's/^variant=//p' "$stamp" | head -n1
 }
 
+# fingerprint_variant <target> : echo one "variant<TAB>reason" line per stack
+# fingerprint file found directly under <target>. A repo can match more than once
+# (a polyglot monorepo), so the caller decides which to recommend; no output means
+# nothing was recognized (-> generic). Two files map to two variants each, resolved
+# by a dependency probe: package.json is web-nextjs when it lists a "next"
+# dependency and node-express otherwise; pyproject.toml is data-python when it names
+# a data-science library and backend-python otherwise.
+fingerprint_variant() {
+  local t="$1"
+  if [ -f "$t/package.json" ]; then
+    if grep -Eq '"next"[[:space:]]*:' "$t/package.json"; then
+      printf 'web-nextjs\tpackage.json (next dependency)\n'
+    else
+      printf 'node-express\tpackage.json\n'
+    fi
+  fi
+  [ -f "$t/go.mod" ]        && printf 'backend-go\tgo.mod\n'
+  [ -f "$t/Cargo.toml" ]    && printf 'rust\tCargo.toml\n'
+  [ -f "$t/Package.swift" ] && printf 'ios-swift\tPackage.swift\n'
+  if [ -f "$t/pyproject.toml" ]; then
+    if grep -Eiq '(pandas|numpy|scikit-?learn|jupyter|matplotlib|polars|torch|tensorflow|seaborn)' "$t/pyproject.toml"; then
+      printf 'data-python\tpyproject.toml (data-science dependencies)\n'
+    else
+      printf 'backend-python\tpyproject.toml\n'
+    fi
+  fi
+}
+
+# variant_title <variant> : the human title from a variant's manifest, or empty if
+# the variant is unknown (e.g. the generic fallback always resolves).
+variant_title() {
+  [ -f "$VARIANTS/$1/manifest.env" ] || return 0
+  # shellcheck source=/dev/null
+  ( . "$VARIANTS/$1/manifest.env"; printf '%s' "${VARIANT_TITLE:-}" )
+}
+
+# cmd_detect : inspect an existing repo's stack fingerprints and recommend the
+# variant to scaffold from. Read-only - it never writes; it just prints the
+# matching variant and the exact `init` line to run. Falls back to `generic` when
+# no fingerprint matches, so the recommendation is always actionable.
+cmd_detect() {
+  local target=""
+  while [ "$#" -gt 0 ]; do
+    case "$1" in
+      --target) target="$2"; shift 2 ;;
+      *) die "unknown option: $1" ;;
+    esac
+  done
+  [ -n "$target" ] || die "missing --target <dir>"
+  [ -d "$target" ] || die "target '$target' does not exist"
+  target="$(cd "$target" && pwd)"
+
+  echo "Inspecting $target for stack fingerprints"
+  echo
+
+  local matches variant reason count=0 recommend=""
+  matches="$(fingerprint_variant "$target")"
+  while IFS="$(printf '\t')" read -r variant reason; do
+    [ -n "$variant" ] || continue
+    count=$((count + 1))
+    [ -n "$recommend" ] || recommend="$variant"
+    printf '  found  %s -> %s\n' "$reason" "$variant"
+  done <<EOF
+$matches
+EOF
+
+  echo
+  if [ "$count" -eq 0 ]; then
+    recommend="generic"
+    echo "No stack fingerprints found - defaulting to the generic variant."
+  elif [ "$count" -gt 1 ]; then
+    echo "Multiple stacks detected - recommending the first; pass --variant to override."
+  fi
+
+  local title
+  title="$(variant_title "$recommend")"
+  printf 'Recommended variant: %s%s\n' "$recommend" "${title:+ ($title)}"
+  echo
+  echo "Scaffold it with:"
+  echo "  devblueprint init --target $target --variant $recommend"
+}
+
 cmd_update() {
   TARGET="" VARIANT="" DRY_RUN=0 CHANGED=0
   while [ "$#" -gt 0 ]; do
@@ -667,7 +752,7 @@ cmd_version() {
 }
 
 usage() {
-  sed -n '5,14p' "$0" | sed 's/^# \{0,1\}//'
+  sed -n '5,15p' "$0" | sed 's/^# \{0,1\}//'
 }
 
 main() {
@@ -679,9 +764,10 @@ main() {
     plan) cmd_plan "$@" ;;
     update) cmd_update "$@" ;;
     doctor) cmd_doctor "$@" ;;
+    detect) cmd_detect "$@" ;;
     version | --version | -V) cmd_version ;;
     help | -h | --help | "") usage ;;
-    *) die "unknown command '$cmd' (try: list, init, plan, update, doctor, version, help)" ;;
+    *) die "unknown command '$cmd' (try: list, init, plan, update, doctor, detect, version, help)" ;;
   esac
 }
 
