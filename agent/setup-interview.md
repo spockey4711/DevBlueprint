@@ -12,8 +12,8 @@ decided something, offer the default and move on.
 
 ## How to run it
 
-1. Run `devblueprint list` so you have the real variant names and titles to offer. Never
-   guess a variant that is not printed.
+1. Run `devblueprint list` so you have the real variant names and titles to offer (add `--json`
+   to parse them instead of the human table). Never guess a variant that is not printed.
 2. Ask the questions in [Question flow](#question-flow) below, one at a time. Stop as soon as
    you have enough to fill every required intake key; skip any question the user already
    answered (for example, when a PRD pre-filled the file - see

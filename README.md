@@ -65,6 +65,13 @@ bin/devblueprint update --target ~/Projects/myapp
 
 # Print the kit version
 bin/devblueprint version
+
+# Machine-readable output for agents: `list`, `doctor` and `version` take --json.
+# `list --json` yields the variants (name, title, quality gate); `doctor --json`
+# yields {ok, failures, checks[], scaffoldVersion, kitVersion} and still exits
+# non-zero when a check fails - so an agent parses state instead of scraping text.
+bin/devblueprint list --json
+bin/devblueprint doctor --target ~/Projects/myapp --json
 ```
 
 Add DevBlueprint to your `PATH` (or symlink `bin/devblueprint`) to drop the `bin/` prefix.
