@@ -5,7 +5,7 @@
 # Usage:
 #   devblueprint list
 #   devblueprint init --target <dir> --name <name> --variant <variant> \
-#       [--base <branch>] [--main <branch>] [--force]
+#       [--base <branch>] [--main <branch>] [--community] [--contact <method>] [--force]
 #   devblueprint update --target <dir> [--variant <variant>] [--dry-run]
 #   devblueprint doctor --target <dir>
 #   devblueprint version
@@ -42,8 +42,8 @@ kit_version() {
 
 # render <template-file> <dest-file> : substitute {{TOKENS}} from the current
 # environment (PROJECT_NAME, MAIN_BRANCH, BASE_BRANCH, WT_CMD, QUALITY_GATE,
-# COPY_LANGUAGE_NOTE, VARIANT_NOTES) using bash parameter expansion (literal, no
-# escaping pitfalls). Respects FORCE for overwrite safety.
+# COPY_LANGUAGE_NOTE, VARIANT_NOTES, CONTACT) using bash parameter expansion
+# (literal, no escaping pitfalls). Respects FORCE for overwrite safety.
 #
 # Templates may also carry conditional blocks delimited by their own lines:
 #   {{#TWO_BRANCH}} ... {{/TWO_BRANCH}}      (kept for develop -> master flow)
@@ -61,6 +61,7 @@ render() {
   content="${content//\{\{QUALITY_GATE\}\}/$QUALITY_GATE}"
   content="${content//\{\{COPY_LANGUAGE_NOTE\}\}/$COPY_LANGUAGE_NOTE}"
   content="${content//\{\{VARIANT_NOTES\}\}/$VARIANT_NOTES}"
+  content="${content//\{\{CONTACT\}\}/$CONTACT}"
   mkdir -p "$(dirname "$dest")"
   printf '%s\n' "$content" > "$dest"
   info "wrote $rel_dest"
@@ -148,6 +149,7 @@ cmd_list() {
 
 cmd_init() {
   TARGET="" PROJECT_NAME="" VARIANT="" MAIN_BRANCH="master" BASE_BRANCH="develop" FORCE=0
+  COMMUNITY=0 CONTACT=""
   while [ "$#" -gt 0 ]; do
     case "$1" in
       --target) TARGET="$2"; shift 2 ;;
@@ -155,10 +157,16 @@ cmd_init() {
       --variant) VARIANT="$2"; shift 2 ;;
       --main) MAIN_BRANCH="$2"; shift 2 ;;
       --base) BASE_BRANCH="$2"; shift 2 ;;
+      --community) COMMUNITY=1; shift ;;
+      --contact) CONTACT="$2"; shift 2 ;;
       --force) FORCE=1; shift ;;
       *) die "unknown option: $1" ;;
     esac
   done
+  # {{CONTACT}} appears only in the optional community templates, but render()
+  # substitutes it unconditionally, so it must always be defined. When the caller
+  # gives no --contact, leave a visible placeholder for the maintainer to fill in.
+  [ -n "$CONTACT" ] || CONTACT="INSERT CONTACT METHOD"
 
   [ -n "$TARGET" ] || die "missing --target <dir>"
   [ -n "$VARIANT" ] || die "missing --variant <variant> (see: devblueprint list)"
@@ -250,6 +258,15 @@ EOF
   if [ -f "$vdir/setup.sh" ]; then
     copy "$vdir/setup.sh" "$TARGET/setup.sh"
     chmod +x "$TARGET/setup.sh" 2>/dev/null || true
+  fi
+
+  # 5c. Optional community-health files (opt-in with --community): a security
+  # policy and a Contributor Covenant code of conduct. Off by default because a
+  # solo or private project rarely needs them; --contact fills the reporting
+  # address in both.
+  if [ "$COMMUNITY" -eq 1 ]; then
+    render "$CORE/templates/SECURITY.md.tmpl"        "$TARGET/SECURITY.md"
+    render "$CORE/templates/CODE_OF_CONDUCT.md.tmpl" "$TARGET/CODE_OF_CONDUCT.md"
   fi
 
   # 6. Source/test skeleton + a backlog stub.

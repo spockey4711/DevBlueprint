@@ -67,7 +67,9 @@ to `core/`, and deliberately never touches your `CLAUDE.md`, `wt.conf`, CI or co
 `quality-and-testing.md`, and `--dry-run` to preview the changes first.
 
 Options: `--target <dir>` `--name <name>` `--variant <variant>` `--main <branch>`
-`--base <branch>` `--force`. Use `--base master` for a single-branch trunk workflow.
+`--base <branch>` `--community` `--contact <method>` `--force`. Use `--base master` for a
+single-branch trunk workflow, and `--community` to add optional `SECURITY.md` and
+`CODE_OF_CONDUCT.md` (with `--contact` filling the reporting address in both).
 
 ## Variants
 

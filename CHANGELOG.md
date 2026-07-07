@@ -12,6 +12,10 @@ All notable changes are documented here, following
 
 ### Added
 
+- Optional community-health templates, opt-in via `init --community`: a `SECURITY.md` reporting
+  policy and a Contributor Covenant 2.1 `CODE_OF_CONDUCT.md`. `--contact <method>` fills the
+  reporting address in both (an `INSERT CONTACT METHOD` placeholder otherwise). Off by default and
+  not required by `doctor`. Refs: P1-3.
 - Stack-agnostic repo hygiene in `core/`: `.editorconfig` (charset, LF, final newline, indent
   baseline) and `.gitattributes` (line-ending normalization + binary-type hints). `init` drops
   both into new projects and `doctor` checks them; being project-independent, `update` keeps
