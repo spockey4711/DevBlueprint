@@ -1,0 +1,58 @@
+name: CI
+
+# The quality gate for every change: gofumpt (formatting), go vet, golangci-lint,
+# build, and the race-enabled test suite. Must be green before a PR can merge.
+# Gates both integration branches: feature PRs into `develop` and the periodic
+# `develop` -> `master` release PR.
+
+on:
+  pull_request:
+    branches: [develop, master]
+  push:
+    branches: [develop, master]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    name: Lint, vet, build, test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Install gofumpt
+        run: go install mvdan.cc/gofumpt@latest
+
+      - name: Format check
+        run: |
+          unformatted=$(gofumpt -l .)
+          [ -z "$unformatted" ] && { echo "All files gofumpt-clean"; exit 0; }
+          echo "Unformatted files (run 'gofumpt -w .'):"
+          echo "$unformatted"
+          exit 1
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Lint
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: latest
+
+      - name: Build
+        run: go build ./...
+
+      - name: Test
+        run: go test -race -coverprofile=coverage.out ./...

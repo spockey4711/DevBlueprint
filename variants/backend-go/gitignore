@@ -1,0 +1,31 @@
+# Compiled binaries / build output
+/bin/
+/dist/
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Test + coverage artifacts
+*.test
+*.out
+coverage.*
+profile.cov
+
+# Go workspace file (machine-local)
+go.work
+go.work.sum
+
+# Vendored deps (commit only if you deliberately vendor)
+/vendor/
+
+# Env (keep the example)
+.env
+.env.*
+!.env.example
+
+# OS / editor cruft
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/extensions.json
