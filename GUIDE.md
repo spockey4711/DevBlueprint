@@ -36,6 +36,8 @@ CHANGELOG.md                       fresh, Keep-a-Changelog format
 .editorconfig                      stack-agnostic editor baseline (charset, LF, indent)
 .gitattributes                     stack-agnostic line-ending normalization
 .github/workflows/ci.yml           the quality gate in CI
+.github/pull_request_template.md   the PR checklist, prefilled on every PR
+.github/ISSUE_TEMPLATE/            bug-report + feature-request forms (and config)
 Makefile                           (generic variant only) gate targets to fill in
 setup.sh                           one-shot toolchain wiring (configs, hooks, deps)
 scripts/wt.sh                      the worktree manager

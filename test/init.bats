@@ -25,6 +25,10 @@ load helper
   [ -f "$TARGET/scripts/wt.sh" ]
   [ -f "$TARGET/scripts/wt.conf" ]
   [ -f "$TARGET/.github/workflows/ci.yml" ]
+  [ -f "$TARGET/.github/pull_request_template.md" ]
+  [ -f "$TARGET/.github/ISSUE_TEMPLATE/bug_report.md" ]
+  [ -f "$TARGET/.github/ISSUE_TEMPLATE/feature_request.md" ]
+  [ -f "$TARGET/.github/ISSUE_TEMPLATE/config.yml" ]
   [ -f "$TARGET/docs/engineering/git-workflow.md" ]
 
   run db doctor --target "$TARGET"

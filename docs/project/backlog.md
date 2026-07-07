@@ -25,7 +25,8 @@ commits and PRs (e.g. `Refs: P0-1`).
 
 - [x] P1-1: Stack-agnostic files in `core/`: `.editorconfig`, `.gitattributes`. `init` drops both
   into new projects, `doctor` checks them, and `update` keeps them in sync as core-owned files.
-- [ ] P1-2: GitHub meta: `.github/pull_request_template.md`, issue templates.
+- [x] P1-2: GitHub meta: `.github/pull_request_template.md`, issue templates. Core-owned, so
+  `init` drops them into new projects, `doctor` checks them, and `update` keeps them in sync.
 - [x] P1-3: Optional templates: `SECURITY.md`, `CODE_OF_CONDUCT.md`. Opt-in via
   `init --community`; `--contact <method>` fills the reporting address in both.
 - [ ] P1-4: Pre-commit hook that runs the quality gate. `scripts/install-hooks.sh` or
