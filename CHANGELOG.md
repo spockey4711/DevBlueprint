@@ -33,6 +33,11 @@ All notable changes are documented here, following
   one-shot that turns the variant's "after init" checklist into a single command (tool config
   files, package-manifest scripts, pre-commit hook and dependency install). Non-Node variants
   use a committable `.githooks/pre-commit` via `core.hooksPath`.
+- GitHub meta shipped with every variant: `core/github/` holds a `pull_request_template.md`
+  (mirroring the CONTRIBUTING.md PR checklist) and an `ISSUE_TEMPLATE/` with bug-report and
+  feature-request forms plus a `config.yml`. `init` drops them under the project's `.github/`,
+  `doctor` verifies the PR template and issue forms landed, and `update` re-syncs them as
+  core-owned files. Refs: P1-2.
 - Bats CLI test suite under `test/`, run by `make test` and enforced in CI alongside shellcheck:
   covers `init` + `doctor` for every variant, overwrite safety (skip vs. `--force`), branch
   modes (two-branch default and `--base master`), and token substitution in the rendered docs

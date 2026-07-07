@@ -12,6 +12,11 @@ templates; a variant only adds stack-specific detail on top.
 | [`quality-and-testing.md`](quality-and-testing.md) | The shape of the quality gate + definition of done    |
 | [`templates/CLAUDE.md.tmpl`](templates/CLAUDE.md.tmpl) | AI-assistant guidance, filled in per project      |
 | [`templates/CONTRIBUTING.md.tmpl`](templates/CONTRIBUTING.md.tmpl) | Short contributor guide, filled in per project |
+| [`github/`](github/)                             | GitHub PR template + issue templates (stack-agnostic, ship with every variant) |
+
+The `github/` files are copied verbatim (no tokens): `pull_request_template.md` mirrors the
+CONTRIBUTING.md PR checklist, and `ISSUE_TEMPLATE/` holds a bug-report and feature-request form
+plus a `config.yml`. `init` drops them under the project's `.github/`.
 
 Templates use `{{TOKENS}}` (`PROJECT_NAME`, `MAIN_BRANCH`, `BASE_BRANCH`, `WT_CMD`,
 `QUALITY_GATE`, `COPY_LANGUAGE_NOTE`, `VARIANT_NOTES`) that the CLI substitutes at init time.
@@ -29,7 +34,8 @@ lines:
 reads "`master` is promoted ... to `master`".
 
 `devblueprint update --target <dir>` re-syncs the project-independent core files
-(`git-workflow.md`, `engineering-standards.md`, and `scripts/wt.sh`) into a project scaffolded
-earlier, so edits here reach old projects too. It leaves the rendered templates (`CLAUDE.md`,
+(`git-workflow.md`, `engineering-standards.md`, `scripts/wt.sh`, and the `github/` PR/issue
+templates) into a project scaffolded earlier, so edits here reach old projects too. It leaves
+the rendered templates (`CLAUDE.md`,
 `CONTRIBUTING.md`) and `wt.conf` alone; `conventions.md` and `quality-and-testing.md` are
 refreshed only when `update` is given a `--variant`, since they carry a variant overlay.
