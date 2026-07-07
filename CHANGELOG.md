@@ -5,6 +5,13 @@ All notable changes are documented here, following
 
 ## [Unreleased]
 
+### Fixed
+
+- `doctor --run-gate` test for the `backend-go` variant asserted the gate line started with
+  `gofumpt`, but the variant's gate is `test -z "$(gofumpt -l .)" && ...`. The assertion now
+  matches the real gate string, so CI's stricter `bats` (which aborts a test on any failing
+  command, not just the last) passes. Refs: P2-9.
+
 ### Changed
 
 - Reworked DevBlueprint from the `apkit` spec-scaffolding CLI into a documentation-first
