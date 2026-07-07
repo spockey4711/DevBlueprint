@@ -1,7 +1,8 @@
 name: CI
 
 # DevBlueprint is a documentation-first kit of bash scripts. CI shellchecks the
-# CLI and the worktree script so a broken script never ships.
+# CLI and the worktree script, and runs the bats CLI suite, so a broken script
+# never ships.
 
 on:
   pull_request:
@@ -21,3 +22,16 @@ jobs:
 
       - name: Run shellcheck
         run: shellcheck bin/devblueprint scripts/wt.sh variants/*/setup.sh
+
+  bats:
+    name: Bats
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install bats
+        run: sudo apt-get update && sudo apt-get install -y bats
+
+      - name: Run CLI test suite
+        run: make test

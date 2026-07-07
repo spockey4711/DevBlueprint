@@ -31,6 +31,7 @@ Into the target directory:
 CLAUDE.md                          workflow + standards for AI assistants (and you)
 CONTRIBUTING.md                    the short contributor guide
 CHANGELOG.md                       fresh, Keep-a-Changelog format
+.devblueprint                      scaffold stamp: kit version + variant (for `update`)
 .gitignore                         stack-appropriate
 .github/workflows/ci.yml           the quality gate in CI
 Makefile                           (generic variant only) gate targets to fill in

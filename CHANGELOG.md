@@ -25,10 +25,18 @@ All notable changes are documented here, following
   projects pick up `core/` changes. It never touches `CLAUDE.md`, `CONTRIBUTING.md`, `wt.conf`,
   CI or code; `--variant <name>` also refreshes the variant-overlaid `conventions.md` and
   `quality-and-testing.md` (rebuilt byte-identically to `init`), and `--dry-run` previews.
+- Kit versioning: a `VERSION` source of truth, a `devblueprint version` command (also
+  `--version`/`-V`), and a `.devblueprint` scaffold stamp recording the kit version and variant
+  each project was generated from, so a future `update` can tell which core files are stale.
+  `doctor` now reports the stamped version against the current kit version. Refs: P0-3.
 - Per-variant `setup.sh`, dropped into every scaffolded project by `init`: an idempotent
   one-shot that turns the variant's "after init" checklist into a single command (tool config
   files, package-manifest scripts, pre-commit hook and dependency install). Non-Node variants
   use a committable `.githooks/pre-commit` via `core.hooksPath`.
+- Bats CLI test suite under `test/`, run by `make test` and enforced in CI alongside shellcheck:
+  covers `init` + `doctor` for every variant, overwrite safety (skip vs. `--force`), branch
+  modes (two-branch default and `--base master`), and token substitution in the rendered docs
+  (P0-1).
 
 ### Removed
 
