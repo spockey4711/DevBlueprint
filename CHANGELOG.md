@@ -16,6 +16,10 @@ All notable changes are documented here, following
   Go modules) with a `cmd/`+`internal/`+`pkg/` layout, `Makefile` gate, CI, and `extras/`
   (`.tool-versions` toolchain pin + `.github/dependabot.yml` for gomod + actions). `setup.sh`
   wires `go.mod`, `.golangci.yml`, a pre-commit config and a compiling entrypoint. Refs: P2-5.
+- New `android-kotlin` variant: an Android app stack (Kotlin + Compose, ktlint, detekt, Android
+  Lint, JUnit) built through the Gradle wrapper, with a feature-first `app/src/{main,test,androidTest}`
+  scaffold, `Makefile` gate, CI on JDK 17, and `extras/` (`.tool-versions` toolchain pin +
+  `.github/dependabot.yml` for gradle + github-actions). Refs: P2-8.
 - Generic variant-extras copy: `init` now copies a variant's `github/` tree into `.github/` and
   its root-level `extras/` into the project root recursively, so a variant can ship new config
   (`dependabot.yml`, `renovate.json`, `.tool-versions`, `.devcontainer/`, ...) just by dropping a
