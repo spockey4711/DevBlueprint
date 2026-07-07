@@ -1,3 +1,0 @@
-# Context Rules
-
-TBD.

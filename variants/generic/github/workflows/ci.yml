@@ -1,0 +1,32 @@
+name: CI
+
+# The quality gate for every change. Runs `make check`, which chains the project's
+# lint / typecheck / test / build targets (see the Makefile). Must be green before a
+# PR can merge. Gates both integration branches: feature PRs into `develop` and the
+# periodic `develop` -> `master` release PR.
+
+on:
+  pull_request:
+    branches: [develop, master]
+  push:
+    branches: [develop, master]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    name: Quality gate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Add your language's setup step here (setup-node, setup-python, etc.).
+
+      - name: Run quality gate
+        run: make check

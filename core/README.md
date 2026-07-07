@@ -1,0 +1,17 @@
+# Core (tech-agnostic)
+
+The part of the blueprint that is identical for every project, regardless of language or stack.
+`devblueprint init` copies these into a new project's `docs/engineering/` and fills in the
+templates; a variant only adds stack-specific detail on top.
+
+| File                                             | What it is                                             |
+| ------------------------------------------------ | ------------------------------------------------------ |
+| [`git-workflow.md`](git-workflow.md)             | Branching (develop/master), worktrees, commits, PRs, releases |
+| [`engineering-standards.md`](engineering-standards.md) | The mindset: how to work, design principles, the bar  |
+| [`conventions.md`](conventions.md)               | Shared code-style baseline (a variant appends its overlay) |
+| [`quality-and-testing.md`](quality-and-testing.md) | The shape of the quality gate + definition of done    |
+| [`templates/CLAUDE.md.tmpl`](templates/CLAUDE.md.tmpl) | AI-assistant guidance, filled in per project      |
+| [`templates/CONTRIBUTING.md.tmpl`](templates/CONTRIBUTING.md.tmpl) | Short contributor guide, filled in per project |
+
+Templates use `{{TOKENS}}` (`PROJECT_NAME`, `MAIN_BRANCH`, `BASE_BRANCH`, `WT_CMD`,
+`QUALITY_GATE`, `COPY_LANGUAGE_NOTE`, `VARIANT_NOTES`) that the CLI substitutes at init time.

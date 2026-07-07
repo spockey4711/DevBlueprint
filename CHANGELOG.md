@@ -1,16 +1,26 @@
 # Changelog
 
-## 0.1.0
+All notable changes are documented here, following
+[Keep a Changelog](https://keepachangelog.com/) and [SemVer](https://semver.org/).
+
+## [Unreleased]
+
+### Changed
+
+- Reworked DevBlueprint from the `apkit` spec-scaffolding CLI into a documentation-first
+  engineering-setup kit centered on the git workflow, quality gate and AI-assistant guidance.
 
 ### Added
 
-- Agent Project Kit foundation CLI.
-- `apkit init` for safe project scaffolding.
-- `apkit add feature` for feature specs.
-- `apkit add decision` for architecture decision records.
-- `apkit context` for AI-coding context packs.
-- `apkit doctor` for required-file checks.
-- Prompt library for spec-driven workflows.
-- Web SaaS, FastAPI API, and iOS Habit App examples.
-- README, guide, standards, release readiness, and CI coverage.
-- Localhost web interface for onboarding, file editing, feature specs, decisions, and context packs.
+- Tech-agnostic `core/`: git-workflow, engineering-standards, conventions and quality-and-testing
+  docs, plus `CLAUDE.md` and `CONTRIBUTING.md` templates.
+- Parametrized `scripts/wt.sh` worktree manager driven by an optional `wt.conf` (branches,
+  allowed types, post-create install hook).
+- Variants: `web-nextjs`, `backend-python`, `ios-swift`, `generic`, each with its own quality
+  gate, CI workflow, `.gitignore`, conventions overlay and `CLAUDE.md` notes.
+- `bin/devblueprint` CLI: `list`, `init` (overwrite-safe scaffolding from core + a variant) and
+  `doctor`.
+
+### Removed
+
+- The `apkit` Node CLI, its web interface, examples, prompt library and templates.

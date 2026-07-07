@@ -1,0 +1,46 @@
+name: CI
+
+# The quality gate for every change: SwiftFormat (lint), SwiftLint (strict),
+# swift build and swift test. Runs on macOS. Must be green before a PR can merge.
+# Gates both integration branches: feature PRs into `develop` and the periodic
+# `develop` -> `master` release PR.
+#
+# For an .xcodeproj/.xcworkspace app (not a pure SPM package), replace the build
+# and test steps with xcodebuild, e.g.:
+#   xcodebuild -scheme App -destination 'platform=iOS Simulator,name=iPhone 15' build test
+
+on:
+  pull_request:
+    branches: [develop, master]
+  push:
+    branches: [develop, master]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    name: Lint, build, test
+    runs-on: macos-14
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install formatters
+        run: brew install swiftformat swiftlint
+
+      - name: Format check
+        run: swiftformat --lint .
+
+      - name: Lint
+        run: swiftlint --strict
+
+      - name: Build
+        run: swift build
+
+      - name: Test
+        run: swift test

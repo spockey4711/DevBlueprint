@@ -1,0 +1,23 @@
+# Build / output
+build/
+dist/
+out/
+
+# Dependencies (add your ecosystem's dir)
+# node_modules/
+# .venv/
+
+# Env (keep the example)
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+
+# OS / editor cruft
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json

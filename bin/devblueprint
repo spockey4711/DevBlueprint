@@ -1,0 +1,242 @@
+#!/usr/bin/env bash
+# devblueprint - scaffold a project's engineering setup (git workflow + quality
+# gate + AI-assistant guidance) from the shared core and a stack variant.
+#
+# Usage:
+#   devblueprint list
+#   devblueprint init --target <dir> --name <name> --variant <variant> \
+#       [--base <branch>] [--main <branch>] [--force]
+#   devblueprint doctor --target <dir>
+#   devblueprint help
+#
+# The blueprint is documentation-first: `init` copies the tech-agnostic core docs
+# and the chosen variant's overlay, fills in CLAUDE.md / CONTRIBUTING.md, drops in
+# the worktree script, CI workflow and .gitignore. It never overwrites existing
+# files unless --force is given.
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+CORE="$ROOT/core"
+VARIANTS="$ROOT/variants"
+
+die() { echo "devblueprint: $*" >&2; exit 1; }
+info() { printf '  %s\n' "$*"; }
+
+# --- helpers ---------------------------------------------------------------
+
+# render <template-file> <dest-file> : substitute {{TOKENS}} from the current
+# environment (PROJECT_NAME, MAIN_BRANCH, BASE_BRANCH, WT_CMD, QUALITY_GATE,
+# COPY_LANGUAGE_NOTE, VARIANT_NOTES) using bash parameter expansion (literal, no
+# escaping pitfalls). Respects FORCE for overwrite safety.
+render() {
+  local tmpl="$1" dest="$2" content
+  place_guard "$dest" || return 0
+  content="$(cat "$tmpl")"
+  content="${content//\{\{PROJECT_NAME\}\}/$PROJECT_NAME}"
+  content="${content//\{\{MAIN_BRANCH\}\}/$MAIN_BRANCH}"
+  content="${content//\{\{BASE_BRANCH\}\}/$BASE_BRANCH}"
+  content="${content//\{\{WT_CMD\}\}/$WT_CMD}"
+  content="${content//\{\{QUALITY_GATE\}\}/$QUALITY_GATE}"
+  content="${content//\{\{COPY_LANGUAGE_NOTE\}\}/$COPY_LANGUAGE_NOTE}"
+  content="${content//\{\{VARIANT_NOTES\}\}/$VARIANT_NOTES}"
+  mkdir -p "$(dirname "$dest")"
+  printf '%s\n' "$content" > "$dest"
+  info "wrote $rel_dest"
+}
+
+# place_guard <dest> : returns 1 (skip) if dest exists and FORCE is off.
+place_guard() {
+  rel_dest="${1#"$TARGET"/}"
+  if [ -e "$1" ] && [ "$FORCE" -eq 0 ]; then
+    info "skip $rel_dest (exists; --force to overwrite)"
+    return 1
+  fi
+  return 0
+}
+
+# copy <src> <dest> : copy a single file with overwrite safety.
+copy() {
+  place_guard "$2" || return 0
+  mkdir -p "$(dirname "$2")"
+  cp "$1" "$2"
+  info "wrote $rel_dest"
+}
+
+# append_if <src> <dest> : append src to dest if src exists (used for the
+# variant conventions overlay). Always appends; the base file was just written.
+append_if() {
+  [ -f "$1" ] || return 0
+  cat "$1" >> "$2"
+  info "appended ${1##*/} -> ${2#"$TARGET"/}"
+}
+
+list_variants() {
+  local d name
+  for d in "$VARIANTS"/*/; do
+    [ -f "$d/manifest.env" ] || continue
+    name="$(basename "$d")"
+    # shellcheck source=/dev/null
+    ( . "$d/manifest.env"; printf '  %-16s %s\n' "$name" "$VARIANT_TITLE" )
+  done
+}
+
+# --- commands --------------------------------------------------------------
+
+cmd_list() {
+  echo "Available variants:"
+  list_variants
+}
+
+cmd_init() {
+  TARGET="" PROJECT_NAME="" VARIANT="" MAIN_BRANCH="master" BASE_BRANCH="develop" FORCE=0
+  while [ "$#" -gt 0 ]; do
+    case "$1" in
+      --target) TARGET="$2"; shift 2 ;;
+      --name) PROJECT_NAME="$2"; shift 2 ;;
+      --variant) VARIANT="$2"; shift 2 ;;
+      --main) MAIN_BRANCH="$2"; shift 2 ;;
+      --base) BASE_BRANCH="$2"; shift 2 ;;
+      --force) FORCE=1; shift ;;
+      *) die "unknown option: $1" ;;
+    esac
+  done
+
+  [ -n "$TARGET" ] || die "missing --target <dir>"
+  [ -n "$VARIANT" ] || die "missing --variant <variant> (see: devblueprint list)"
+  local vdir="$VARIANTS/$VARIANT"
+  [ -d "$vdir" ] || die "unknown variant '$VARIANT' (see: devblueprint list)"
+  [ -n "$PROJECT_NAME" ] || PROJECT_NAME="$(basename "$TARGET")"
+
+  # Load variant manifest (VARIANT_TITLE, QUALITY_GATE, WT_CMD,
+  # COPY_LANGUAGE_NOTE, SRC_DIRS).
+  # shellcheck source=/dev/null
+  . "$vdir/manifest.env"
+  VARIANT_NOTES=""
+  [ -f "$vdir/variant-notes.md" ] && VARIANT_NOTES="$(cat "$vdir/variant-notes.md")"
+
+  TARGET="$(mkdir -p "$TARGET" && cd "$TARGET" && pwd)"
+  echo "Scaffolding '$PROJECT_NAME' ($VARIANT_TITLE) into $TARGET"
+  echo "  branches: $BASE_BRANCH -> $MAIN_BRANCH   gate: $QUALITY_GATE"
+  echo
+
+  # 1. Engineering docs: core (agnostic) + variant overlay.
+  local eng="$TARGET/docs/engineering"
+  copy "$CORE/git-workflow.md"          "$eng/git-workflow.md"
+  copy "$CORE/engineering-standards.md" "$eng/engineering-standards.md"
+  copy "$CORE/conventions.md"           "$eng/conventions.md"
+  append_if "$vdir/docs/conventions.append.md" "$eng/conventions.md"
+  copy "$vdir/docs/quality-and-testing.md" "$eng/quality-and-testing.md"
+
+  # 2. AI-assistant guidance + contributing (assembled from templates).
+  render "$CORE/templates/CLAUDE.md.tmpl"       "$TARGET/CLAUDE.md"
+  render "$CORE/templates/CONTRIBUTING.md.tmpl" "$TARGET/CONTRIBUTING.md"
+
+  # 3. Fresh changelog.
+  if place_guard "$TARGET/CHANGELOG.md"; then
+    cat > "$TARGET/CHANGELOG.md" <<EOF
+# Changelog
+
+All notable changes are documented here, following
+[Keep a Changelog](https://keepachangelog.com/) and [SemVer](https://semver.org/).
+
+## [Unreleased]
+
+- Project scaffolded from DevBlueprint ($VARIANT_TITLE).
+EOF
+    info "wrote CHANGELOG.md"
+  fi
+
+  # 4. Worktree tooling. Keep wt.conf's branches in sync with the chosen
+  # workflow (e.g. --base master for a single-branch trunk), but only when we
+  # actually wrote the file, so an existing wt.conf is never rewritten.
+  copy "$ROOT/scripts/wt.sh" "$TARGET/scripts/wt.sh"
+  chmod +x "$TARGET/scripts/wt.sh" 2>/dev/null || true
+  local wtconf="$TARGET/scripts/wt.conf" wrote_conf=0
+  [ -e "$wtconf" ] || wrote_conf=1
+  copy "$vdir/wt.conf" "$wtconf"
+  if [ "$wrote_conf" -eq 1 ] || [ "$FORCE" -eq 1 ]; then
+    local tmp
+    tmp="$(mktemp)"
+    awk -v mb="$MAIN_BRANCH" -v bb="$BASE_BRANCH" '
+      /^MAIN_BRANCH=/ { print "MAIN_BRANCH=\"" mb "\""; next }
+      /^BASE_BRANCH=/ { print "BASE_BRANCH=\"" bb "\""; next }
+      { print }
+    ' "$wtconf" > "$tmp" && mv "$tmp" "$wtconf"
+  fi
+
+  # 5. CI, gitignore, and any variant extras (e.g. a Makefile).
+  copy "$vdir/github/workflows/ci.yml" "$TARGET/.github/workflows/ci.yml"
+  copy "$vdir/gitignore" "$TARGET/.gitignore"
+  [ -f "$vdir/Makefile" ] && copy "$vdir/Makefile" "$TARGET/Makefile"
+
+  # 6. Source/test skeleton + a backlog stub.
+  local dir
+  for dir in $SRC_DIRS; do
+    mkdir -p "$TARGET/$dir"
+    [ -e "$TARGET/$dir/.gitkeep" ] || touch "$TARGET/$dir/.gitkeep"
+  done
+  if place_guard "$TARGET/docs/project/backlog.md"; then
+    mkdir -p "$TARGET/docs/project"
+    cat > "$TARGET/docs/project/backlog.md" <<'EOF'
+# Backlog
+
+The prioritized task list - the source of truth for what to build next. Reference an id in
+commits and PRs (e.g. `Refs: P0-1`).
+
+## P0 - foundation
+
+- [ ] P0-1: ...
+EOF
+    info "wrote docs/project/backlog.md"
+  fi
+
+  echo
+  echo "Done. Next steps:"
+  echo "  1. cd $TARGET && git init (if new) and create the $BASE_BRANCH branch."
+  echo "  2. Wire the toolchain - see $vdir/README.md (\"After init\")."
+  echo "  3. Add a 'wt' alias/script for scripts/wt.sh, then: wt new feat/first-task"
+}
+
+cmd_doctor() {
+  local target=""
+  while [ "$#" -gt 0 ]; do
+    case "$1" in
+      --target) target="$2"; shift 2 ;;
+      *) die "unknown option: $1" ;;
+    esac
+  done
+  [ -n "$target" ] || die "missing --target <dir>"
+  local missing=0 f
+  for f in CLAUDE.md CONTRIBUTING.md CHANGELOG.md .gitignore \
+           scripts/wt.sh scripts/wt.conf .github/workflows/ci.yml \
+           docs/engineering/git-workflow.md docs/engineering/conventions.md \
+           docs/engineering/quality-and-testing.md \
+           docs/engineering/engineering-standards.md; do
+    if [ -e "$target/$f" ]; then
+      printf '  ok    %s\n' "$f"
+    else
+      printf '  MISS  %s\n' "$f"; missing=$((missing + 1))
+    fi
+  done
+  echo
+  [ "$missing" -eq 0 ] && echo "doctor: all foundation files present" \
+    || die "$missing file(s) missing"
+}
+
+usage() {
+  sed -n '5,12p' "$0" | sed 's/^# \{0,1\}//'
+}
+
+main() {
+  local cmd="${1:-help}"
+  [ "$#" -ge 1 ] && shift || true
+  case "$cmd" in
+    list) cmd_list "$@" ;;
+    init) cmd_init "$@" ;;
+    doctor) cmd_doctor "$@" ;;
+    help | -h | --help | "") usage ;;
+    *) die "unknown command '$cmd' (try: list, init, doctor, help)" ;;
+  esac
+}
+
+main "$@"

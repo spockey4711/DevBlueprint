@@ -1,0 +1,16 @@
+# wt.conf.example - copy to scripts/wt.conf and adjust. Sourced by scripts/wt.sh.
+#
+# For a single-branch trunk workflow, set BASE_BRANCH="master".
+
+MAIN_BRANCH="master"          # branch the main clone parks on (always deployable)
+BASE_BRANCH="develop"         # integration branch feature worktrees fork from
+ALLOWED_TYPES="feat fix docs style refactor perf test build ci chore revert"
+
+# Runs after a worktree is created; receives the new worktree path as $1.
+# Make the worktree immediately usable (install deps). No-op by default.
+wt_post_create() {
+  :
+  # ( cd "$1" && pnpm install --prefer-offline )   # Node
+  # ( cd "$1" && uv sync )                          # Python
+  # ( cd "$1" && swift package resolve )            # Swift
+}

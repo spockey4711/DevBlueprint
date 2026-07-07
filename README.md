@@ -1,78 +1,67 @@
-# Agent Project Kit
+# DevBlueprint
 
-Agent Project Kit is a local CLI for creating spec-driven, agent-ready project structures for AI-assisted software development.
+A reusable engineering setup for new projects: the git workflow, quality bar, code conventions
+and AI-assistant guidance, extracted from a real production-grade codebase and made
+stack-agnostic. One command scaffolds a project with a professional process from commit one.
 
-## Current Commands
+It is **documentation-first** - the output is plain files you own and edit, not a framework you
+depend on. There is no runtime, no lock-in; delete DevBlueprint afterwards and nothing breaks.
 
-```bash
-node bin/apkit.js init --target ./my-project --name my-project --type web-app --framework nextjs --ai-tool codex --mode balanced
+## What you get
+
+- **A git workflow that scales to parallel AI sessions.** Two long-lived branches
+  (`develop` -> `master`) and one worktree per task, so several assistant chats work at once
+  without ever changing each other's branch. Driven by a single `wt` script.
+- **A quality gate.** lint + typecheck + test + build, wired to your stack, enforced locally
+  (pre-commit) and in CI (GitHub Actions), with a clear definition of done.
+- **Conventions and an engineering-standards mindset** that keep a solo repo at team quality.
+- **A `CLAUDE.md`** that teaches an AI assistant the whole workflow up front.
+
+## The pieces
+
+```
+devblueprint/
+  core/              tech-agnostic source of truth (copied into every project)
+    git-workflow.md  engineering-standards.md  conventions.md  quality-and-testing.md
+    templates/       CLAUDE.md + CONTRIBUTING.md templates ({{TOKENS}} filled at init)
+  scripts/wt.sh      the worktree manager (parametrized via scripts/wt.conf)
+  variants/          stack overlays: web-nextjs, ios-swift, backend-python, generic
+  bin/devblueprint   the CLI: list / init / doctor
 ```
 
-Creates:
-- `AGENTS.md`
-- product, architecture, feature, task, quality, and agent-context docs
-- project-type source and test folders
+Each **variant** adds only what is stack-specific: the concrete quality-gate commands, a CI
+workflow, a `.gitignore`, a `wt.conf` (branches + post-create install hook), a conventions
+overlay, and the `CLAUDE.md` stack-notes block.
+
+## Usage
 
 ```bash
-node bin/apkit.js doctor --target ./my-project
+# See the variants
+bin/devblueprint list
+
+# Scaffold a new project's engineering setup
+bin/devblueprint init --target ~/Projects/myapp --name myapp --variant web-nextjs
+
+# Verify the foundation files landed
+bin/devblueprint doctor --target ~/Projects/myapp
 ```
 
-Checks whether required foundation files are present.
+Add DevBlueprint to your `PATH` (or symlink `bin/devblueprint`) to drop the `bin/` prefix.
 
-```bash
-node bin/apkit.js add feature --target ./my-project --name "User Authentication"
-```
+`init` is overwrite-safe: it never clobbers an existing file unless you pass `--force`, so you
+can run it on an existing repo to add the workflow without losing your code.
 
-Creates a slugged feature spec in `docs/03-features/`.
+Options: `--target <dir>` `--name <name>` `--variant <variant>` `--main <branch>`
+`--base <branch>` `--force`. Use `--base master` for a single-branch trunk workflow.
 
-```bash
-node bin/apkit.js add decision --target ./my-project --title "Use Next.js"
-```
+## Variants
 
-Creates the next numbered architecture decision record in `docs/02-architecture/decisions/`.
+| Variant          | Stack                                   | Quality gate |
+| ---------------- | --------------------------------------- | ------------ |
+| `web-nextjs`     | Next.js, TypeScript, Tailwind, pnpm     | `pnpm lint && pnpm typecheck && pnpm test && pnpm build` |
+| `backend-python` | Python, FastAPI-style, uv               | `ruff check . && ruff format --check . && mypy . && pytest` |
+| `ios-swift`      | Swift/SwiftUI, SwiftFormat + SwiftLint  | `swiftformat --lint . && swiftlint --strict && swift build && swift test` |
+| `generic`        | language-agnostic (Makefile gate)       | `make check` |
 
-```bash
-node bin/apkit.js context user-authentication --target ./my-project
-```
-
-Prints a copyable context pack for the next AI-coding session.
-
-## Local Web Interface
-
-```bash
-npm run web
-```
-
-Opens a localhost workflow for onboarding a project, editing generated Markdown files, adding feature specs and decision records, and building context packs.
-
-Optional target and port:
-
-```bash
-npm run web -- --target /private/tmp/apkit-ui-project --port 4317
-```
-
-## Prompt Library
-
-Reusable prompts live in `prompts/`:
-- `init-project.md`
-- `create-feature-spec.md`
-- `mvp-freeze-check.md`
-- `architecture-review.md`
-- `task-breakdown.md`
-- `code-review.md`
-- `update-docs-after-change.md`
-
-## Project Types
-
-- `web-app`
-- `api-backend`
-- `ios-app`
-- `portfolio`
-- `custom`
-
-## Development
-
-```bash
-npm test
-npm run test:coverage
-```
+See [`GUIDE.md`](GUIDE.md) for the full walkthrough and [`core/`](core/README.md) for the
+shared docs.
