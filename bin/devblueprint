@@ -28,10 +28,16 @@ info() { printf '  %s\n' "$*"; }
 # environment (PROJECT_NAME, MAIN_BRANCH, BASE_BRANCH, WT_CMD, QUALITY_GATE,
 # COPY_LANGUAGE_NOTE, VARIANT_NOTES) using bash parameter expansion (literal, no
 # escaping pitfalls). Respects FORCE for overwrite safety.
+#
+# Templates may also carry conditional blocks delimited by their own lines:
+#   {{#TWO_BRANCH}} ... {{/TWO_BRANCH}}      (kept for develop -> master flow)
+#   {{#SINGLE_BRANCH}} ... {{/SINGLE_BRANCH}} (kept for trunk flow, base == main)
+# select_workflow_block strips whichever block does not match the chosen workflow
+# before token substitution runs.
 render() {
   local tmpl="$1" dest="$2" content
   place_guard "$dest" || return 0
-  content="$(cat "$tmpl")"
+  content="$(select_workflow_block < "$tmpl")"
   content="${content//\{\{PROJECT_NAME\}\}/$PROJECT_NAME}"
   content="${content//\{\{MAIN_BRANCH\}\}/$MAIN_BRANCH}"
   content="${content//\{\{BASE_BRANCH\}\}/$BASE_BRANCH}"
@@ -42,6 +48,20 @@ render() {
   mkdir -p "$(dirname "$dest")"
   printf '%s\n' "$content" > "$dest"
   info "wrote $rel_dest"
+}
+
+# select_workflow_block : filter stdin, keeping the {{#TWO_BRANCH}} block for a
+# staged develop -> master flow and the {{#SINGLE_BRANCH}} block for a trunk flow
+# (chosen when BASE_BRANCH == MAIN_BRANCH). Both blocks and their marker lines are
+# resolved here so the templates never render "master is promoted ... to master".
+select_workflow_block() {
+  local keep="TWO_BRANCH"
+  [ "$BASE_BRANCH" = "$MAIN_BRANCH" ] && keep="SINGLE_BRANCH"
+  awk -v keep="$keep" '
+    /^\{\{#[A-Z_]+\}\}$/ { name = $0; gsub(/[{}#]/, "", name); drop = (name != keep); next }
+    /^\{\{\/[A-Z_]+\}\}$/ { drop = 0; next }
+    !drop { print }
+  '
 }
 
 # place_guard <dest> : returns 1 (skip) if dest exists and FORCE is off.

@@ -7,6 +7,7 @@ in [`docs/`](docs/). Start there before non-trivial work.
 
 - **Commit after every small fix or task.** One logical change per commit,
   [Conventional Commits](CONTRIBUTING.md), imperative summary. Small commits beat big ones.
+{{#TWO_BRANCH}}
 - **Two long-lived branches.** Feature work integrates on `{{BASE_BRANCH}}`; `{{BASE_BRANCH}}`
   is promoted to the always-deployable `{{MAIN_BRANCH}}` via a periodic release PR. Never merge
   a feature branch straight into `{{MAIN_BRANCH}}`. See
@@ -21,6 +22,23 @@ in [`docs/`](docs/). Start there before non-trivial work.
   create the worktree (off `{{BASE_BRANCH}}`), work in small commits, run the quality gate,
   push, open a PR into `{{BASE_BRANCH}}` (referencing the task), then hand the PR off to be
   reviewed and merged. Never self-merge.
+{{/TWO_BRANCH}}
+{{#SINGLE_BRANCH}}
+- **One long-lived branch (trunk).** Feature work integrates directly on the always-deployable
+  `{{MAIN_BRANCH}}`. There is no separate integration branch and no release PR; a feature branch
+  merges into `{{MAIN_BRANCH}}` once it is green. See
+  [`docs/engineering/git-workflow.md`](docs/engineering/git-workflow.md).
+- **One directory per branch (worktrees).** Never commit directly to `{{MAIN_BRANCH}}`. Create
+  each task's branch as its own worktree with `{{WT_CMD}} new <type>/<slug>`
+  (e.g. `{{WT_CMD}} new fix/scroll-jitter`), which branches off `{{MAIN_BRANCH}}`, and do all
+  work inside the printed worktree path. The main clone stays on `{{MAIN_BRANCH}}` - never
+  `git checkout` a feature branch in it, so parallel sessions never collide. Clean up merged
+  worktrees with `{{WT_CMD}} gc`.
+- **Follow the task lifecycle.** A request like "do task X from the backlog" means: fetch,
+  create the worktree (off `{{MAIN_BRANCH}}`), work in small commits, run the quality gate,
+  push, open a PR into `{{MAIN_BRANCH}}` (referencing the task), then hand the PR off to be
+  reviewed and merged. Never self-merge.
+{{/SINGLE_BRANCH}}
 - **Fetch before starting work.** `git fetch` at the start of a session and before creating a
   new branch, so you have the latest state from remote.
 - **English** in code, comments, docs, commits. {{COPY_LANGUAGE_NOTE}}
