@@ -28,7 +28,8 @@ devblueprint/
     github/          PR template + issue templates (shipped with every variant)
   scripts/wt.sh      the worktree manager (parametrized via scripts/wt.conf)
   variants/          stack overlays: web-nextjs, ios-swift, backend-python, generic
-  bin/devblueprint   the CLI: list / init / update / doctor / version
+  bin/devblueprint   the CLI: list / init / plan / update / doctor / version
+  agent/             agent-facing specs: intake.example.yml (see docs/agent/)
   VERSION            the kit version, stamped into every scaffold
 ```
 
@@ -45,6 +46,12 @@ bin/devblueprint list
 
 # Scaffold a new project's engineering setup
 bin/devblueprint init --target ~/Projects/myapp --name myapp --variant web-nextjs
+
+# Or capture the answers in an intake file and preview before writing anything.
+# `plan` prints exactly what init would create; `init --from` then applies it.
+# (Explicit flags still override the file, e.g. add --base master.)
+bin/devblueprint plan --target ~/Projects/myapp --from .devblueprint-intake.yml
+bin/devblueprint init --target ~/Projects/myapp --from .devblueprint-intake.yml
 
 # Verify the foundation files landed (reports the kit version it was scaffolded from)
 bin/devblueprint doctor --target ~/Projects/myapp

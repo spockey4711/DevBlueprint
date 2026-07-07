@@ -64,6 +64,28 @@ not required by `doctor`.
 
 Everything is a plain file you own. Edit freely - DevBlueprint is not a dependency.
 
+## Intake files and `plan`
+
+Instead of remembering a line of flags, capture the answers once in a
+`.devblueprint-intake.yml` intake file - a flat `key: value` map of name, variant,
+main/base branch, community/contact and deploy target. Preview it, then apply it:
+
+```bash
+# Print exactly what init would create, without touching disk:
+bin/devblueprint plan --target ~/Projects/myapp --from .devblueprint-intake.yml
+
+# Apply it once the plan looks right:
+bin/devblueprint init --target ~/Projects/myapp --from .devblueprint-intake.yml
+```
+
+Explicit CLI flags override the file, so you can revise one answer without editing
+it: `init --from .devblueprint-intake.yml --base master`. `plan` is exactly
+`init --dry-run`, so the preview can never drift from what init writes. This is the
+interface an agent uses to set a project up conversationally: interview the user,
+write the intake file, `plan` to confirm, then `init --from`. See the annotated
+[`agent/intake.example.yml`](agent/intake.example.yml) and the schema reference in
+[`docs/agent/intake-schema.md`](docs/agent/intake-schema.md).
+
 The `setup.sh` is the automated version of each variant's "After init" checklist: it patches
 the package manifest, writes the tool configs, installs a pre-commit hook and pulls the dev
 toolchain. It is idempotent and never clobbers existing files, so it is safe to re-run. A few

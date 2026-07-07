@@ -19,6 +19,13 @@ All notable changes are documented here, following
 
 ### Added
 
+- Intake files + `plan`: `init --from <intake.yml>` seeds the scaffold from a small, documented
+  `.devblueprint-intake.yml` (name, variant, main/base branch, community/contact, deploy target),
+  mapping keys onto the existing flags. Explicit CLI flags override the file, so a conversation can
+  revise a single answer. A new `devblueprint plan` command (equivalently `init --dry-run`) runs
+  init's real code path with every write short-circuited to a `would ...` line, printing exactly
+  what init would create without touching disk - so an agent can confirm before scaffolding. Ships
+  an annotated `agent/intake.example.yml` and `docs/agent/intake-schema.md`. Refs: P3-1.
 - Config backfill for the `web-nextjs` and `ios-swift` variants: each now ships `.tool-versions`
   (toolchain pin) and `.github/dependabot.yml` (web-nextjs: npm + github-actions; ios-swift: swift
   + github-actions), matching the newer variants. Refs: P2-12.
