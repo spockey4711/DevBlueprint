@@ -68,7 +68,7 @@ Conflict rules:
   `NNNN-template.md` and a short index/README explaining the ADR flow; reference it from
   `docs/engineering/`. **Owns:** `docs/decisions/`, one link line in an existing `docs/engineering`
   file.
-- [ ] P2-3: Variant-author changelog + contributor note in `core/README.md` - how core vs.
+- [x] P2-3: Variant-author changelog + contributor note in `core/README.md` - how core vs.
   variant files are layered, and how to add a variant. **Owns:** `core/README.md`.
 - [ ] P2-4: New variant `data-python` (data-science stack), shipped complete: `manifest.env`,
   `setup.sh`, `github/workflows/ci.yml`, `gitignore`, `Makefile`, `docs/quality-and-testing.md`,

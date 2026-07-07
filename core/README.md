@@ -45,3 +45,58 @@ them in sync like the other core-owned files.
 edits here reach old projects too. It leaves the rendered templates (`CLAUDE.md`,
 `CONTRIBUTING.md`) and `wt.conf` alone; `conventions.md` and `quality-and-testing.md` are
 refreshed only when `update` is given a `--variant`, since they carry a variant overlay.
+
+## How core and variant files layer
+
+Every scaffolded file comes from `core/` (this directory - identical for all projects) or from
+the chosen `variants/<name>/` (stack-specific), composed in one of four ways:
+
+| Project file                          | Source                | Composition                                    |
+| ------------------------------------- | --------------------- | ---------------------------------------------- |
+| `docs/engineering/git-workflow.md`, `engineering-standards.md` | core | copied verbatim                     |
+| `.editorconfig`, `.gitattributes`, `.github/` PR + issue templates | core | copied verbatim (project root / `.github/`) |
+| `docs/engineering/conventions.md`     | core **+** variant    | core base, then `docs/conventions.append.md` appended |
+| `docs/engineering/quality-and-testing.md` | variant           | variant-owned (the concrete gate)              |
+| `CLAUDE.md`, `CONTRIBUTING.md`         | core template         | rendered, drawing `QUALITY_GATE` / `WT_CMD` / `COPY_LANGUAGE_NOTE` from the variant's `manifest.env` and `VARIANT_NOTES` from its `variant-notes.md` |
+| `.github/workflows/ci.yml`, `.gitignore`, `setup.sh`, `Makefile` (optional), `scripts/wt.conf` | variant | copied from the variant |
+| `scripts/wt.sh`                        | repo root             | shared worktree manager (same for all variants) |
+
+The rule of thumb: **core carries anything true regardless of language; a variant only adds
+stack-specific detail on top.** If something you want to change is identical across stacks, it
+belongs in `core/` (and reaches old projects via `update`); if it differs per stack, it belongs
+in the variant.
+
+## Adding a variant
+
+A variant is a self-contained `variants/<name>/` directory, auto-discovered by the CLI - no code
+change needed. `devblueprint list` finds any directory here that has a `manifest.env`, so that
+file is the discovery contract.
+
+1. Copy the closest existing variant as a starting point:
+   `cp -r variants/generic variants/<name>` (or `backend-python` for a typed-language stack).
+2. Edit `manifest.env` - `VARIANT_TITLE` (shown in `devblueprint list`), `QUALITY_GATE`,
+   `WT_CMD`, `COPY_LANGUAGE_NOTE`, `SRC_DIRS`. These feed the token substitution above.
+3. `docs/quality-and-testing.md` - the concrete quality gate and testing strategy (variant-owned,
+   replaces the core stub).
+4. `docs/conventions.append.md` - the stack overlay appended to the core conventions baseline.
+5. `variant-notes.md` - the "Stack notes" block injected into the scaffolded `CLAUDE.md`.
+6. `wt.conf` - the worktree post-create hook (`wt_post_create`, e.g. `uv sync`, `pnpm install`).
+7. `github/workflows/ci.yml` - CI running the gate; `gitignore` - stack ignores;
+   `setup.sh` - idempotent toolchain wiring; `Makefile` - optional (generic only).
+8. `README.md` - the variant's own one-page doc (quality gate, what `init` adds, after-init steps).
+
+Then smoke-test the new variant:
+
+```bash
+bin/devblueprint list                                          # your variant appears
+bin/devblueprint init --target /tmp/probe --name probe --variant <name>
+bin/devblueprint doctor --target /tmp/probe                    # scaffold is complete
+```
+
+**Land it like production code.** Every change to `core/` or a variant ships in the same PR as a
+one-line entry under `## [Unreleased]` in `CHANGELOG.md`, and must pass the quality gate before
+pushing:
+
+```bash
+make check   # bash -n + shellcheck on every script, plus the bats CLI suite
+```
