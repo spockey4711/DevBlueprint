@@ -6,21 +6,37 @@
 #   devblueprint list
 #   devblueprint init --target <dir> --name <name> --variant <variant> \
 #       [--base <branch>] [--main <branch>] [--force]
+#   devblueprint update --target <dir> [--variant <variant>] [--dry-run]
 #   devblueprint doctor --target <dir>
+#   devblueprint version
 #   devblueprint help
 #
 # The blueprint is documentation-first: `init` copies the tech-agnostic core docs
 # and the chosen variant's overlay, fills in CLAUDE.md / CONTRIBUTING.md, drops in
 # the worktree script, CI workflow and .gitignore. It never overwrites existing
-# files unless --force is given.
+# files unless --force is given. `update` re-syncs only the core-owned files
+# (the agnostic engineering docs + wt.sh) into an existing project, so old
+# projects can pick up core changes without touching their CLAUDE.md or code.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 CORE="$ROOT/core"
 VARIANTS="$ROOT/variants"
+VERSION_FILE="$ROOT/VERSION"
 
 die() { echo "devblueprint: $*" >&2; exit 1; }
 info() { printf '  %s\n' "$*"; }
+
+# kit_version : the kit's own version, the single source of truth in ./VERSION.
+# Stamped into every scaffold so `update` can tell a project's core files apart
+# from the current ones. Falls back to 0.0.0 if the file is somehow missing.
+kit_version() {
+  if [ -f "$VERSION_FILE" ]; then
+    tr -d '[:space:]' < "$VERSION_FILE"
+  else
+    printf '0.0.0'
+  fi
+}
 
 # --- helpers ---------------------------------------------------------------
 
@@ -88,6 +104,29 @@ append_if() {
   [ -f "$1" ] || return 0
   cat "$1" >> "$2"
   info "appended ${1##*/} -> ${2#"$TARGET"/}"
+}
+
+# sync_file <src> <dest> : overwrite dest with src for `update`, reporting
+# whether the file was unchanged, created or updated. Honors DRY_RUN (report
+# only) and bumps CHANGED for the summary. Unlike copy(), it deliberately
+# overwrites - refreshing a managed file is the whole point of `update`.
+sync_file() {
+  local src="$1" dest="$2" rel verb
+  [ -f "$src" ] || return 0
+  rel="${dest#"$TARGET"/}"
+  if [ -f "$dest" ] && cmp -s "$src" "$dest"; then
+    info "unchanged $rel"
+    return 0
+  fi
+  if [ -e "$dest" ]; then verb="update"; else verb="create"; fi
+  CHANGED=$((CHANGED + 1))
+  if [ "$DRY_RUN" -eq 1 ]; then
+    info "would $verb $rel"
+    return 0
+  fi
+  mkdir -p "$(dirname "$dest")"
+  cp "$src" "$dest"
+  info "${verb}d $rel"
 }
 
 list_variants() {
@@ -164,6 +203,19 @@ All notable changes are documented here, following
 - Project scaffolded from DevBlueprint ($VARIANT_TITLE).
 EOF
     info "wrote CHANGELOG.md"
+  fi
+
+  # 3b. Scaffold stamp: records the kit version and variant this project was
+  # generated from, so `devblueprint update` can tell whether the core docs and
+  # scripts are stale. Shell-sourceable key=value; do not hand-edit the version.
+  if place_guard "$TARGET/.devblueprint"; then
+    cat > "$TARGET/.devblueprint" <<EOF
+# DevBlueprint scaffold stamp - read by \`devblueprint update\`.
+# Records the kit version and variant this project was scaffolded from.
+version=$(kit_version)
+variant=$VARIANT
+EOF
+    info "wrote .devblueprint"
   fi
 
   # 4. Worktree tooling. Keep wt.conf's branches in sync with the chosen
@@ -243,7 +295,7 @@ cmd_doctor() {
   done
   [ -n "$target" ] || die "missing --target <dir>"
   local missing=0 f
-  for f in CLAUDE.md CONTRIBUTING.md CHANGELOG.md .gitignore \
+  for f in CLAUDE.md CONTRIBUTING.md CHANGELOG.md .gitignore .devblueprint \
            scripts/wt.sh scripts/wt.conf .github/workflows/ci.yml \
            docs/engineering/git-workflow.md docs/engineering/conventions.md \
            docs/engineering/quality-and-testing.md \
@@ -256,10 +308,92 @@ cmd_doctor() {
   done
   echo
   if [ "$missing" -eq 0 ]; then
-    echo "doctor: all foundation files present"
+    local stamped
+    stamped="$(stamp_version "$target")"
+    echo "doctor: all foundation files present (scaffolded from DevBlueprint ${stamped:-unknown}; current $(kit_version))"
   else
     die "$missing file(s) missing"
   fi
+}
+
+cmd_update() {
+  TARGET="" VARIANT="" DRY_RUN=0 CHANGED=0
+  while [ "$#" -gt 0 ]; do
+    case "$1" in
+      --target) TARGET="$2"; shift 2 ;;
+      --variant) VARIANT="$2"; shift 2 ;;
+      --dry-run) DRY_RUN=1; shift ;;
+      *) die "unknown option: $1" ;;
+    esac
+  done
+  [ -n "$TARGET" ] || die "missing --target <dir>"
+  [ -d "$TARGET" ] || die "target '$TARGET' does not exist"
+  TARGET="$(cd "$TARGET" && pwd)"
+  # Refuse to run outside a scaffolded project so we never scatter core files
+  # into an unrelated directory.
+  if [ ! -d "$TARGET/docs/engineering" ] && [ ! -f "$TARGET/CLAUDE.md" ]; then
+    die "'$TARGET' does not look like a DevBlueprint project (no docs/engineering/ or CLAUDE.md)"
+  fi
+
+  local vdir=""
+  if [ -n "$VARIANT" ]; then
+    vdir="$VARIANTS/$VARIANT"
+    [ -d "$vdir" ] || die "unknown variant '$VARIANT' (see: devblueprint list)"
+  fi
+
+  if [ "$DRY_RUN" -eq 1 ]; then
+    echo "Dry run: re-syncing DevBlueprint core files into $TARGET"
+  else
+    echo "Re-syncing DevBlueprint core files into $TARGET"
+  fi
+  echo "  preserved: CLAUDE.md, CONTRIBUTING.md, wt.conf, CI, .gitignore, your code"
+  echo
+
+  # Core-owned, project-independent files: always safe to overwrite because they
+  # carry no per-project or per-variant content.
+  local eng="$TARGET/docs/engineering"
+  sync_file "$CORE/git-workflow.md"          "$eng/git-workflow.md"
+  sync_file "$CORE/engineering-standards.md" "$eng/engineering-standards.md"
+  sync_file "$ROOT/scripts/wt.sh"            "$TARGET/scripts/wt.sh"
+  if [ -f "$TARGET/scripts/wt.sh" ]; then
+    chmod +x "$TARGET/scripts/wt.sh" 2>/dev/null || true
+  fi
+
+  # conventions.md is core base + a variant overlay, and quality-and-testing.md is
+  # variant-owned, so refreshing them needs the variant. Only touch them when the
+  # caller names one - otherwise leave the project's copies alone.
+  if [ -n "$vdir" ]; then
+    local tmp
+    tmp="$(mktemp)"
+    cat "$CORE/conventions.md" > "$tmp"
+    [ -f "$vdir/docs/conventions.append.md" ] && cat "$vdir/docs/conventions.append.md" >> "$tmp"
+    sync_file "$tmp" "$eng/conventions.md"
+    rm -f "$tmp"
+    sync_file "$vdir/docs/quality-and-testing.md" "$eng/quality-and-testing.md"
+  else
+    info "skip conventions.md, quality-and-testing.md (variant overlay; pass --variant to refresh)"
+  fi
+
+  echo
+  if [ "$DRY_RUN" -eq 1 ]; then
+    echo "Dry run complete - $CHANGED file(s) would change, nothing written."
+  elif [ "$CHANGED" -eq 0 ]; then
+    echo "Already up to date."
+  else
+    echo "Updated $CHANGED file(s). Review the diff before committing."
+  fi
+}
+
+# stamp_version <target> : the version recorded in a project's .devblueprint
+# stamp, or empty if there is no stamp (e.g. a project scaffolded before P0-3).
+stamp_version() {
+  local stamp="$1/.devblueprint"
+  [ -f "$stamp" ] || return 0
+  sed -n 's/^version=//p' "$stamp" | head -n1
+}
+
+cmd_version() {
+  echo "devblueprint $(kit_version)"
 }
 
 usage() {
@@ -272,9 +406,11 @@ main() {
   case "$cmd" in
     list) cmd_list "$@" ;;
     init) cmd_init "$@" ;;
+    update) cmd_update "$@" ;;
     doctor) cmd_doctor "$@" ;;
+    version | --version | -V) cmd_version ;;
     help | -h | --help | "") usage ;;
-    *) die "unknown command '$cmd' (try: list, init, doctor, help)" ;;
+    *) die "unknown command '$cmd' (try: list, init, update, doctor, version, help)" ;;
   esac
 }
 

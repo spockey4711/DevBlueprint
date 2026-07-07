@@ -26,7 +26,8 @@ devblueprint/
     templates/       CLAUDE.md + CONTRIBUTING.md templates ({{TOKENS}} filled at init)
   scripts/wt.sh      the worktree manager (parametrized via scripts/wt.conf)
   variants/          stack overlays: web-nextjs, ios-swift, backend-python, generic
-  bin/devblueprint   the CLI: list / init / doctor
+  bin/devblueprint   the CLI: list / init / update / doctor / version
+  VERSION            the kit version, stamped into every scaffold
 ```
 
 Each **variant** adds only what is stack-specific: the concrete quality-gate commands, a CI
@@ -43,14 +44,26 @@ bin/devblueprint list
 # Scaffold a new project's engineering setup
 bin/devblueprint init --target ~/Projects/myapp --name myapp --variant web-nextjs
 
-# Verify the foundation files landed
+# Verify the foundation files landed (reports the kit version it was scaffolded from)
 bin/devblueprint doctor --target ~/Projects/myapp
+
+# Later, pull core changes into an existing project (preview with --dry-run)
+bin/devblueprint update --target ~/Projects/myapp
+
+# Print the kit version
+bin/devblueprint version
 ```
 
 Add DevBlueprint to your `PATH` (or symlink `bin/devblueprint`) to drop the `bin/` prefix.
 
 `init` is overwrite-safe: it never clobbers an existing file unless you pass `--force`, so you
 can run it on an existing repo to add the workflow without losing your code.
+
+`update` is the counterpart for projects already scaffolded: it re-syncs only the core-owned
+files (the agnostic engineering docs and `scripts/wt.sh`) so old projects pick up improvements
+to `core/`, and deliberately never touches your `CLAUDE.md`, `wt.conf`, CI or code. Pass
+`--variant <name>` to also refresh the variant-overlaid `conventions.md` and
+`quality-and-testing.md`, and `--dry-run` to preview the changes first.
 
 Options: `--target <dir>` `--name <name>` `--variant <variant>` `--main <branch>`
 `--base <branch>` `--force`. Use `--base master` for a single-branch trunk workflow.

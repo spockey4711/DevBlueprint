@@ -27,3 +27,9 @@ lines:
 `init` keeps whichever block matches the chosen workflow (single-branch when
 `BASE_BRANCH == MAIN_BRANCH`, e.g. `--base master`) and drops the other, so the prose never
 reads "`master` is promoted ... to `master`".
+
+`devblueprint update --target <dir>` re-syncs the project-independent core files
+(`git-workflow.md`, `engineering-standards.md`, and `scripts/wt.sh`) into a project scaffolded
+earlier, so edits here reach old projects too. It leaves the rendered templates (`CLAUDE.md`,
+`CONTRIBUTING.md`) and `wt.conf` alone; `conventions.md` and `quality-and-testing.md` are
+refreshed only when `update` is given a `--variant`, since they carry a variant overlay.
