@@ -12,6 +12,9 @@ All notable changes are documented here, following
 
 ### Added
 
+- Variant-author guide in `core/README.md`: how core and variant files layer (a per-file
+  source/composition table) and a step-by-step "Adding a variant" walkthrough, including the
+  changelog + quality-gate expectations for contributors. Refs: P2-3.
 - New `data-python` variant: a data-science stack (uv, ruff, nbqa + nbstripout for notebooks,
   mypy strict over `src/`, pytest) with a `src/`+`notebooks/` split, `data/` scaffold, `Makefile`
   gate, CI, and `extras/` (`.tool-versions` toolchain pin + `.github/dependabot.yml`). Refs: P2-4.
