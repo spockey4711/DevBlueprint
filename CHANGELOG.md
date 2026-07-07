@@ -12,6 +12,10 @@ All notable changes are documented here, following
 
 ### Added
 
+- New `backend-go` variant: a Go backend stack (gofumpt, golangci-lint, go vet, `go test -race`,
+  Go modules) with a `cmd/`+`internal/`+`pkg/` layout, `Makefile` gate, CI, and `extras/`
+  (`.tool-versions` toolchain pin + `.github/dependabot.yml` for gomod + actions). `setup.sh`
+  wires `go.mod`, `.golangci.yml`, a pre-commit config and a compiling entrypoint. Refs: P2-5.
 - Generic variant-extras copy: `init` now copies a variant's `github/` tree into `.github/` and
   its root-level `extras/` into the project root recursively, so a variant can ship new config
   (`dependabot.yml`, `renovate.json`, `.tool-versions`, `.devcontainer/`, ...) just by dropping a
