@@ -9,17 +9,18 @@ bin/devblueprint list
 # 2. Scaffold the engineering setup into a target directory
 bin/devblueprint init --target ~/Projects/myapp --name myapp --variant web-nextjs
 
-# 3. Turn the target into a repo with the two long-lived branches
+# 3. Wire the toolchain in one command (configs, pre-commit hook, deps)
 cd ~/Projects/myapp
+./setup.sh
+
+# 4. Turn the target into a repo with the two long-lived branches
 git init
 git add -A && git commit -m "chore: scaffold engineering setup from DevBlueprint"
 git branch -M master
 git switch -c develop
 
-# 4. Wire the toolchain for your stack (see variants/<variant>/README.md, "After init")
-
 # 5. Start the first task in its own worktree
-wt new feat/first-task     # after adding a `wt` alias/script for scripts/wt.sh
+wt new feat/first-task
 ```
 
 ## What `init` produces
@@ -33,6 +34,7 @@ CHANGELOG.md                       fresh, Keep-a-Changelog format
 .gitignore                         stack-appropriate
 .github/workflows/ci.yml           the quality gate in CI
 Makefile                           (generic variant only) gate targets to fill in
+setup.sh                           one-shot toolchain wiring (configs, hooks, deps)
 scripts/wt.sh                      the worktree manager
 scripts/wt.conf                    branches + post-create install hook for the stack
 docs/engineering/
@@ -45,6 +47,12 @@ src/... tests/...                  the source/test skeleton for the stack
 ```
 
 Everything is a plain file you own. Edit freely - DevBlueprint is not a dependency.
+
+The `setup.sh` is the automated version of each variant's "After init" checklist: it patches
+the package manifest, writes the tool configs, installs a pre-commit hook and pulls the dev
+toolchain. It is idempotent and never clobbers existing files, so it is safe to re-run. A few
+things it deliberately leaves to you (they cannot be guessed): scaffolding the app framework
+itself (`create-next-app`, the Xcode project), and filling the generic `Makefile` targets.
 
 ## The workflow in one page
 

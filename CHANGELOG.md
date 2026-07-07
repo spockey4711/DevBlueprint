@@ -20,6 +20,10 @@ All notable changes are documented here, following
   gate, CI workflow, `.gitignore`, conventions overlay and `CLAUDE.md` notes.
 - `bin/devblueprint` CLI: `list`, `init` (overwrite-safe scaffolding from core + a variant) and
   `doctor`.
+- Per-variant `setup.sh`, dropped into every scaffolded project by `init`: an idempotent
+  one-shot that turns the variant's "after init" checklist into a single command (tool config
+  files, package-manifest scripts, pre-commit hook and dependency install). Non-Node variants
+  use a committable `.githooks/pre-commit` via `core.hooksPath`.
 
 ### Removed
 

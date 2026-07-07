@@ -24,9 +24,14 @@ swiftformat --lint . && swiftlint --strict && swift build && swift test
 
 ## After init (wire the toolchain)
 
-1. Create the Xcode project or `Package.swift`.
-2. Add `.swiftlint.yml` and a SwiftFormat config; install both (`brew install swiftlint
-   swiftformat`).
-3. Add a `pre-commit` git hook that runs SwiftFormat + SwiftLint on staged files.
-4. If it is an app target, adjust the CI build/test steps to `xcodebuild` with a simulator
-   destination.
+`init` drops a `setup.sh` in the project. Run it once:
+
+```bash
+./setup.sh              # writes .swiftlint.yml + .swiftformat, installs a committable
+                        # .githooks/pre-commit (core.hooksPath), brew-installs the formatters
+./setup.sh --no-install # config only, skip brew
+```
+
+Idempotent; never clobbers existing files. Two things it cannot do for you: create the Xcode
+project / `Package.swift`, and (for an app target) switch the CI build/test steps to
+`xcodebuild` with a simulator destination.

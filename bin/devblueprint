@@ -169,6 +169,13 @@ EOF
   copy "$vdir/gitignore" "$TARGET/.gitignore"
   [ -f "$vdir/Makefile" ] && copy "$vdir/Makefile" "$TARGET/Makefile"
 
+  # 5b. The toolchain setup script - turns the variant's "after init" checklist
+  # (configs, pre-commit hook, dependency install) into a single command.
+  if [ -f "$vdir/setup.sh" ]; then
+    copy "$vdir/setup.sh" "$TARGET/setup.sh"
+    chmod +x "$TARGET/setup.sh" 2>/dev/null || true
+  fi
+
   # 6. Source/test skeleton + a backlog stub.
   local dir
   for dir in $SRC_DIRS; do
@@ -192,9 +199,18 @@ EOF
 
   echo
   echo "Done. Next steps:"
-  echo "  1. cd $TARGET && git init (if new) and create the $BASE_BRANCH branch."
-  echo "  2. Wire the toolchain - see $vdir/README.md (\"After init\")."
-  echo "  3. Add a 'wt' alias/script for scripts/wt.sh, then: wt new feat/first-task"
+  echo "  1. cd $TARGET"
+  if [ -f "$TARGET/setup.sh" ]; then
+    echo "  2. ./setup.sh   (wires configs + pre-commit hook + installs the toolchain)"
+  else
+    echo "  2. Wire the toolchain - see $vdir/README.md (\"After init\")."
+  fi
+  if [ "$BASE_BRANCH" = "$MAIN_BRANCH" ]; then
+    echo "  3. git init && git branch -M $MAIN_BRANCH"
+  else
+    echo "  3. git init && git branch -M $MAIN_BRANCH && git switch -c $BASE_BRANCH"
+  fi
+  echo "  4. Start a task in its own worktree:  $WT_CMD new feat/first-task"
 }
 
 cmd_doctor() {

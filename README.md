@@ -31,7 +31,8 @@ devblueprint/
 
 Each **variant** adds only what is stack-specific: the concrete quality-gate commands, a CI
 workflow, a `.gitignore`, a `wt.conf` (branches + post-create install hook), a conventions
-overlay, and the `CLAUDE.md` stack-notes block.
+overlay, the `CLAUDE.md` stack-notes block, and a `setup.sh` that wires the toolchain (tool
+configs, pre-commit hook, dependency install) in one command after `init`.
 
 ## Usage
 

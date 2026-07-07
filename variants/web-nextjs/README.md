@@ -21,11 +21,14 @@ pnpm lint && pnpm typecheck && pnpm test && pnpm build
 
 ## After init (wire the toolchain)
 
-This variant assumes a Next.js app already scaffolded (`pnpm create next-app`) or adds the
-workflow around one. You still need to:
+`init` drops a `setup.sh` in the project. Run it once:
 
-1. Add a `wt` package script: `"wt": "bash scripts/wt.sh"`.
-2. Add the gate scripts: `lint`, `typecheck` (`tsc --noEmit`), `test` (`vitest run`),
-   `test:e2e` (`playwright test`), `build`.
-3. Add `.nvmrc` and set `packageManager` in `package.json` for CI.
-4. Set up husky + lint-staged for the pre-commit hook.
+```bash
+./setup.sh              # patches package.json scripts + packageManager, writes .nvmrc,
+                        # ESLint/Prettier/tsconfig/Vitest/Playwright configs, husky +
+                        # lint-staged pre-commit, and installs the dev toolchain
+./setup.sh --no-install # config only, skip `pnpm add`
+```
+
+It is idempotent and never clobbers existing files. It does **not** scaffold the Next.js app
+itself - run `pnpm create next-app .` first (or point it at an existing app).

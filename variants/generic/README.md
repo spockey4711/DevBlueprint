@@ -20,6 +20,14 @@ make check   # you wire the lint / typecheck / test / build targets
 
 ## After init
 
+`init` drops a `setup.sh` in the project. Run it once:
+
+```bash
+./setup.sh   # installs a committable .githooks/pre-commit (runs `make lint`) via core.hooksPath
+```
+
+Then the truly stack-specific bits it cannot guess:
+
 1. Fill the `Makefile` targets with your real commands; remove any that do not apply.
 2. Add your language setup step to `.github/workflows/ci.yml`.
 3. Set the `wt_post_create` hook in `scripts/wt.conf` if the project needs a setup step.

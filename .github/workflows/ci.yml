@@ -20,4 +20,4 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Run shellcheck
-        run: shellcheck bin/devblueprint scripts/wt.sh
+        run: shellcheck bin/devblueprint scripts/wt.sh variants/*/setup.sh

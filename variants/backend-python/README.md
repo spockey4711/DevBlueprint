@@ -21,8 +21,12 @@ ruff check . && ruff format --check . && mypy . && pytest
 
 ## After init (wire the toolchain)
 
-1. Create `pyproject.toml` with `[tool.ruff]`, `[tool.mypy] strict = true`, and a `[dev]`
-   dependency group (ruff, mypy, pytest, httpx).
-2. Add `.python-version` (uv reads it).
-3. Set up the `pre-commit` framework to run ruff on staged files.
-4. `uv sync` to create the environment.
+`init` drops a `setup.sh` in the project. Run it once:
+
+```bash
+./setup.sh              # writes pyproject.toml (ruff + mypy strict + pytest), .python-version,
+                        # .pre-commit-config.yaml, then `uv sync` + installs the pre-commit hook
+./setup.sh --no-install # config only
+```
+
+Idempotent; never clobbers existing files.
