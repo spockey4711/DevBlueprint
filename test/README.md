@@ -20,3 +20,4 @@ CI installs it and runs the suite on every PR.
 - `overwrite.bats` - overwrite safety: skip existing files vs. `--force`.
 - `tokens.bats` - token substitution and branch modes (two-branch default, `--base master`).
 - `update.bats` - `update` re-syncs core-owned files into an existing project (with `--dry-run`).
+- `detect.bats` - `detect` maps an existing repo's stack fingerprints to a recommended variant.

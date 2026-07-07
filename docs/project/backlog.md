@@ -154,10 +154,10 @@ Conflict rules (same discipline as P2):
   `version --json`, so the agent can parse available variants and post-setup health instead of
   scraping human text. **Owns:** `bin/devblueprint` (`cmd_list`, `cmd_doctor`, `cmd_version`),
   `test/`.
-- [ ] P3-6: Deploy runbooks for the remaining backend/web variants (`backend-python`,
+- [x] P3-6: Deploy runbooks for the remaining backend/web variants (`backend-python`,
   `backend-go`, `node-express`), mirroring P3-4. **Owns:** `variants/backend-python/`,
   `variants/backend-go/`, `variants/node-express/`. (dep: P2-1, pattern from P3-4)
-- [ ] P3-7: `devblueprint detect --target <dir>` - inspect an existing repo (`package.json`,
+- [x] P3-7: `devblueprint detect --target <dir>` - inspect an existing repo (`package.json`,
   `go.mod`, `Cargo.toml`, `Package.swift`, `pyproject.toml`) and recommend a variant, so adding
   the workflow to an existing project needs no guesswork. CLI hot path, so it lands in its own
   wave apart from P3-5. **Owns:** `bin/devblueprint` (new `cmd_detect`), `test/`.
