@@ -12,6 +12,10 @@ All notable changes are documented here, following
 
 ### Added
 
+- Stack-agnostic repo hygiene in `core/`: `.editorconfig` (charset, LF, final newline, indent
+  baseline) and `.gitattributes` (line-ending normalization + binary-type hints). `init` drops
+  both into new projects and `doctor` checks them; being project-independent, `update` keeps
+  them in sync like the other core-owned files. Refs: P1-1.
 - Tech-agnostic `core/`: git-workflow, engineering-standards, conventions and quality-and-testing
   docs, plus `CLAUDE.md` and `CONTRIBUTING.md` templates.
 - Parametrized `scripts/wt.sh` worktree manager driven by an optional `wt.conf` (branches,
