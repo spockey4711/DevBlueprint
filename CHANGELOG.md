@@ -19,6 +19,14 @@ All notable changes are documented here, following
 
 ### Added
 
+- `devblueprint detect --target <dir>`: inspect an existing repo's stack fingerprints
+  (`package.json`, `go.mod`, `Cargo.toml`, `Package.swift`, `pyproject.toml`) and recommend the
+  variant to scaffold from, so adopting the workflow in an existing project needs no guesswork.
+  Two fingerprints resolve two variants by a dependency probe - `package.json` -> `web-nextjs`
+  when it lists a `next` dependency, else `node-express`; `pyproject.toml` -> `data-python` when
+  it names a data-science library, else `backend-python` - and an unrecognized repo falls back to
+  `generic`. Read-only: it prints the matching variant and the exact `init` line, never touching
+  disk. Refs: P3-7.
 - Deploy runbook artifacts for the `backend-python`, `backend-go` and `node-express` variants,
   mirroring P3-4: each ships `extras/docs/ops/deployment.md` (a runbook covering managed/Docker/VPS
   targets with DB and env-var checklists, tailored to the stack) and `extras/.env.example`

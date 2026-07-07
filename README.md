@@ -28,7 +28,7 @@ devblueprint/
     github/          PR template + issue templates (shipped with every variant)
   scripts/wt.sh      the worktree manager (parametrized via scripts/wt.conf)
   variants/          stack overlays: web-nextjs, ios-swift, backend-python, generic
-  bin/devblueprint   the CLI: list / init / plan / update / doctor / version
+  bin/devblueprint   the CLI: list / init / plan / update / doctor / detect / version
   agent/             agent-facing specs: intake.example.yml (see docs/agent/)
   VERSION            the kit version, stamped into every scaffold
 ```
@@ -43,6 +43,10 @@ configs, pre-commit hook, dependency install) in one command after `init`.
 ```bash
 # See the variants
 bin/devblueprint list
+
+# Adding the workflow to an existing repo? Let detect recommend the variant from
+# its stack fingerprints (package.json, go.mod, Cargo.toml, Package.swift, pyproject.toml)
+bin/devblueprint detect --target ~/Projects/myapp
 
 # Scaffold a new project's engineering setup
 bin/devblueprint init --target ~/Projects/myapp --name myapp --variant web-nextjs
