@@ -120,7 +120,7 @@ Conflict rules (same discipline as P2):
 
 ### Wave 1 - the MVP end-to-end flow
 
-- [ ] P3-1: Intake file + `init --from` + `plan` (CLI enabler). Define a small, documented
+- [x] P3-1: Intake file + `init --from` + `plan` (CLI enabler). Define a small, documented
   `.devblueprint-intake.yml` schema (project name, variant, main/base branch, community/contact,
   deploy target) and teach `init` to read it via `--from <file>`, mapping keys onto the existing
   flags/tokens (explicit flags still win, so a conversation can override one answer). Add

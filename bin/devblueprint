@@ -4,8 +4,10 @@
 #
 # Usage:
 #   devblueprint list
-#   devblueprint init --target <dir> --name <name> --variant <variant> \
-#       [--base <branch>] [--main <branch>] [--community] [--contact <method>] [--force]
+#   devblueprint init --target <dir> --variant <variant> [--name <name>] \
+#       [--from <intake.yml>] [--base <branch>] [--main <branch>] [--deploy <target>] \
+#       [--community] [--contact <method>] [--force] [--dry-run]
+#   devblueprint plan --target <dir> --from <intake.yml> [init flags]
 #   devblueprint update --target <dir> [--variant <variant>] [--dry-run]
 #   devblueprint doctor --target <dir> [--strict] [--run-gate]
 #   devblueprint version
@@ -15,10 +17,14 @@
 # and the chosen variant's overlay, fills in CLAUDE.md / CONTRIBUTING.md, drops in
 # the worktree script, the variant's github/ tree (CI workflow + any .github meta),
 # its root-level extras/, and .gitignore. It never overwrites existing
-# files unless --force is given. `update` re-syncs only the core-owned files
-# (the agnostic engineering docs, wt.sh, and the GitHub PR/issue templates) into
-# an existing project, so old projects can pick up core changes without touching
-# their CLAUDE.md or code.
+# files unless --force is given. `init --from <intake.yml>` seeds those answers from
+# an intake file (see docs/agent/intake-schema.md); explicit flags still win, so a
+# conversation can override a single answer. `plan` (equivalently `init --dry-run`)
+# prints exactly what init would write without touching disk, so an agent can confirm
+# with the user first. `update` re-syncs only the core-owned files (the agnostic
+# engineering docs, wt.sh, and the GitHub PR/issue templates) into an existing
+# project, so old projects can pick up core changes without touching their CLAUDE.md
+# or code.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -67,6 +73,7 @@ render() {
   content="${content//\{\{COPY_LANGUAGE_NOTE\}\}/$COPY_LANGUAGE_NOTE}"
   content="${content//\{\{VARIANT_NOTES\}\}/$VARIANT_NOTES}"
   content="${content//\{\{CONTACT\}\}/$CONTACT}"
+  if [ "${DRY_RUN:-0}" -eq 1 ]; then info "would write $rel_dest"; return 0; fi
   mkdir -p "$(dirname "$dest")"
   printf '%s\n' "$content" > "$dest"
   info "wrote $rel_dest"
@@ -99,8 +106,21 @@ place_guard() {
 # copy <src> <dest> : copy a single file with overwrite safety.
 copy() {
   place_guard "$2" || return 0
+  if [ "${DRY_RUN:-0}" -eq 1 ]; then info "would write $rel_dest"; return 0; fi
   mkdir -p "$(dirname "$2")"
   cp "$1" "$2"
+  info "wrote $rel_dest"
+}
+
+# emit_stdin <dest> : write stdin to dest with the same overwrite safety and
+# dry-run reporting as copy(). Lets the inline heredocs (CHANGELOG, .devblueprint
+# stamp, backlog stub) flow through one guarded writer instead of open-coding the
+# place_guard / DRY_RUN dance at each call site.
+emit_stdin() {
+  place_guard "$1" || { cat >/dev/null; return 0; }
+  if [ "${DRY_RUN:-0}" -eq 1 ]; then cat >/dev/null; info "would write $rel_dest"; return 0; fi
+  mkdir -p "$(dirname "$1")"
+  cat > "$1"
   info "wrote $rel_dest"
 }
 
@@ -123,6 +143,7 @@ copy_tree() {
 # variant conventions overlay). Always appends; the base file was just written.
 append_if() {
   [ -f "$1" ] || return 0
+  if [ "${DRY_RUN:-0}" -eq 1 ]; then info "would append ${1##*/} -> ${2#"$TARGET"/}"; return 0; fi
   cat "$1" >> "$2"
   info "appended ${1##*/} -> ${2#"$TARGET"/}"
 }
@@ -160,6 +181,53 @@ list_variants() {
   done
 }
 
+# abspath <path> : absolute form of <path> without requiring it to exist (unlike
+# `cd && pwd`). Used by init/plan to resolve --target for display in dry-run mode,
+# where the directory must not be created.
+abspath() {
+  case "$1" in
+    /*) printf '%s' "$1" ;;
+    *)  printf '%s/%s' "$(pwd)" "$1" ;;
+  esac
+}
+
+# load_intake <file> : read a .devblueprint-intake.yml intake file into IN_*
+# globals (IN_NAME, IN_VARIANT, IN_MAIN, IN_BASE, IN_COMMUNITY, IN_CONTACT,
+# IN_DEPLOY). The schema is a flat map of `key: value` pairs - not general YAML -
+# so a tiny hand-rolled reader is enough and keeps the kit dependency-free. Blank
+# lines and `#` comments (whole-line or trailing ` #...`) are ignored; values may
+# be single- or double-quoted. Unknown keys are a hard error so typos surface
+# instead of silently doing nothing. See docs/agent/intake-schema.md.
+load_intake() {
+  local file="$1" line key val
+  [ -f "$file" ] || die "intake file not found: $file"
+  IN_NAME="" IN_VARIANT="" IN_MAIN="" IN_BASE="" IN_COMMUNITY="" IN_CONTACT="" IN_DEPLOY=""
+  while IFS= read -r line || [ -n "$line" ]; do
+    line="${line#"${line%%[![:space:]]*}"}"        # ltrim
+    case "$line" in ''|'#'*) continue ;; esac       # skip blank / comment lines
+    line="${line%% #*}"                             # strip trailing " #..." comment
+    case "$line" in *:*) : ;; *) die "invalid intake line (expected 'key: value'): $line" ;; esac
+    key="${line%%:*}"; val="${line#*:}"
+    key="${key//[[:space:]]/}"                       # keys carry no spaces
+    val="${val#"${val%%[![:space:]]*}"}"             # ltrim value
+    val="${val%"${val##*[![:space:]]}"}"             # rtrim value
+    case "$val" in
+      \"*\") val="${val#\"}"; val="${val%\"}" ;;
+      \'*\') val="${val#\'}"; val="${val%\'}" ;;
+    esac
+    case "$key" in
+      name)      IN_NAME="$val" ;;
+      variant)   IN_VARIANT="$val" ;;
+      main)      IN_MAIN="$val" ;;
+      base)      IN_BASE="$val" ;;
+      community) IN_COMMUNITY="$val" ;;
+      contact)   IN_CONTACT="$val" ;;
+      deploy)    IN_DEPLOY="$val" ;;
+      *) die "unknown intake key '$key' in $file (see docs/agent/intake-schema.md)" ;;
+    esac
+  done < "$file"
+}
+
 # --- commands --------------------------------------------------------------
 
 cmd_list() {
@@ -168,24 +236,58 @@ cmd_list() {
 }
 
 cmd_init() {
-  TARGET="" PROJECT_NAME="" VARIANT="" MAIN_BRANCH="master" BASE_BRANCH="develop" FORCE=0
-  COMMUNITY=0 CONTACT=""
+  # Values start empty so we can tell "given on the CLI" from "unset" and layer
+  # intake-file values and defaults underneath (flags win). community_flag stays
+  # "" until --community or an intake `community:` key sets it, so its default-off
+  # is distinguishable from an explicit choice.
+  local from="" community_flag="" deploy=""
+  TARGET="" PROJECT_NAME="" VARIANT="" MAIN_BRANCH="" BASE_BRANCH="" CONTACT="" FORCE=0 DRY_RUN=0
   while [ "$#" -gt 0 ]; do
     case "$1" in
+      --from) from="$2"; shift 2 ;;
       --target) TARGET="$2"; shift 2 ;;
       --name) PROJECT_NAME="$2"; shift 2 ;;
       --variant) VARIANT="$2"; shift 2 ;;
       --main) MAIN_BRANCH="$2"; shift 2 ;;
       --base) BASE_BRANCH="$2"; shift 2 ;;
-      --community) COMMUNITY=1; shift ;;
+      --deploy) deploy="$2"; shift 2 ;;
+      --community) community_flag=1; shift ;;
       --contact) CONTACT="$2"; shift 2 ;;
       --force) FORCE=1; shift ;;
+      --dry-run) DRY_RUN=1; shift ;;
       *) die "unknown option: $1" ;;
     esac
   done
+
+  # Intake file fills any answer the CLI did not give (explicit flags win). Only
+  # variant/name/branches/community/contact/deploy come from the file; --target is
+  # always a CLI argument (it says *where* to scaffold, not *what*).
+  if [ -n "$from" ]; then
+    load_intake "$from"
+    [ -n "$PROJECT_NAME" ] || PROJECT_NAME="$IN_NAME"
+    [ -n "$VARIANT" ]      || VARIANT="$IN_VARIANT"
+    [ -n "$MAIN_BRANCH" ]  || MAIN_BRANCH="$IN_MAIN"
+    [ -n "$BASE_BRANCH" ]  || BASE_BRANCH="$IN_BASE"
+    [ -n "$CONTACT" ]      || CONTACT="$IN_CONTACT"
+    [ -n "$deploy" ]       || deploy="$IN_DEPLOY"
+    if [ -z "$community_flag" ] && [ -n "$IN_COMMUNITY" ]; then
+      case "$IN_COMMUNITY" in
+        true|yes|on|1)  community_flag=1 ;;
+        false|no|off|0) community_flag=0 ;;
+        *) die "invalid community value '$IN_COMMUNITY' (expected true or false)" ;;
+      esac
+    fi
+  fi
+
+  # Defaults last (lowest precedence).
+  [ -n "$MAIN_BRANCH" ] || MAIN_BRANCH="master"
+  [ -n "$BASE_BRANCH" ] || BASE_BRANCH="develop"
+  COMMUNITY="${community_flag:-0}"
+  DEPLOY_TARGET="$deploy"
+
   # {{CONTACT}} appears only in the optional community templates, but render()
-  # substitutes it unconditionally, so it must always be defined. When the caller
-  # gives no --contact, leave a visible placeholder for the maintainer to fill in.
+  # substitutes it unconditionally, so it must always be defined. When neither the
+  # CLI nor the intake file gives one, leave a visible placeholder to fill in.
   [ -n "$CONTACT" ] || CONTACT="INSERT CONTACT METHOD"
 
   [ -n "$TARGET" ] || die "missing --target <dir>"
@@ -201,9 +303,17 @@ cmd_init() {
   VARIANT_NOTES=""
   [ -f "$vdir/variant-notes.md" ] && VARIANT_NOTES="$(cat "$vdir/variant-notes.md")"
 
-  TARGET="$(mkdir -p "$TARGET" && cd "$TARGET" && pwd)"
-  echo "Scaffolding '$PROJECT_NAME' ($VARIANT_TITLE) into $TARGET"
+  # In dry-run (plan) mode never create the target directory - just resolve its
+  # absolute path for display.
+  if [ "$DRY_RUN" -eq 1 ]; then
+    TARGET="$(abspath "$TARGET")"
+    echo "Plan: init would scaffold '$PROJECT_NAME' ($VARIANT_TITLE) into $TARGET"
+  else
+    TARGET="$(mkdir -p "$TARGET" && cd "$TARGET" && pwd)"
+    echo "Scaffolding '$PROJECT_NAME' ($VARIANT_TITLE) into $TARGET"
+  fi
   echo "  branches: $BASE_BRANCH -> $MAIN_BRANCH   gate: $QUALITY_GATE"
+  [ -n "$DEPLOY_TARGET" ] && echo "  deploy target: $DEPLOY_TARGET (recorded; runbook lands in a later wave)"
   echo
 
   # 1. Engineering docs: core (agnostic) + variant overlay.
@@ -219,8 +329,7 @@ cmd_init() {
   render "$CORE/templates/CONTRIBUTING.md.tmpl" "$TARGET/CONTRIBUTING.md"
 
   # 3. Fresh changelog.
-  if place_guard "$TARGET/CHANGELOG.md"; then
-    cat > "$TARGET/CHANGELOG.md" <<EOF
+  emit_stdin "$TARGET/CHANGELOG.md" <<EOF
 # Changelog
 
 All notable changes are documented here, following
@@ -230,21 +339,16 @@ All notable changes are documented here, following
 
 - Project scaffolded from DevBlueprint ($VARIANT_TITLE).
 EOF
-    info "wrote CHANGELOG.md"
-  fi
 
   # 3b. Scaffold stamp: records the kit version and variant this project was
   # generated from, so `devblueprint update` can tell whether the core docs and
   # scripts are stale. Shell-sourceable key=value; do not hand-edit the version.
-  if place_guard "$TARGET/.devblueprint"; then
-    cat > "$TARGET/.devblueprint" <<EOF
+  emit_stdin "$TARGET/.devblueprint" <<EOF
 # DevBlueprint scaffold stamp - read by \`devblueprint update\`.
 # Records the kit version and variant this project was scaffolded from.
 version=$(kit_version)
 variant=$VARIANT
 EOF
-    info "wrote .devblueprint"
-  fi
 
   # 4. Worktree tooling. Keep wt.conf's branches in sync with the chosen
   # workflow (e.g. --base master for a single-branch trunk), but only when we
@@ -254,7 +358,7 @@ EOF
   local wtconf="$TARGET/scripts/wt.conf" wrote_conf=0
   [ -e "$wtconf" ] || wrote_conf=1
   copy "$vdir/wt.conf" "$wtconf"
-  if [ "$wrote_conf" -eq 1 ] || [ "$FORCE" -eq 1 ]; then
+  if [ "$DRY_RUN" -eq 0 ] && { [ "$wrote_conf" -eq 1 ] || [ "$FORCE" -eq 1 ]; }; then
     local tmp
     tmp="$(mktemp)"
     awk -v mb="$MAIN_BRANCH" -v bb="$BASE_BRANCH" '
@@ -305,12 +409,14 @@ EOF
   # 6. Source/test skeleton + a backlog stub.
   local dir
   for dir in $SRC_DIRS; do
-    mkdir -p "$TARGET/$dir"
-    [ -e "$TARGET/$dir/.gitkeep" ] || touch "$TARGET/$dir/.gitkeep"
+    if [ "$DRY_RUN" -eq 1 ]; then
+      info "would create $dir/"
+    else
+      mkdir -p "$TARGET/$dir"
+      [ -e "$TARGET/$dir/.gitkeep" ] || touch "$TARGET/$dir/.gitkeep"
+    fi
   done
-  if place_guard "$TARGET/docs/project/backlog.md"; then
-    mkdir -p "$TARGET/docs/project"
-    cat > "$TARGET/docs/project/backlog.md" <<'EOF'
+  emit_stdin "$TARGET/docs/project/backlog.md" <<'EOF'
 # Backlog
 
 The prioritized task list - the source of truth for what to build next. Reference an id in
@@ -320,10 +426,17 @@ commits and PRs (e.g. `Refs: P0-1`).
 
 - [ ] P0-1: ...
 EOF
-    info "wrote docs/project/backlog.md"
-  fi
 
   echo
+  if [ "$DRY_RUN" -eq 1 ]; then
+    echo "Plan only - nothing was written. Apply it with:"
+    if [ -n "$from" ]; then
+      echo "  devblueprint init --target $TARGET --from $from"
+    else
+      echo "  devblueprint init --target $TARGET --variant $VARIANT"
+    fi
+    return 0
+  fi
   echo "Done. Next steps:"
   echo "  1. cd $TARGET"
   if [ -f "$TARGET/setup.sh" ]; then
@@ -337,6 +450,13 @@ EOF
     echo "  3. git init && git branch -M $MAIN_BRANCH && git switch -c $BASE_BRANCH"
   fi
   echo "  4. Start a task in its own worktree:  $WT_CMD new feat/first-task"
+}
+
+# cmd_plan : preview mode. Exactly `init --dry-run` so the plan can never drift
+# from what init actually writes - it runs the real init code path with every
+# disk mutation short-circuited to a "would ..." line.
+cmd_plan() {
+  cmd_init --dry-run "$@"
 }
 
 cmd_doctor() {
@@ -547,7 +667,7 @@ cmd_version() {
 }
 
 usage() {
-  sed -n '5,12p' "$0" | sed 's/^# \{0,1\}//'
+  sed -n '5,14p' "$0" | sed 's/^# \{0,1\}//'
 }
 
 main() {
@@ -556,11 +676,12 @@ main() {
   case "$cmd" in
     list) cmd_list "$@" ;;
     init) cmd_init "$@" ;;
+    plan) cmd_plan "$@" ;;
     update) cmd_update "$@" ;;
     doctor) cmd_doctor "$@" ;;
     version | --version | -V) cmd_version ;;
     help | -h | --help | "") usage ;;
-    *) die "unknown command '$cmd' (try: list, init, update, doctor, version, help)" ;;
+    *) die "unknown command '$cmd' (try: list, init, plan, update, doctor, version, help)" ;;
   esac
 }
 
