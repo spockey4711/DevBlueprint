@@ -7,6 +7,7 @@
 #   devblueprint init --target <dir> --name <name> --variant <variant> \
 #       [--base <branch>] [--main <branch>] [--force]
 #   devblueprint doctor --target <dir>
+#   devblueprint version
 #   devblueprint help
 #
 # The blueprint is documentation-first: `init` copies the tech-agnostic core docs
@@ -18,9 +19,21 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 CORE="$ROOT/core"
 VARIANTS="$ROOT/variants"
+VERSION_FILE="$ROOT/VERSION"
 
 die() { echo "devblueprint: $*" >&2; exit 1; }
 info() { printf '  %s\n' "$*"; }
+
+# kit_version : the kit's own version, the single source of truth in ./VERSION.
+# Stamped into every scaffold so `update` can tell a project's core files apart
+# from the current ones. Falls back to 0.0.0 if the file is somehow missing.
+kit_version() {
+  if [ -f "$VERSION_FILE" ]; then
+    tr -d '[:space:]' < "$VERSION_FILE"
+  else
+    printf '0.0.0'
+  fi
+}
 
 # --- helpers ---------------------------------------------------------------
 
@@ -146,6 +159,19 @@ EOF
     info "wrote CHANGELOG.md"
   fi
 
+  # 3b. Scaffold stamp: records the kit version and variant this project was
+  # generated from, so `devblueprint update` can tell whether the core docs and
+  # scripts are stale. Shell-sourceable key=value; do not hand-edit the version.
+  if place_guard "$TARGET/.devblueprint"; then
+    cat > "$TARGET/.devblueprint" <<EOF
+# DevBlueprint scaffold stamp - read by \`devblueprint update\`.
+# Records the kit version and variant this project was scaffolded from.
+version=$(kit_version)
+variant=$VARIANT
+EOF
+    info "wrote .devblueprint"
+  fi
+
   # 4. Worktree tooling. Keep wt.conf's branches in sync with the chosen
   # workflow (e.g. --base master for a single-branch trunk), but only when we
   # actually wrote the file, so an existing wt.conf is never rewritten.
@@ -223,7 +249,7 @@ cmd_doctor() {
   done
   [ -n "$target" ] || die "missing --target <dir>"
   local missing=0 f
-  for f in CLAUDE.md CONTRIBUTING.md CHANGELOG.md .gitignore \
+  for f in CLAUDE.md CONTRIBUTING.md CHANGELOG.md .gitignore .devblueprint \
            scripts/wt.sh scripts/wt.conf .github/workflows/ci.yml \
            docs/engineering/git-workflow.md docs/engineering/conventions.md \
            docs/engineering/quality-and-testing.md \
@@ -236,14 +262,28 @@ cmd_doctor() {
   done
   echo
   if [ "$missing" -eq 0 ]; then
-    echo "doctor: all foundation files present"
+    local stamped
+    stamped="$(stamp_version "$target")"
+    echo "doctor: all foundation files present (scaffolded from DevBlueprint ${stamped:-unknown}; current $(kit_version))"
   else
     die "$missing file(s) missing"
   fi
 }
 
+# stamp_version <target> : the version recorded in a project's .devblueprint
+# stamp, or empty if there is no stamp (e.g. a project scaffolded before P0-3).
+stamp_version() {
+  local stamp="$1/.devblueprint"
+  [ -f "$stamp" ] || return 0
+  sed -n 's/^version=//p' "$stamp" | head -n1
+}
+
+cmd_version() {
+  echo "devblueprint $(kit_version)"
+}
+
 usage() {
-  sed -n '5,12p' "$0" | sed 's/^# \{0,1\}//'
+  sed -n '5,13p' "$0" | sed 's/^# \{0,1\}//'
 }
 
 main() {
@@ -253,8 +293,9 @@ main() {
     list) cmd_list "$@" ;;
     init) cmd_init "$@" ;;
     doctor) cmd_doctor "$@" ;;
+    version | --version | -V) cmd_version ;;
     help | -h | --help | "") usage ;;
-    *) die "unknown command '$cmd' (try: list, init, doctor, help)" ;;
+    *) die "unknown command '$cmd' (try: list, init, doctor, version, help)" ;;
   esac
 }
 

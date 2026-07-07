@@ -20,6 +20,10 @@ All notable changes are documented here, following
   gate, CI workflow, `.gitignore`, conventions overlay and `CLAUDE.md` notes.
 - `bin/devblueprint` CLI: `list`, `init` (overwrite-safe scaffolding from core + a variant) and
   `doctor`.
+- Kit versioning: a `VERSION` source of truth, a `devblueprint version` command (also
+  `--version`/`-V`), and a `.devblueprint` scaffold stamp recording the kit version and variant
+  each project was generated from, so a future `update` can tell which core files are stale.
+  `doctor` now reports the stamped version against the current kit version. Refs: P0-3.
 - Per-variant `setup.sh`, dropped into every scaffolded project by `init`: an idempotent
   one-shot that turns the variant's "after init" checklist into a single command (tool config
   files, package-manifest scripts, pre-commit hook and dependency install). Non-Node variants
