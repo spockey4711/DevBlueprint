@@ -51,7 +51,11 @@ A task is done when:
 
 ## Local automation
 
-- **Pre-commit hook** formats and lints only the staged files, so a broken format never lands.
-  Each variant wires this to its toolchain (husky + lint-staged, pre-commit framework, etc.).
+- **Pre-commit hook** runs the fast part of the gate (lint/format) before each commit, so a
+  broken format never lands - the "run the gate before pushing" step is enforced, not just
+  documented. `./setup.sh` wires it: Node uses husky + lint-staged, Python uses the pre-commit
+  framework, and the other variants commit a `.githooks/pre-commit` and point `core.hooksPath`
+  at it, so the hook is versioned and shared with everyone who clones. Heavier gates
+  (typecheck, test, build) stay in CI. `devblueprint doctor` reports whether the hook is wired.
 - **CI** runs the full gate on every PR into `develop` or `master` and on push to either. All
   jobs must be green to merge. The workflow ships with each variant.

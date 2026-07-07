@@ -29,9 +29,10 @@ commits and PRs (e.g. `Refs: P0-1`).
   `init` drops them into new projects, `doctor` checks them, and `update` keeps them in sync.
 - [x] P1-3: Optional templates: `SECURITY.md`, `CODE_OF_CONDUCT.md`. Opt-in via
   `init --community`; `--contact <method>` fills the reporting address in both.
-- [ ] P1-4: Pre-commit hook that runs the quality gate. `scripts/install-hooks.sh` or
-  `.githooks/pre-commit` + `core.hooksPath`, so the "before pushing" gate is enforced, not just
-  documented.
+- [x] P1-4: Pre-commit hook that runs the quality gate. Each variant's `setup.sh` wires it
+  (`.githooks/pre-commit` + `core.hooksPath` for generic/ios, husky and the pre-commit framework
+  for Node/Python), `doctor` reports whether it is wired, and the bats suite asserts it - so the
+  "before pushing" gate is enforced, not just documented.
 
 ## P2 - reach (more stacks, more automation)
 
