@@ -249,6 +249,10 @@ EOF
   copy "$vdir/gitignore" "$TARGET/.gitignore"
   [ -f "$vdir/Makefile" ] && copy "$vdir/Makefile" "$TARGET/Makefile"
 
+  # 5a. Stack-agnostic repo hygiene shared by every variant.
+  copy "$CORE/.editorconfig"  "$TARGET/.editorconfig"
+  copy "$CORE/.gitattributes" "$TARGET/.gitattributes"
+
   # 5b. The toolchain setup script - turns the variant's "after init" checklist
   # (configs, pre-commit hook, dependency install) into a single command.
   if [ -f "$vdir/setup.sh" ]; then
@@ -313,6 +317,7 @@ cmd_doctor() {
   [ -n "$target" ] || die "missing --target <dir>"
   local missing=0 f
   for f in CLAUDE.md CONTRIBUTING.md CHANGELOG.md .gitignore .devblueprint \
+           .editorconfig .gitattributes \
            scripts/wt.sh scripts/wt.conf .github/workflows/ci.yml \
            docs/engineering/git-workflow.md docs/engineering/conventions.md \
            docs/engineering/quality-and-testing.md \
@@ -371,6 +376,8 @@ cmd_update() {
   local eng="$TARGET/docs/engineering"
   sync_file "$CORE/git-workflow.md"          "$eng/git-workflow.md"
   sync_file "$CORE/engineering-standards.md" "$eng/engineering-standards.md"
+  sync_file "$CORE/.editorconfig"            "$TARGET/.editorconfig"
+  sync_file "$CORE/.gitattributes"           "$TARGET/.gitattributes"
   sync_file "$ROOT/scripts/wt.sh"            "$TARGET/scripts/wt.sh"
   if [ -f "$TARGET/scripts/wt.sh" ]; then
     chmod +x "$TARGET/scripts/wt.sh" 2>/dev/null || true

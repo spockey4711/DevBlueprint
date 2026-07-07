@@ -33,6 +33,8 @@ CONTRIBUTING.md                    the short contributor guide
 CHANGELOG.md                       fresh, Keep-a-Changelog format
 .devblueprint                      scaffold stamp: kit version + variant (for `update`)
 .gitignore                         stack-appropriate
+.editorconfig                      stack-agnostic editor baseline (charset, LF, indent)
+.gitattributes                     stack-agnostic line-ending normalization
 .github/workflows/ci.yml           the quality gate in CI
 Makefile                           (generic variant only) gate targets to fill in
 setup.sh                           one-shot toolchain wiring (configs, hooks, deps)
