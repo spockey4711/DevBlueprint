@@ -18,6 +18,8 @@ ruff check . && ruff format --check . && mypy . && pytest
 - `.github/workflows/ci.yml` (ruff + mypy + pytest).
 - `.github/dependabot.yml` (pip + github-actions updates) and `.tool-versions` (toolchain pin).
 - `.gitignore` for Python.
+- `docs/ops/deployment.md` (deploy runbook: managed/Docker/VPS + DB + env checklists) and
+  `.env.example` (committed template; real `.env*` stay ignored).
 - `app/` and `tests/` skeleton.
 
 ## After init (wire the toolchain)
