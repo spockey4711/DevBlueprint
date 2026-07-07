@@ -12,6 +12,9 @@ All notable changes are documented here, following
 
 ### Added
 
+- New `data-python` variant: a data-science stack (uv, ruff, nbqa + nbstripout for notebooks,
+  mypy strict over `src/`, pytest) with a `src/`+`notebooks/` split, `data/` scaffold, `Makefile`
+  gate, CI, and `extras/` (`.tool-versions` toolchain pin + `.github/dependabot.yml`). Refs: P2-4.
 - Optional community-health templates, opt-in via `init --community`: a `SECURITY.md` reporting
   policy and a Contributor Covenant 2.1 `CODE_OF_CONDUCT.md`. `--contact <method>` fills the
   reporting address in both (an `INSERT CONTACT METHOD` placeholder otherwise). Off by default and
