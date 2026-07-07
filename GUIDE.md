@@ -127,6 +127,10 @@ Full detail lands in the target project's `docs/engineering/git-workflow.md`.
 
 - **Solo / lightweight:** run `init --base master` for a single-branch trunk workflow (still
   worktrees, still PRs, still the gate). Or keep both branches but skip the dev auto-deploy.
+- **Existing repo:** run `devblueprint detect --target <dir>` first - it reads the repo's
+  stack fingerprints (`package.json`, `go.mod`, `Cargo.toml`, `Package.swift`, `pyproject.toml`)
+  and recommends the variant to pass to `init`, so adopting the workflow needs no guesswork.
+  `init` is overwrite-safe, so it adds the workflow without touching your code.
 - **Open source / collaborative:** add `--community --contact <email-or-url>` to scaffold
   `SECURITY.md` and a Contributor Covenant `CODE_OF_CONDUCT.md`.
 - **Add a stack:** copy an existing folder under `variants/`, adjust `manifest.env`, `wt.conf`,

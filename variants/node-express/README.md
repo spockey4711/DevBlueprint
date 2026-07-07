@@ -23,6 +23,8 @@ Or, with the shipped Makefile: `make check`.
 - `.github/workflows/ci.yml` (lint + typecheck + test + build).
 - `.github/dependabot.yml` (npm + github-actions updates) and `.tool-versions` (toolchain pin).
 - `.gitignore` for Node build/test artifacts.
+- `docs/ops/deployment.md` (deploy runbook: managed/Docker/VPS + DB + env checklists) and
+  `.env.example` (committed template; real `.env*` stay ignored).
 - `src/{routes,middleware,services,lib}`, `tests/{unit,integration}` scaffold.
 
 ## After init (wire the toolchain)

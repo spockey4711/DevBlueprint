@@ -3,14 +3,15 @@
 # gate + AI-assistant guidance) from the shared core and a stack variant.
 #
 # Usage:
-#   devblueprint list
+#   devblueprint list [--json]
 #   devblueprint init --target <dir> --variant <variant> [--name <name>] \
 #       [--from <intake.yml>] [--base <branch>] [--main <branch>] [--deploy <target>] \
 #       [--community] [--contact <method>] [--force] [--dry-run]
 #   devblueprint plan --target <dir> --from <intake.yml> [init flags]
 #   devblueprint update --target <dir> [--variant <variant>] [--dry-run]
-#   devblueprint doctor --target <dir> [--strict] [--run-gate]
-#   devblueprint version
+#   devblueprint doctor --target <dir> [--strict] [--run-gate] [--json]
+#   devblueprint detect --target <dir>
+#   devblueprint version [--json]
 #   devblueprint help
 #
 # The blueprint is documentation-first: `init` copies the tech-agnostic core docs
@@ -24,7 +25,9 @@
 # with the user first. `update` re-syncs only the core-owned files (the agnostic
 # engineering docs, wt.sh, and the GitHub PR/issue templates) into an existing
 # project, so old projects can pick up core changes without touching their CLAUDE.md
-# or code.
+# or code. `detect` inspects an existing repo's stack fingerprints (package.json,
+# go.mod, Cargo.toml, Package.swift, pyproject.toml) and recommends the variant to
+# scaffold from, so adopting the workflow in an existing project needs no guesswork.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -50,6 +53,29 @@ kit_version() {
 }
 
 # --- helpers ---------------------------------------------------------------
+
+# json_esc <string> : escape <string> for embedding inside a JSON string value
+# (the surrounding quotes are added by the caller). Hand-rolled so the machine
+# output stays dependency-free (no jq). Backslash must be replaced first, then the
+# double quote and the control characters that JSON forbids raw. Data we emit
+# (variant titles, quality-gate pipelines like `test -z "$(gofumpt -l .)"`, paths)
+# can carry quotes and backslashes, so this is not optional.
+json_esc() {
+  local s="$1"
+  s="${s//\\/\\\\}"
+  s="${s//\"/\\\"}"
+  s="${s//$'\t'/\\t}"
+  s="${s//$'\r'/\\r}"
+  s="${s//$'\n'/\\n}"
+  printf '%s' "$s"
+}
+
+# json_str_or_null <string> : a JSON string literal for <string>, or the literal
+# null when it is empty. Used for optional fields (e.g. a project's scaffold
+# version, absent before the .devblueprint stamp existed).
+json_str_or_null() {
+  if [ -z "$1" ]; then printf 'null'; else printf '"%s"' "$(json_esc "$1")"; fi
+}
 
 # render <template-file> <dest-file> : substitute {{TOKENS}} from the current
 # environment (PROJECT_NAME, MAIN_BRANCH, BASE_BRANCH, WT_CMD, QUALITY_GATE,
@@ -181,6 +207,24 @@ list_variants() {
   done
 }
 
+# list_variants_json : the same set of variants as list_variants, emitted as a
+# single JSON object {"variants":[{name,title,gate}, ...]} so an agent can pick a
+# variant (and learn its quality gate) without scraping the aligned human table.
+list_variants_json() {
+  local d name title gate out="" sep=""
+  for d in "$VARIANTS"/*/; do
+    [ -f "$d/manifest.env" ] || continue
+    name="$(basename "$d")"
+    # shellcheck source=/dev/null
+    title="$( . "$d/manifest.env"; printf '%s' "${VARIANT_TITLE:-}" )"
+    # shellcheck source=/dev/null
+    gate="$( . "$d/manifest.env"; printf '%s' "${QUALITY_GATE:-}" )"
+    out="${out}${sep}{\"name\":\"$(json_esc "$name")\",\"title\":\"$(json_esc "$title")\",\"gate\":\"$(json_esc "$gate")\"}"
+    sep=","
+  done
+  printf '{"variants":[%s]}\n' "$out"
+}
+
 # abspath <path> : absolute form of <path> without requiring it to exist (unlike
 # `cd && pwd`). Used by init/plan to resolve --target for display in dry-run mode,
 # where the directory must not be created.
@@ -231,6 +275,17 @@ load_intake() {
 # --- commands --------------------------------------------------------------
 
 cmd_list() {
+  local json=0
+  while [ "$#" -gt 0 ]; do
+    case "$1" in
+      --json) json=1; shift ;;
+      *) die "unknown option: $1" ;;
+    esac
+  done
+  if [ "$json" -eq 1 ]; then
+    list_variants_json
+    return 0
+  fi
   echo "Available variants:"
   list_variants
 }
@@ -459,13 +514,41 @@ cmd_plan() {
   cmd_init --dry-run "$@"
 }
 
+# report_check <status> <name> <message> : record one doctor check. In the
+# default human mode it prints the badge + message exactly as doctor always has;
+# under --json it appends a {"name","status","message"} object to CHECKS_JSON
+# instead of printing. status is one of ok|miss|note|fail|gate. Both JSON and
+# CHECKS_JSON are locals of cmd_doctor, visible here by bash's dynamic scoping.
+report_check() {
+  local status="$1" name="$2" msg="$3"
+  if [ "$JSON" -eq 1 ]; then
+    local sep=""
+    [ -n "$CHECKS_JSON" ] && sep=","
+    CHECKS_JSON="${CHECKS_JSON}${sep}{\"name\":\"$(json_esc "$name")\",\"status\":\"$status\",\"message\":\"$(json_esc "$msg")\"}"
+    return 0
+  fi
+  local badge
+  case "$status" in
+    ok)   badge="ok" ;;
+    miss) badge="MISS" ;;
+    note) badge="note" ;;
+    fail) badge="FAIL" ;;
+    gate) badge="gate" ;;
+    *)    badge="$status" ;;
+  esac
+  # %-4s pads "ok" to the badge column so every message lines up (the badge words
+  # are all <= 4 chars); two trailing spaces separate badge from message.
+  printf '  %-4s  %s\n' "$badge" "$msg"
+}
+
 cmd_doctor() {
-  local target="" strict=0 run_gate=0
+  local target="" strict=0 run_gate=0 JSON=0 CHECKS_JSON=""
   while [ "$#" -gt 0 ]; do
     case "$1" in
       --target) target="$2"; shift 2 ;;
       --strict) strict=1; shift ;;
       --run-gate) run_gate=1; shift ;;
+      --json) JSON=1; shift ;;
       *) die "unknown option: $1" ;;
     esac
   done
@@ -483,9 +566,9 @@ cmd_doctor() {
            docs/engineering/quality-and-testing.md \
            docs/engineering/engineering-standards.md; do
     if [ -e "$target/$f" ]; then
-      printf '  ok    %s\n' "$f"
+      report_check ok "$f" "$f"
     else
-      printf '  MISS  %s\n' "$f"; missing=$((missing + 1))
+      report_check miss "$f" "$f"; missing=$((missing + 1))
     fi
   done
   failures=$((failures + missing))
@@ -496,12 +579,12 @@ cmd_doctor() {
   # fully wired project, not a bare scaffold.
   if [ -f "$target/.githooks/pre-commit" ] || [ -f "$target/.pre-commit-config.yaml" ] \
      || [ -f "$target/.husky/pre-commit" ]; then
-    printf '  ok    pre-commit hook wired\n'
+    report_check ok pre-commit-hook "pre-commit hook wired"
   elif [ "$strict" -eq 1 ]; then
-    printf '  FAIL  pre-commit hook not wired - run ./setup.sh (strict)\n'
+    report_check fail pre-commit-hook "pre-commit hook not wired - run ./setup.sh (strict)"
     failures=$((failures + 1))
   else
-    printf '  note  pre-commit hook not wired yet - run ./setup.sh\n'
+    report_check note pre-commit-hook "pre-commit hook not wired yet - run ./setup.sh"
   fi
 
   # --strict: report git state. Not being a git repo is a strict failure (a
@@ -516,9 +599,9 @@ cmd_doctor() {
       else
         dirty="clean"
       fi
-      printf '  ok    git repo on %s (%s)\n' "$branch" "$dirty"
+      report_check ok git-repo "git repo on $branch ($dirty)"
     else
-      printf '  FAIL  not a git repository - run git init (strict)\n'
+      report_check fail git-repo "not a git repository - run git init (strict)"
       failures=$((failures + 1))
     fi
   fi
@@ -530,19 +613,30 @@ cmd_doctor() {
     local gate
     gate="$(resolve_gate "$target")"
     if [ -z "$gate" ]; then
-      printf '  note  no quality gate resolved (no variant stamp or Makefile) - skipped\n'
+      report_check note quality-gate "no quality gate resolved (no variant stamp or Makefile) - skipped"
     elif [ ! -d "$target" ]; then
-      printf '  FAIL  cannot run gate: target is not a directory\n'
+      report_check fail quality-gate "cannot run gate: target is not a directory"
       failures=$((failures + 1))
     else
-      printf '  gate  running: %s\n' "$gate"
+      report_check gate quality-gate-command "running: $gate"
       if ( cd "$target" && eval "$gate" ); then
-        printf '  ok    quality gate passed\n'
+        report_check ok quality-gate "quality gate passed"
       else
-        printf '  FAIL  quality gate failed\n'
+        report_check fail quality-gate "quality gate failed"
         failures=$((failures + 1))
       fi
     fi
+  fi
+
+  if [ "$JSON" -eq 1 ]; then
+    local ok stamped
+    stamped="$(stamp_version "$target")"
+    [ "$failures" -eq 0 ] && ok=true || ok=false
+    printf '{"ok":%s,"target":"%s","scaffoldVersion":%s,"kitVersion":"%s","failures":%d,"checks":[%s]}\n' \
+      "$ok" "$(json_esc "$target")" "$(json_str_or_null "$stamped")" \
+      "$(json_esc "$(kit_version)")" "$failures" "$CHECKS_JSON"
+    [ "$failures" -eq 0 ] || exit 1
+    return 0
   fi
 
   echo
@@ -578,6 +672,88 @@ stamp_variant() {
   local stamp="$1/.devblueprint"
   [ -f "$stamp" ] || return 0
   sed -n 's/^variant=//p' "$stamp" | head -n1
+}
+
+# fingerprint_variant <target> : echo one "variant<TAB>reason" line per stack
+# fingerprint file found directly under <target>. A repo can match more than once
+# (a polyglot monorepo), so the caller decides which to recommend; no output means
+# nothing was recognized (-> generic). Two files map to two variants each, resolved
+# by a dependency probe: package.json is web-nextjs when it lists a "next"
+# dependency and node-express otherwise; pyproject.toml is data-python when it names
+# a data-science library and backend-python otherwise.
+fingerprint_variant() {
+  local t="$1"
+  if [ -f "$t/package.json" ]; then
+    if grep -Eq '"next"[[:space:]]*:' "$t/package.json"; then
+      printf 'web-nextjs\tpackage.json (next dependency)\n'
+    else
+      printf 'node-express\tpackage.json\n'
+    fi
+  fi
+  [ -f "$t/go.mod" ]        && printf 'backend-go\tgo.mod\n'
+  [ -f "$t/Cargo.toml" ]    && printf 'rust\tCargo.toml\n'
+  [ -f "$t/Package.swift" ] && printf 'ios-swift\tPackage.swift\n'
+  if [ -f "$t/pyproject.toml" ]; then
+    if grep -Eiq '(pandas|numpy|scikit-?learn|jupyter|matplotlib|polars|torch|tensorflow|seaborn)' "$t/pyproject.toml"; then
+      printf 'data-python\tpyproject.toml (data-science dependencies)\n'
+    else
+      printf 'backend-python\tpyproject.toml\n'
+    fi
+  fi
+}
+
+# variant_title <variant> : the human title from a variant's manifest, or empty if
+# the variant is unknown (e.g. the generic fallback always resolves).
+variant_title() {
+  [ -f "$VARIANTS/$1/manifest.env" ] || return 0
+  # shellcheck source=/dev/null
+  ( . "$VARIANTS/$1/manifest.env"; printf '%s' "${VARIANT_TITLE:-}" )
+}
+
+# cmd_detect : inspect an existing repo's stack fingerprints and recommend the
+# variant to scaffold from. Read-only - it never writes; it just prints the
+# matching variant and the exact `init` line to run. Falls back to `generic` when
+# no fingerprint matches, so the recommendation is always actionable.
+cmd_detect() {
+  local target=""
+  while [ "$#" -gt 0 ]; do
+    case "$1" in
+      --target) target="$2"; shift 2 ;;
+      *) die "unknown option: $1" ;;
+    esac
+  done
+  [ -n "$target" ] || die "missing --target <dir>"
+  [ -d "$target" ] || die "target '$target' does not exist"
+  target="$(cd "$target" && pwd)"
+
+  echo "Inspecting $target for stack fingerprints"
+  echo
+
+  local matches variant reason count=0 recommend=""
+  matches="$(fingerprint_variant "$target")"
+  while IFS="$(printf '\t')" read -r variant reason; do
+    [ -n "$variant" ] || continue
+    count=$((count + 1))
+    [ -n "$recommend" ] || recommend="$variant"
+    printf '  found  %s -> %s\n' "$reason" "$variant"
+  done <<EOF
+$matches
+EOF
+
+  echo
+  if [ "$count" -eq 0 ]; then
+    recommend="generic"
+    echo "No stack fingerprints found - defaulting to the generic variant."
+  elif [ "$count" -gt 1 ]; then
+    echo "Multiple stacks detected - recommending the first; pass --variant to override."
+  fi
+
+  local title
+  title="$(variant_title "$recommend")"
+  printf 'Recommended variant: %s%s\n' "$recommend" "${title:+ ($title)}"
+  echo
+  echo "Scaffold it with:"
+  echo "  devblueprint init --target $target --variant $recommend"
 }
 
 cmd_update() {
@@ -663,11 +839,22 @@ stamp_version() {
 }
 
 cmd_version() {
-  echo "devblueprint $(kit_version)"
+  local json=0
+  while [ "$#" -gt 0 ]; do
+    case "$1" in
+      --json) json=1; shift ;;
+      *) die "unknown option: $1" ;;
+    esac
+  done
+  if [ "$json" -eq 1 ]; then
+    printf '{"version":"%s"}\n' "$(json_esc "$(kit_version)")"
+  else
+    echo "devblueprint $(kit_version)"
+  fi
 }
 
 usage() {
-  sed -n '5,14p' "$0" | sed 's/^# \{0,1\}//'
+  sed -n '5,15p' "$0" | sed 's/^# \{0,1\}//'
 }
 
 main() {
@@ -679,9 +866,10 @@ main() {
     plan) cmd_plan "$@" ;;
     update) cmd_update "$@" ;;
     doctor) cmd_doctor "$@" ;;
-    version | --version | -V) cmd_version ;;
+    detect) cmd_detect "$@" ;;
+    version | --version | -V) cmd_version "$@" ;;
     help | -h | --help | "") usage ;;
-    *) die "unknown command '$cmd' (try: list, init, plan, update, doctor, version, help)" ;;
+    *) die "unknown command '$cmd' (try: list, init, plan, update, doctor, detect, version, help)" ;;
   esac
 }
 
