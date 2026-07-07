@@ -184,9 +184,11 @@ prettier prettier-plugin-tailwindcss typescript @types/node @types/react \
 if [ "$DO_INSTALL" -eq 1 ] && command -v pnpm >/dev/null 2>&1; then
   echo "Installing dev dependencies (pnpm add -D)..."
   # shellcheck disable=SC2086
-  pnpm add -D $DEV_DEPS && pnpm exec playwright install chromium || {
-    say "install failed - run it manually (see below)"; DO_INSTALL=0;
-  }
+  if pnpm add -D $DEV_DEPS && pnpm exec playwright install chromium; then
+    :
+  else
+    say "install failed - run it manually (see below)"; DO_INSTALL=0
+  fi
 else
   DO_INSTALL=0
 fi
