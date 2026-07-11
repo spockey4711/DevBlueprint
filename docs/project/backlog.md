@@ -255,7 +255,7 @@ unchanged - only their ordering into waves. The eight P6-2 variants are each the
 
 ### Wave 3 - doctor --fix + GitLab CI + variants
 
-- [ ] P6-5: (CLI) `doctor --fix` - auto-repair missing or corrupted foundation files instead
+- [x] P6-5: (CLI) `doctor --fix` - auto-repair missing or corrupted foundation files instead
   of only reporting them. **Owns:** `bin/devblueprint` (`cmd_doctor`), `test/`.
 - [ ] P7-2: Provider-agnostic + richer CI - GitLab CI templates alongside GitHub Actions, plus
   preview-deploy and dependency-review workflows. **Owns:** `variants/*/gitlab/`,
