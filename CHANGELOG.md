@@ -86,6 +86,16 @@ All notable changes are documented here, following
   `scripts/check-env.sh`, all running the same check to keep `.env.example` in lockstep with the
   schema and validate required keys/patterns in any real `.env`. Ships a Rust-targeted deployment
   runbook under `docs/ops/deployment.md`. Refs: P7-3.
+- Ops artifacts for the `terraform-iac` variant, in adapted (env-contract-only) form: a
+  `.env.schema` + key-for-key `.env.example` declaring the inputs a plan/apply needs (provider
+  credentials, region, remote-state backend, `TF_VAR_*`), the stack-agnostic `scripts/check-env.sh`,
+  and a `docs/ops/deployment.md` runbook re-targeted to the `init` -> `plan` -> `apply` workflow
+  (remote state backend, secrets from a manager / `TF_VAR_*`, CI apply gated on plan review).
+  `make check` gains a `validate-env` step and CI a `Validate env schema` step, both running
+  `scripts/check-env.sh` to keep `.env.example` in lockstep with the schema. The container/PaaS
+  artifacts (`Dockerfile`, `docker-compose.yml`, `deploy/` skeletons) are intentionally omitted -
+  this variant already is the deploy/IaC layer, so there is nothing to containerize or a separate
+  deploy tree to scaffold. Refs: P7-3.
 - Ops artifacts for the `generic` variant: a `Dockerfile` + `.dockerignore` + `docker-compose.yml`,
   `deploy/` skeletons for Fly/Render/Terraform, and a `.env.schema` promoted from `.env.example` and
   enforced in the gate - `make check` runs `scripts/check-env.sh` (a new `validate-env` step) to keep

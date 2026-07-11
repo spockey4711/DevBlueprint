@@ -32,3 +32,15 @@
 - Prefer fast, offline `terraform test` (`tests/*.tftest.hcl`) that assert on `plan` output over
   slow `apply`-based tests that touch real cloud state. Use variables and mocked providers so the
   gate stays hermetic; reserve `apply`-run tests for the few behaviors a plan cannot verify.
+- The environment is a validated contract: `.env.schema` declares each input Terraform needs
+  (provider credentials, the region, the remote-state backend, `TF_VAR_*`; each required/optional
+  with an optional `pattern=`), and `make check` (plus CI) runs `scripts/check-env.sh` to keep
+  `.env.example` in lockstep with it and enforce required keys in any real `.env`. Declare new
+  variables in both the schema and `.env.example`, or the gate fails. See `docs/ops/deployment.md`
+  for the `init` -> `plan` -> `apply` runbook, the remote-state-backend setup, and the CI apply
+  gated on plan review.
+- The container / PaaS ops artifacts the application variants ship (a `Dockerfile`, `.dockerignore`,
+  `docker-compose.yml`, and `deploy/fly.toml` / `render.yaml` / `terraform/`) are intentionally
+  omitted for this variant: it already *is* the deploy / infrastructure layer, so there is no app to
+  containerize and no separate `deploy/terraform/` tree to scaffold - the repository is the
+  Terraform code. Only the env contract and runbook, which still apply, ship.

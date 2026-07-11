@@ -8,7 +8,7 @@ misconfiguration scanning, and GitHub Actions CI.
 ## Quality gate
 
 ```bash
-terraform fmt -check -recursive && terraform validate && tflint --recursive && terraform test
+sh scripts/check-env.sh && terraform fmt -check -recursive && terraform validate && tflint --recursive && terraform test
 ```
 
 Or, with the shipped Makefile: `make check` (it runs `terraform init -backend=false` first so
@@ -28,10 +28,20 @@ Or, with the shipped Makefile: `make check` (it runs `terraform init -backend=fa
   (Terraform + tflint + Trivy pins).
 - `.gitignore` for state, the provider cache, plan output, `*.tfvars` secrets and crash logs
   (the committed `.terraform.lock.hcl` is kept).
+- A validated env contract: `docs/ops/deployment.md` (an `init` -> `plan` -> `apply` runbook with a
+  remote state backend and a CI apply gated on plan review), `.env.example` (committed template;
+  real `.env*` stay ignored), and `.env.schema` + `scripts/check-env.sh` - the contract `make check`
+  and CI enforce so `.env.example` never drifts from the variables Terraform needs.
 - `modules`, `tests` scaffold.
 
 There is no `coverage.yml`: Terraform has no line-coverage metric, so `terraform test` runs in
 `ci.yml` as the test gate rather than behind a coverage floor.
+
+The container / PaaS ops artifacts the application variants ship (a `Dockerfile`, `.dockerignore`,
+`docker-compose.yml`, and `deploy/` skeletons) are intentionally omitted here: this variant *is*
+the deploy / infrastructure layer, so there is no app to containerize and no separate
+`deploy/terraform/` tree to scaffold - the whole repository already is the Terraform code. Only the
+validated env contract and the runbook, which still apply, ship.
 
 ## After init (wire the toolchain)
 
