@@ -40,6 +40,11 @@ All notable changes are documented here, following
 
 ### Added
 
+- `GETTING-STARTED.md`: filled the "Your first run" and "Your first task" sections with a
+  complete worked tutorial - one narrated run from `devblueprint init` through `setup.sh`, git
+  setup, `doctor`, creating the GitHub remote, then the everyday loop (worktree, edit, `make
+  check`, commit, push, PR, cleanup) - every command shown with its expected output, written
+  against the `generic` variant so a beginner needs no toolchain. Refs: P8-4.
 - `docs/glossary.md`: a plain-language glossary defining the everyday terms a beginner meets in
   these docs (terminal, path, repo, branch, commit, PR, worktree, CI, lint, variant, quality
   gate), one sentence each. Refs: P9-1.
