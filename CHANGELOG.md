@@ -17,6 +17,23 @@ All notable changes are documented here, following
   `GETTING-STARTED.md` and the README), and `test/vscode.bats` guards that every Linux-capable
   variant carries a valid `devcontainer.json` whose extensions match its `extensions.json` and
   that `init` scaffolds it. Refs: P11-2.
+- New `devblueprint doctor --env`: a host prerequisite check that needs no project (no `--target`).
+  It verifies git, Node and a working shell are present and, for anything missing, prints a
+  copy-paste install command for the detected OS (macOS via Homebrew, Windows via winget, Linux
+  via apt/NodeSource - matching the steps in `GETTING-STARTED.md`), then exits non-zero. Intended
+  as the first command a beginner runs, before a project even exists. `--json` mirrors the project
+  doctor's machine-readable shape (`{ok, os, failures, checks[]}`), with each check carrying an
+  optional `fix`. A new `test/doctor-env.bats` covers the pass path, each missing-tool path (via a
+  stubbed PATH), the JSON shape and option handling. Refs: P11-1.
+- New concept note `docs/concepts/worktrees.md` explains *why* we work one directory per branch -
+  the switching, stashing and collision costs of time-sharing a single working directory, what
+  worktrees buy instead, and the wider "isolate units of work" and "make throwaway things
+  disposable" habits behind the rule. Aimed at someone learning to be a good engineer, it links to
+  the glossary for terms and to the git-workflow doc for the concrete commands. Refs: P11-3.
+- New concept note `docs/concepts/commits-and-gate.md` explaining *why* the repo uses
+  Conventional Commits and a green quality gate, and what each buys you - aimed at someone
+  learning to be a good engineer, linking out to the glossary and the mechanics rather than
+  restating the rules. Refs: P11-4.
 - Every variant now ships a `.vscode/tasks.json`, so a scaffolded project wires its quality gate
   into VS Code's task menu out of the box: `Cmd/Ctrl+Shift+B` runs the full gate (the default
   build task), and **Run Task...** exposes the individual steps (lint, type-check, tests, build)

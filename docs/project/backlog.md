@@ -84,15 +84,15 @@ Each task is a brand-new standalone file, so all four are independent with zero 
 
 #### P11 - Environment check & zero-install (one CLI task + three parallel supports)
 
-- [ ] P11-1: (CLI) `devblueprint doctor --env` prerequisite check - verifies git / Node / a
+- [x] P11-1: (CLI) `devblueprint doctor --env` prerequisite check - verifies git / Node / a
   working shell are present and prints per-OS copy-paste fixes when they are not. The first
   command a beginner runs.
 - [x] P11-2: Promote a devcontainer / Codespaces "click here, get a ready environment" path as
   a first-class beginner option - a short doc plus making sure the relevant variants ship a
   `.devcontainer`. Zero local install. (references P8-1)
-- [ ] P11-3: Concept note `docs/concepts/worktrees.md` - why we work one-directory-per-branch,
+- [x] P11-3: Concept note `docs/concepts/worktrees.md` - why we work one-directory-per-branch,
   aimed at someone learning to be a good engineer. (links to P9-1 glossary)
-- [ ] P11-4: Concept note `docs/concepts/commits-and-gate.md` - why Conventional Commits and
+- [x] P11-4: Concept note `docs/concepts/commits-and-gate.md` - why Conventional Commits and
   the quality gate exist and what they buy you. Distinct file from P11-3. (links to P9-1)
 
 ### Months 12-18: reach and reuse - friendly failures, mentoring, localization
