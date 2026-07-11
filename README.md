@@ -134,9 +134,13 @@ upstream change to pull) or matches (so drift is a local edit), and the stamped 
 to compare the two overlaid docs automatically (`--variant <name>` overrides it).
 
 Options: `--target <dir>` `--name <name>` `--variant <variant>` `--main <branch>`
-`--base <branch>` `--community` `--contact <method>` `--force`. Use `--base master` for a
-single-branch trunk workflow, and `--community` to add optional `SECURITY.md` and
-`CODE_OF_CONDUCT.md` (with `--contact` filling the reporting address in both).
+`--base <branch>` `--agents <list>` `--community` `--contact <method>` `--force`. Use
+`--base master` for a single-branch trunk workflow, and `--community` to add optional
+`SECURITY.md` and `CODE_OF_CONDUCT.md` (with `--contact` filling the reporting address in
+both). Pass `--agents claude,cursor,codex,copilot` (default: just `claude`) to also emit
+instruction files for other coding agents - `AGENTS.md` (Codex), a Cursor project rule, and
+Copilot instructions - rendered from the same canonical guidance as `CLAUDE.md`; `update`
+re-renders whichever were selected so they never drift.
 
 Prefer a form to hand-writing the intake file? Open
 [`web/config-builder/index.html`](web/config-builder/index.html) - a self-contained,

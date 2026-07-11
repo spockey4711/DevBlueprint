@@ -6,7 +6,7 @@
 #   devblueprint list [--json]
 #   devblueprint init --target <dir> --variant <variant> [--name <name>] \
 #       [--from <intake.yml>] [--base <branch>] [--main <branch>] [--deploy <target>] \
-#       [--community] [--contact <method>] [--force] [--dry-run]
+#       [--agents <list>] [--community] [--contact <method>] [--force] [--dry-run]
 #   devblueprint plan --target <dir> --from <intake.yml> [init flags]
 #   devblueprint update --target <dir> [--variant <variant>] [--dry-run]
 #   devblueprint diff --target <dir> [--variant <variant>]
@@ -24,12 +24,17 @@
 # an intake file (see docs/agent/intake-schema.md); explicit flags still win, so a
 # conversation can override a single answer. `plan` (equivalently `init --dry-run`)
 # prints exactly what init would write without touching disk, so an agent can confirm
-# with the user first. `update` re-syncs only the core-owned files (the agnostic
-# engineering docs, wt.sh, and the GitHub PR/issue templates) into an existing
-# project, so old projects can pick up core changes without touching their CLAUDE.md
-# or code. `diff` is the read-only precursor to `update`: it reports which core-owned
-# files in a project have drifted from the current kit (in sync, drifted, or missing),
-# using the .devblueprint stamp as the base, without writing anything. `detect` inspects an existing repo's stack fingerprints (package.json,
+# with the user first. `--agents claude,cursor,codex` emits instruction files for
+# other coding agents (AGENTS.md for Codex, a Cursor project rule, Copilot
+# instructions) from the same canonical guidance as CLAUDE.md, recording the choice
+# in the .devblueprint stamp so `update` re-renders them in step. `update` re-syncs
+# only the core-owned files (the agnostic engineering docs, wt.sh, the GitHub
+# PR/issue templates, and any selected agent files) into an existing project, so old
+# projects can pick up core changes without touching their CLAUDE.md or code.
+# `diff` is the read-only precursor to `update`: it reports which core-owned files in
+# a project have drifted from the current kit (in sync, drifted, or missing), using
+# the .devblueprint stamp as the base, without writing anything. `detect` inspects an
+# existing repo's stack fingerprints (package.json,
 # go.mod, Cargo.toml, Package.swift, pyproject.toml) and recommends the variant to
 # scaffold from, so adopting the workflow in an existing project needs no guesswork.
 set -euo pipefail
@@ -89,19 +94,21 @@ json_str_or_null() {
   if [ -z "$1" ]; then printf 'null'; else printf '"%s"' "$(json_esc "$1")"; fi
 }
 
-# render <template-file> <dest-file> : substitute {{TOKENS}} from the current
-# environment (PROJECT_NAME, MAIN_BRANCH, BASE_BRANCH, WT_CMD, QUALITY_GATE,
-# COPY_LANGUAGE_NOTE, VARIANT_NOTES, CONTACT) using bash parameter expansion
-# (literal, no escaping pitfalls). Respects FORCE for overwrite safety.
+# render_content <template-file> : emit the rendered template on stdout -
+# substitute {{TOKENS}} from the current environment (PROJECT_NAME, MAIN_BRANCH,
+# BASE_BRANCH, WT_CMD, QUALITY_GATE, COPY_LANGUAGE_NOTE, VARIANT_NOTES, CONTACT)
+# using bash parameter expansion (literal, no escaping pitfalls), and select the
+# right workflow block. No disk writes and no overwrite guard, so callers decide
+# how to place the result: init's render() writes it once (overwrite-safe), while
+# update re-renders into a temp file and pipes it through sync_file.
 #
-# Templates may also carry conditional blocks delimited by their own lines:
+# Templates may carry conditional blocks delimited by their own lines:
 #   {{#TWO_BRANCH}} ... {{/TWO_BRANCH}}      (kept for develop -> master flow)
 #   {{#SINGLE_BRANCH}} ... {{/SINGLE_BRANCH}} (kept for trunk flow, base == main)
 # select_workflow_block strips whichever block does not match the chosen workflow
 # before token substitution runs.
-render() {
-  local tmpl="$1" dest="$2" content
-  place_guard "$dest" || return 0
+render_content() {
+  local tmpl="$1" content
   content="$(select_workflow_block < "$tmpl")"
   content="${content//\{\{PROJECT_NAME\}\}/$PROJECT_NAME}"
   content="${content//\{\{MAIN_BRANCH\}\}/$MAIN_BRANCH}"
@@ -111,10 +118,69 @@ render() {
   content="${content//\{\{COPY_LANGUAGE_NOTE\}\}/$COPY_LANGUAGE_NOTE}"
   content="${content//\{\{VARIANT_NOTES\}\}/$VARIANT_NOTES}"
   content="${content//\{\{CONTACT\}\}/$CONTACT}"
+  printf '%s\n' "$content"
+}
+
+# render <template-file> <dest-file> : write the rendered template to dest with
+# overwrite safety (skips an existing file unless FORCE). Honors DRY_RUN.
+render() {
+  local tmpl="$1" dest="$2"
+  place_guard "$dest" || return 0
   if [ "${DRY_RUN:-0}" -eq 1 ]; then info "would write $rel_dest"; return 0; fi
   mkdir -p "$(dirname "$dest")"
-  printf '%s\n' "$content" > "$dest"
+  render_content "$tmpl" > "$dest"
   info "wrote $rel_dest"
+}
+
+# agent_slug <name> : a filesystem-safe, lowercase-kebab form of <name>, used for
+# the per-project Cursor rule filename (.cursor/rules/<slug>.mdc). Lowercases,
+# maps every non-alphanumeric run to a single hyphen, and trims leading/trailing
+# hyphens, so "Acme App!" -> "acme-app".
+agent_slug() {
+  local s
+  s="$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]' | tr -c 'a-z0-9' '-' | tr -s '-')"
+  s="${s#-}"; s="${s%-}"
+  printf '%s' "$s"
+}
+
+# agent_dest <agent> : echo "<template>|<relative-dest>" for a non-Claude agent,
+# or nothing for an unknown/claude agent. The single source of truth for the
+# agent -> template + path mapping shared by init (which emits) and update (which
+# re-renders). Cursor's filename depends on the project name, so it is resolved
+# from the current PROJECT_NAME. CLAUDE.md is handled directly by init (it is the
+# canonical, user-owned copy) and is not part of this table.
+agent_dest() {
+  case "$1" in
+    codex)   printf '%s|%s' "$CORE/templates/agents/AGENTS.md.tmpl" "AGENTS.md" ;;
+    cursor)  printf '%s|%s' "$CORE/templates/agents/cursor.mdc.tmpl" ".cursor/rules/$(agent_slug "$PROJECT_NAME").mdc" ;;
+    copilot) printf '%s|%s' "$CORE/templates/agents/copilot-instructions.md.tmpl" ".github/copilot-instructions.md" ;;
+  esac
+}
+
+# resolve_agents <comma-list> : validate, dedupe and canonicalize the --agents
+# selection, echoing a space-separated list in a stable order. `claude` is always
+# included - CLAUDE.md is the canonical source the other files derive from and a
+# doctor-required foundation file, so it can never be switched off. Unknown agent
+# names are a hard error so typos surface instead of silently doing nothing.
+resolve_agents() {
+  local raw="$1" a out="claude" seen_codex=0 seen_cursor=0 seen_copilot=0
+  local -a parts
+  IFS=',' read -ra parts <<< "$raw"
+  for a in "${parts[@]}"; do
+    a="${a//[[:space:]]/}"
+    [ -n "$a" ] || continue
+    case "$a" in
+      claude)  ;;
+      codex)   seen_codex=1 ;;
+      cursor)  seen_cursor=1 ;;
+      copilot) seen_copilot=1 ;;
+      *) die "unknown agent '$a' (known: claude, codex, cursor, copilot)" ;;
+    esac
+  done
+  [ "$seen_codex" -eq 1 ]   && out="$out codex"
+  [ "$seen_cursor" -eq 1 ]  && out="$out cursor"
+  [ "$seen_copilot" -eq 1 ] && out="$out copilot"
+  printf '%s' "$out"
 }
 
 # select_workflow_block : filter stdin, keeping the {{#TWO_BRANCH}} block for a
@@ -307,7 +373,7 @@ cmd_init() {
   # intake-file values and defaults underneath (flags win). community_flag stays
   # "" until --community or an intake `community:` key sets it, so its default-off
   # is distinguishable from an explicit choice.
-  local from="" community_flag="" deploy=""
+  local from="" community_flag="" deploy="" agents=""
   TARGET="" PROJECT_NAME="" VARIANT="" MAIN_BRANCH="" BASE_BRANCH="" CONTACT="" FORCE=0 DRY_RUN=0
   while [ "$#" -gt 0 ]; do
     case "$1" in
@@ -318,6 +384,7 @@ cmd_init() {
       --main) MAIN_BRANCH="$2"; shift 2 ;;
       --base) BASE_BRANCH="$2"; shift 2 ;;
       --deploy) deploy="$2"; shift 2 ;;
+      --agents) agents="$2"; shift 2 ;;
       --community) community_flag=1; shift ;;
       --contact) CONTACT="$2"; shift 2 ;;
       --force) FORCE=1; shift ;;
@@ -352,6 +419,11 @@ cmd_init() {
   COMMUNITY="${community_flag:-0}"
   DEPLOY_TARGET="$deploy"
 
+  # --agents picks which coding-agent instruction files to emit (default: just
+  # CLAUDE.md). resolve_agents validates the list and always keeps claude in it.
+  [ -n "$agents" ] || agents="claude"
+  AGENTS="$(resolve_agents "$agents")"
+
   # {{CONTACT}} appears only in the optional community templates, but render()
   # substitutes it unconditionally, so it must always be defined. When neither the
   # CLI nor the intake file gives one, leave a visible placeholder to fill in.
@@ -380,6 +452,7 @@ cmd_init() {
     echo "Scaffolding '$PROJECT_NAME' ($VARIANT_TITLE) into $TARGET"
   fi
   echo "  branches: $BASE_BRANCH -> $MAIN_BRANCH   gate: $QUALITY_GATE"
+  echo "  agents: ${AGENTS// /, }"
   [ -n "$DEPLOY_TARGET" ] && echo "  deploy target: $DEPLOY_TARGET (recorded; runbook lands in a later wave)"
   echo
 
@@ -391,8 +464,18 @@ cmd_init() {
   append_if "$vdir/docs/conventions.append.md" "$eng/conventions.md"
   copy "$vdir/docs/quality-and-testing.md" "$eng/quality-and-testing.md"
 
-  # 2. AI-assistant guidance + contributing (assembled from templates).
-  render "$CORE/templates/CLAUDE.md.tmpl"       "$TARGET/CLAUDE.md"
+  # 2. AI-assistant guidance + contributing (assembled from templates). CLAUDE.md
+  # is always emitted (canonical source, doctor-required); the other selected
+  # agents get their own instruction file rendered from the same guidance.
+  local agent tmpl_dest
+  for agent in $AGENTS; do
+    if [ "$agent" = claude ]; then
+      render "$CORE/templates/CLAUDE.md.tmpl" "$TARGET/CLAUDE.md"
+      continue
+    fi
+    tmpl_dest="$(agent_dest "$agent")"
+    render "${tmpl_dest%%|*}" "$TARGET/${tmpl_dest#*|}"
+  done
   render "$CORE/templates/CONTRIBUTING.md.tmpl" "$TARGET/CONTRIBUTING.md"
 
   # 3. Fresh changelog.
@@ -412,9 +495,10 @@ EOF
   # scripts are stale. Shell-sourceable key=value; do not hand-edit the version.
   emit_stdin "$TARGET/.devblueprint" <<EOF
 # DevBlueprint scaffold stamp - read by \`devblueprint update\`.
-# Records the kit version and variant this project was scaffolded from.
+# Records the kit version, variant, and selected agents this project was scaffolded from.
 version=$(kit_version)
 variant=$VARIANT
+agents=${AGENTS// /,}
 EOF
 
   # 4. Worktree tooling. Keep wt.conf's branches in sync with the chosen
@@ -686,6 +770,16 @@ stamp_variant() {
   sed -n 's/^variant=//p' "$stamp" | head -n1
 }
 
+# stamp_agents <target> : the comma-separated agents recorded in a project's
+# .devblueprint stamp (e.g. "claude,cursor,codex"), or empty when the stamp is
+# absent or predates the --agents feature. update reads it to know which agent
+# instruction files to re-render.
+stamp_agents() {
+  local stamp="$1/.devblueprint"
+  [ -f "$stamp" ] || return 0
+  sed -n 's/^agents=//p' "$stamp" | head -n1
+}
+
 # fingerprint_variant <target> : echo one "variant<TAB>reason" line per stack
 # fingerprint file found directly under <target>. A repo can match more than once
 # (a polyglot monorepo), so the caller decides which to recommend; no output means
@@ -768,6 +862,63 @@ EOF
   echo "  devblueprint init --target $target --variant $recommend"
 }
 
+# wtconf_branch <target> <key> : read MAIN_BRANCH or BASE_BRANCH from a project's
+# scripts/wt.conf (its own record of its branch names), or empty if the file or
+# key is absent. Grep-based rather than sourcing, so update never executes code
+# from the project it is updating.
+wtconf_branch() {
+  local conf="$1/scripts/wt.conf" key="$2"
+  [ -f "$conf" ] || return 0
+  sed -n "s/^$key=\"\\(.*\\)\"\$/\\1/p" "$conf" | head -n1
+}
+
+# project_name_of <target> : the project's display name, taken from CLAUDE.md's H1
+# title (the canonical source, written at init) and falling back to the target
+# basename. Used to reconstruct {{PROJECT_NAME}} when update re-renders agent files.
+project_name_of() {
+  local h1=""
+  [ -f "$1/CLAUDE.md" ] && h1="$(sed -n 's/^# //p' "$1/CLAUDE.md" | head -n1)"
+  if [ -n "$h1" ]; then printf '%s' "$h1"; else basename "$1"; fi
+}
+
+# sync_agent_files : re-render the non-Claude agent instruction files recorded in
+# the project's .devblueprint stamp from the current core templates, so a project
+# picks up wording changes exactly as it does for the agnostic docs. The render
+# tokens are reconstructed from the project itself - branches from scripts/wt.conf,
+# project name from CLAUDE.md, and the variant tokens from the stamped (or
+# --variant) variant's manifest. CLAUDE.md is never touched: it is the user-owned
+# canonical copy. Reads TARGET/VARIANT/DRY_RUN and bumps CHANGED through sync_file.
+sync_agent_files() {
+  local list variant a tmpl_dest tmp
+  local PROJECT_NAME MAIN_BRANCH BASE_BRANCH WT_CMD QUALITY_GATE COPY_LANGUAGE_NOTE \
+        VARIANT_NOTES VARIANT_TITLE SRC_DIRS CONTACT=""
+  list="$(stamp_agents "$TARGET")"
+  [ -n "$list" ] || return 0
+  variant="${VARIANT:-$(stamp_variant "$TARGET")}"
+  if [ -z "$variant" ] || [ ! -f "$VARIANTS/$variant/manifest.env" ]; then
+    info "skip agent files (variant unknown; pass --variant to re-render them)"
+    return 0
+  fi
+  # shellcheck source=/dev/null
+  . "$VARIANTS/$variant/manifest.env"   # WT_CMD, QUALITY_GATE, COPY_LANGUAGE_NOTE
+  VARIANT_NOTES=""
+  [ -f "$VARIANTS/$variant/variant-notes.md" ] && VARIANT_NOTES="$(cat "$VARIANTS/$variant/variant-notes.md")"
+  MAIN_BRANCH="$(wtconf_branch "$TARGET" MAIN_BRANCH)"; [ -n "$MAIN_BRANCH" ] || MAIN_BRANCH="master"
+  BASE_BRANCH="$(wtconf_branch "$TARGET" BASE_BRANCH)"; [ -n "$BASE_BRANCH" ] || BASE_BRANCH="$MAIN_BRANCH"
+  PROJECT_NAME="$(project_name_of "$TARGET")"
+  local -a want
+  IFS=',' read -ra want <<< "$list"
+  for a in "${want[@]}"; do
+    [ "$a" = claude ] && continue
+    tmpl_dest="$(agent_dest "$a")"
+    [ -n "$tmpl_dest" ] || continue
+    tmp="$(mktemp)"
+    render_content "${tmpl_dest%%|*}" > "$tmp"
+    sync_file "$tmp" "$TARGET/${tmpl_dest#*|}"
+    rm -f "$tmp"
+  done
+}
+
 cmd_update() {
   TARGET="" VARIANT="" DRY_RUN=0 CHANGED=0
   while [ "$#" -gt 0 ]; do
@@ -831,6 +982,11 @@ cmd_update() {
   else
     info "skip conventions.md, quality-and-testing.md (variant overlay; pass --variant to refresh)"
   fi
+
+  # Multi-agent instruction files chosen at init (recorded in .devblueprint):
+  # re-render them so wording changes propagate. A no-op for projects that never
+  # selected any (older scaffolds, or the default claude-only setup).
+  sync_agent_files
 
   echo
   if [ "$DRY_RUN" -eq 1 ]; then
