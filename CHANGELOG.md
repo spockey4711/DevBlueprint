@@ -29,6 +29,30 @@ All notable changes are documented here, following
   via `doctor --run-gate`; the rest - those that need you to create the real app/package first,
   plus `backend-go` (its gate needs separately-pinned linters) - get a scaffold plus an
   idempotent `setup.sh` check via `doctor --strict`. Refs: P4-3.
+- `devblueprint upgrade`: self-update the installed kit in place, with stable/next channels and
+  pinning, so `update` targets stay reproducible. `--channel stable` follows the latest GitHub
+  release tag; `--channel next` follows `master`; `--version <ver>` pins an exact release and
+  freezes it. `--check` (alias `--dry-run`) reports installed vs available without writing;
+  `--force` re-applies at the same version. The chosen channel and pin are recorded in a
+  kit-local `.channel` file (default channel `stable`). It fetches the target into a staging
+  dir and swaps it over the kit root - safe to replace itself mid-run because the old inode
+  stays open until exit. It refuses installs it must not touch (a git clone, npm, Homebrew),
+  pointing at the right tool for each. Refs: P4-2.
+- Static intake config builder: a single, backend-less HTML page
+  (`web/config-builder/index.html`) that turns a short form into a
+  `.devblueprint-intake.yml`, for users who set the kit up by hand instead of through an
+  agent. It runs entirely in the browser - inline CSS/JS, no build step, no dependencies,
+  nothing hosted or sent anywhere - honoring the kit's no-runtime principle. The output is
+  the same flat `key: value` format the CLI reads, with a live preview plus copy/download.
+  The variant dropdown mirrors `devblueprint list` (inlined, since a static page cannot
+  query the CLI). README gains a pointer from the intake usage section. Refs: P5-4.
+- Multi-agent instruction templates under `core/templates/agents/`: `AGENTS.md.tmpl` (Codex and
+  the tool-neutral agentsmd convention), `cursor.mdc.tmpl` (a Cursor project rule with
+  `alwaysApply` frontmatter) and `copilot-instructions.md.tmpl` (GitHub Copilot repository
+  instructions). All three carry the same canonical workflow guidance as `CLAUDE.md.tmpl` and
+  reuse its exact `{{TOKEN}}` set and `{{#TWO_BRANCH}}` / `{{#SINGLE_BRANCH}}` blocks, so the
+  process is not Claude-only. Templates only; a `README.md` documents the source-to-target
+  mapping. Wiring them into `init`/`update` is P5-3. Refs: P5-2.
 - Installability: DevBlueprint now runs without a clone via three channels. A root `package.json`
   exposes `npx devblueprint` through a Node launcher (`packaging/npm/launch.cjs`); a Homebrew
   formula (`packaging/homebrew/devblueprint.rb`) installs the kit into `libexec`; and a

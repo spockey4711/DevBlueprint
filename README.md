@@ -91,6 +91,12 @@ bin/devblueprint doctor --target ~/Projects/myapp --strict --run-gate
 # Later, pull core changes into an existing project (preview with --dry-run)
 bin/devblueprint update --target ~/Projects/myapp
 
+# Self-update the installed kit. `stable` follows the latest release, `next` follows
+# master; `--version <ver>` pins an exact release so `update` stays reproducible.
+# `--check` reports what an upgrade would do without writing.
+bin/devblueprint upgrade --check
+bin/devblueprint upgrade --channel stable
+
 # Print the kit version
 bin/devblueprint version
 
@@ -121,6 +127,11 @@ Options: `--target <dir>` `--name <name>` `--variant <variant>` `--main <branch>
 `--base <branch>` `--community` `--contact <method>` `--force`. Use `--base master` for a
 single-branch trunk workflow, and `--community` to add optional `SECURITY.md` and
 `CODE_OF_CONDUCT.md` (with `--contact` filling the reporting address in both).
+
+Prefer a form to hand-writing the intake file? Open
+[`web/config-builder/index.html`](web/config-builder/index.html) - a self-contained,
+backend-less page that generates a `.devblueprint-intake.yml` in the browser. Nothing is
+hosted or sent anywhere.
 
 ## Variants
 
