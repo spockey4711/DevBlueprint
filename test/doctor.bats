@@ -32,9 +32,10 @@ load helper
   run db doctor --target "$TARGET" --run-gate
   # The go toolchain is almost certainly absent here, so the gate fails; what we
   # assert is that doctor resolved and *ran* the variant's gate, not `make check`.
-  # backend-go's gate is `test -z "$(gofumpt -l .)" && ...`, so match on gofumpt
-  # (unique to the go gate) rather than assuming the line starts with it.
-  [[ "$output" == *"running: test -z"*"gofumpt"* ]]
+  # backend-go's gate is `sh scripts/check-env.sh && test -z "$(gofumpt -l .)" && ...`,
+  # so match on gofumpt (unique to the go gate) rather than assuming where in the
+  # line it is - the check-env prefix means it no longer starts with `test -z`.
+  [[ "$output" == *"running:"*"gofumpt"* ]]
   [[ "$output" != *"running: make check"* ]]
 }
 
