@@ -90,7 +90,7 @@ Each task is a brand-new standalone file, so all four are independent with zero 
 - [ ] P11-2: Promote a devcontainer / Codespaces "click here, get a ready environment" path as
   a first-class beginner option - a short doc plus making sure the relevant variants ship a
   `.devcontainer`. Zero local install. (references P8-1)
-- [ ] P11-3: Concept note `docs/concepts/worktrees.md` - why we work one-directory-per-branch,
+- [x] P11-3: Concept note `docs/concepts/worktrees.md` - why we work one-directory-per-branch,
   aimed at someone learning to be a good engineer. (links to P9-1 glossary)
 - [ ] P11-4: Concept note `docs/concepts/commits-and-gate.md` - why Conventional Commits and
   the quality gate exist and what they buy you. Distinct file from P11-3. (links to P9-1)

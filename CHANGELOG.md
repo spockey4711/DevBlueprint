@@ -7,6 +7,11 @@ All notable changes are documented here, following
 
 ### Added
 
+- New concept note `docs/concepts/worktrees.md` explains *why* we work one directory per branch -
+  the switching, stashing and collision costs of time-sharing a single working directory, what
+  worktrees buy instead, and the wider "isolate units of work" and "make throwaway things
+  disposable" habits behind the rule. Aimed at someone learning to be a good engineer, it links to
+  the glossary for terms and to the git-workflow doc for the concrete commands. Refs: P11-3.
 - Every variant now ships a `.vscode/tasks.json`, so a scaffolded project wires its quality gate
   into VS Code's task menu out of the box: `Cmd/Ctrl+Shift+B` runs the full gate (the default
   build task), and **Run Task...** exposes the individual steps (lint, type-check, tests, build)
