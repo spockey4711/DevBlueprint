@@ -69,11 +69,11 @@ Each task is a brand-new standalone file, so all four are independent with zero 
 
 #### P10 - Guided init (one CLI task + three parallel supports)
 
-- [ ] P10-1: (CLI) Interactive wizard: `devblueprint init` with no flags runs a plain-language
+- [x] P10-1: (CLI) Interactive wizard: `devblueprint init` with no flags runs a plain-language
   prompt that explains each question, suggests sensible defaults (especially the target path),
   and shows exactly what will be written before touching disk (reuse the existing `plan`
   output). The single biggest lever - no flag knowledge required.
-- [ ] P10-2: Beginner mode for the `devblueprint-setup` interview skill - assume zero
+- [x] P10-2: Beginner mode for the `devblueprint-setup` interview skill - assume zero
   knowledge, gloss every term in one line, and actively help at the path step. Agent files
   only. (pairs with P9-1 for shared glossary wording)
 - [x] P10-3: Ship `.vscode/extensions.json` (recommended extensions) per variant, so opening

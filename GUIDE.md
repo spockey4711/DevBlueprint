@@ -2,6 +2,11 @@
 
 ## Two-minute start
 
+New here and unsure which flags to pass? Just run `bin/devblueprint init` with no arguments.
+It starts a guided wizard that explains each question in plain language, suggests a sensible
+default for every answer (including where to put the project), shows exactly what it will write,
+and only scaffolds once you confirm. The flag form below is the same thing, scripted:
+
 ```bash
 # 1. Pick a variant
 bin/devblueprint list

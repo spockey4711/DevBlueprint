@@ -15,6 +15,13 @@ All notable changes are documented here, following
   `rust-lang.rust-analyzer` for Rust), with `EditorConfig.EditorConfig` and
   `github.vscode-github-actions` as the shared baseline. A new `test/vscode.bats` guards that every
   variant carries a valid, non-empty list and that `init` scaffolds it. Refs: P10-3.
+- The `devblueprint-setup` interview skill gained a **Beginner mode**: when the user signals they
+  are new, it assumes zero prior knowledge, glosses every term the interview raises (variant,
+  deploy target, branch, two-branch vs. trunk, worktree, PR, quality gate, intake file) in one
+  line using the `docs/glossary.md` wording, and actively helps at the path step (glosses the
+  target path, offers a concrete default, shows `pwd`/`ls` when the user is lost, and confirms the
+  resolved absolute path before writing). Same five questions, same `plan`-before-`init`. Refs:
+  P10-2.
 - The static config builder (`web/config-builder/`) now covers everything the CLI accepts, not
   just a subset. It gained the missing intake keys (`flavors`, `agents`, `extends`), refreshed the
   variant dropdown to all 17 stacks, and added a **Target directory** field plus a second output
@@ -58,6 +65,13 @@ All notable changes are documented here, following
 
 ### Added
 
+- `devblueprint init` with no flags now runs a guided interactive wizard: it asks a handful of
+  plain-language questions (each prefaced with a one-line explanation), suggests a sensible
+  default for every answer - especially a concrete `~/Projects/<slug>` target path - shows
+  exactly what would be written by reusing the `plan` (dry-run) output, and only scaffolds after
+  an explicit confirmation, so a newcomer can create a project without knowing a single flag.
+  Answers are read from stdin, so an early EOF falls back to the shown defaults and the final
+  confirm defaults to "no" - a missing answer never writes to disk. Refs: P10-1.
 - `docs/faq.md`: a plain-language FAQ answering the common "why did this happen, what now?"
   moments a beginner hits (a directory/file already exists, "not a git repository", a red quality
   gate, being on the wrong branch), with a symptom, a cause and a next step for each. Refs: P9-2.
