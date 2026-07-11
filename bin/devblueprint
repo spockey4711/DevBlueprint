@@ -5,9 +5,9 @@
 # Usage:
 #   devblueprint list [--json]
 #   devblueprint init --target <dir> --variant <variant> [--name <name>] \
-#       [--from <intake.yml>] [--base <branch>] [--main <branch>] [--deploy <target>] \
-#       [--flavor <list>] [--agents <list>] [--community] [--contact <method>] \
-#       [--force] [--dry-run]
+#       [--from <intake.yml>] [--extends <baseline>] [--base <branch>] [--main <branch>] \
+#       [--deploy <target>] [--flavor <list>] [--agents <list>] [--community] \
+#       [--contact <method>] [--force] [--dry-run]
 #   devblueprint init --target <dir> --package <name>:<variant> [--package ...] [init flags]
 #       (monorepo: one repo, many packages, aggregated CI + per-package quality gates)
 #   devblueprint plan --target <dir> --from <intake.yml> [init flags]
@@ -25,7 +25,13 @@
 # its root-level extras/, and .gitignore. It never overwrites existing
 # files unless --force is given. `init --from <intake.yml>` seeds those answers from
 # an intake file (see docs/agent/intake-schema.md); explicit flags still win, so a
-# conversation can override a single answer. `plan` (equivalently `init --dry-run`)
+# conversation can override a single answer. An intake file may declare
+# `extends: <baseline>` (or `init --extends <baseline>` on the CLI) to inherit an
+# org baseline - a shared intake file of company defaults (branches, contact,
+# agents, ...) that projects layer their own answers over, turning the kit from a
+# solo tool into a team standardizer. Resolution is strict precedence: explicit CLI
+# flags win, then the project's intake keys, then the baseline (chained through its
+# own `extends`), then the built-in defaults. `plan` (equivalently `init --dry-run`)
 # prints exactly what init would write without touching disk, so an agent can confirm
 # with the user first. `--agents claude,cursor,codex` emits instruction files for
 # other coding agents (AGENTS.md for Codex, a Cursor project rule, Copilot
@@ -542,17 +548,19 @@ abspath() {
   esac
 }
 
-# load_intake <file> : read a .devblueprint-intake.yml intake file into IN_*
-# globals (IN_NAME, IN_VARIANT, IN_MAIN, IN_BASE, IN_COMMUNITY, IN_CONTACT,
-# IN_DEPLOY). The schema is a flat map of `key: value` pairs - not general YAML -
-# so a tiny hand-rolled reader is enough and keeps the kit dependency-free. Blank
-# lines and `#` comments (whole-line or trailing ` #...`) are ignored; values may
-# be single- or double-quoted. Unknown keys are a hard error so typos surface
-# instead of silently doing nothing. See docs/agent/intake-schema.md.
-load_intake() {
+# apply_intake_file <file> : read a .devblueprint-intake.yml intake file and set
+# the IN_* globals (IN_NAME, IN_VARIANT, IN_MAIN, IN_BASE, IN_COMMUNITY,
+# IN_CONTACT, IN_DEPLOY, IN_FLAVORS, IN_AGENTS) for every key it declares - and
+# only those, so a more specific file layered on top overrides a baseline without
+# wiping the keys it stays silent about. The schema is a flat map of `key: value`
+# pairs - not general YAML - so a tiny hand-rolled reader is enough and keeps the
+# kit dependency-free. Blank lines and `#` comments (whole-line or trailing
+# ` #...`) are ignored; values may be single- or double-quoted. The `extends` key
+# is accepted here (add_config_file drives the baseline inheritance it names) but
+# not applied. Unknown keys are a hard error so typos surface instead of silently
+# doing nothing. See docs/agent/intake-schema.md.
+apply_intake_file() {
   local file="$1" line key val
-  [ -f "$file" ] || die "intake file not found: $file"
-  IN_NAME="" IN_VARIANT="" IN_MAIN="" IN_BASE="" IN_COMMUNITY="" IN_CONTACT="" IN_DEPLOY="" IN_FLAVORS=""
   while IFS= read -r line || [ -n "$line" ]; do
     line="${line#"${line%%[![:space:]]*}"}"        # ltrim
     case "$line" in ''|'#'*) continue ;; esac       # skip blank / comment lines
@@ -575,9 +583,136 @@ load_intake() {
       contact)   IN_CONTACT="$val" ;;
       deploy)    IN_DEPLOY="$val" ;;
       flavors)   IN_FLAVORS="$val" ;;
+      agents)    IN_AGENTS="$val" ;;
+      extends)   : ;;   # handled by collect_config_files, not a value key
       *) die "unknown intake key '$key' in $file (see docs/agent/intake-schema.md)" ;;
     esac
   done < "$file"
+}
+
+# read_extends <file> : echo the value of the `extends` key in an intake/baseline
+# file (empty when absent). A focused parser rather than a full apply so the
+# baseline chain can be resolved before any file's other keys are applied - the
+# baseline must land under the file that extends it. Trimming and quote handling
+# mirror apply_intake_file so `extends: "org/base.yml"` and a bare `extends: base`
+# both read cleanly.
+read_extends() {
+  local file="$1" line val
+  while IFS= read -r line || [ -n "$line" ]; do
+    line="${line#"${line%%[![:space:]]*}"}"
+    case "$line" in extends:*) : ;; *) continue ;; esac
+    line="${line%% #*}"
+    val="${line#*:}"
+    val="${val#"${val%%[![:space:]]*}"}"
+    val="${val%"${val##*[![:space:]]}"}"
+    case "$val" in
+      \"*\") val="${val#\"}"; val="${val%\"}" ;;
+      \'*\') val="${val#\'}"; val="${val%\'}" ;;
+    esac
+    printf '%s' "$val"
+    return 0
+  done < "$file"
+}
+
+# canon_file <path> : absolute, symlink-free path to an existing file, so the
+# extends cycle guard compares files by identity rather than by the textual path
+# each reference happened to use. Returns non-zero when the containing directory
+# does not exist.
+canon_file() {
+  local d b
+  d="$(cd "$(dirname "$1")" 2>/dev/null && pwd)" || return 1
+  b="$(basename "$1")"
+  printf '%s/%s' "$d" "$b"
+}
+
+# baseline_search_dirs : the directories a bare `extends: <name>` baseline is
+# looked up in, highest priority first. DEVBLUEPRINT_BASELINE_DIR is an explicit
+# override (the test suite points it at a throwaway dir; an org can point it at a
+# checked-out standards repo); the XDG and dotfile locations are where a user
+# drops shared baselines by hand.
+baseline_search_dirs() {
+  [ -n "${DEVBLUEPRINT_BASELINE_DIR:-}" ] && printf '%s\n' "$DEVBLUEPRINT_BASELINE_DIR"
+  printf '%s\n' "${XDG_CONFIG_HOME:-$HOME/.config}/devblueprint/baselines"
+  printf '%s\n' "$HOME/.devblueprint/baselines"
+}
+
+# find_named_baseline <name> : the path to the first `<name>.yml`/`<name>.yaml`
+# found across baseline_search_dirs, or empty (non-zero) when none matches.
+find_named_baseline() {
+  local name="$1" d f
+  while IFS= read -r d; do
+    [ -n "$d" ] || continue
+    for f in "$d/$name.yml" "$d/$name.yaml"; do
+      [ -f "$f" ] && { printf '%s' "$f"; return 0; }
+    done
+  done < <(baseline_search_dirs)
+  return 1
+}
+
+# resolve_baseline_path <ref> <base-dir> : turn an `extends` reference into an
+# existing baseline file, echoed as a canonical path. A ref with a slash, a
+# leading ~, or a .yml/.yaml suffix is a filesystem path (absolute, or relative to
+# <base-dir> - the directory of the file that declared the extends); anything else
+# is a bare name resolved through baseline_search_dirs. Returns non-zero when no
+# such file exists so the caller can report an actionable error.
+resolve_baseline_path() {
+  local ref="$1" base_dir="$2" p=""
+  # A leading ~/ is expanded by hand (it is data here, not a shell word, so the
+  # shell never expands it for us).
+  [ "${ref#\~/}" != "$ref" ] && ref="$HOME/${ref#\~/}"
+  case "$ref" in
+    /*)           p="$ref" ;;
+    */*)          p="$base_dir/$ref" ;;              # contains a slash -> relative path
+    *.yml|*.yaml) p="$base_dir/$ref" ;;              # bare filename with extension -> relative
+    *)            p="$(find_named_baseline "$ref")" || return 1 ;;  # bare name -> search dirs
+  esac
+  [ -n "$p" ] && [ -f "$p" ] || return 1
+  canon_file "$p"
+}
+
+# add_config_file <file> <override-extends> : append <file> and, ahead of it, the
+# baseline chain it extends to CONFIG_FILES (base-first, so applying the list in
+# order yields the right precedence: deepest baseline lowest, this file highest).
+# <override-extends> replaces the file's own `extends` key when non-empty (the CLI
+# --extends winning over an intake file's declaration). CONFIG_SEEN guards against
+# an extends cycle. Reads/writes the CONFIG_FILES array and CONFIG_SEEN string.
+add_config_file() {
+  local file="$1" override="$2" abs ext bdir bpath
+  abs="$(canon_file "$file")" || die "config file not found: $file"
+  case " $CONFIG_SEEN " in *" $abs "*) die "circular 'extends' detected at $file" ;; esac
+  CONFIG_SEEN="$CONFIG_SEEN $abs"
+  if [ -n "$override" ]; then ext="$override"; else ext="$(read_extends "$file")"; fi
+  if [ -n "$ext" ]; then
+    bdir="$(dirname "$abs")"
+    bpath="$(resolve_baseline_path "$ext" "$bdir")" \
+      || die "baseline not found: '$ext' (extended from $(basename "$file"); see docs/agent/intake-schema.md)"
+    add_config_file "$bpath" ""
+  fi
+  CONFIG_FILES+=("$abs")
+}
+
+# load_config <intake-file> <cli-extends> : resolve the full answer set into the
+# IN_* globals, layering an org baseline (chained through `extends`) under a
+# project's intake file. Either argument may be empty: with only an intake file it
+# behaves like the old single-file read (plus any `extends:` inside it); with only
+# --extends it seeds answers straight from a baseline; with both, --extends wins as
+# the intake file's baseline. Precedence within the IN_* layer is baseline-then-
+# project; the CLI flags cmd_init already parsed still override the result.
+load_config() {
+  local from="$1" ext_cli="$2" f bpath
+  IN_NAME="" IN_VARIANT="" IN_MAIN="" IN_BASE="" IN_COMMUNITY="" IN_CONTACT="" \
+    IN_DEPLOY="" IN_FLAVORS="" IN_AGENTS=""
+  CONFIG_FILES=(); CONFIG_SEEN=""
+  if [ -n "$from" ]; then
+    [ -f "$from" ] || die "intake file not found: $from"
+    add_config_file "$from" "$ext_cli"
+  elif [ -n "$ext_cli" ]; then
+    bpath="$(resolve_baseline_path "$ext_cli" "$(pwd)")" \
+      || die "baseline not found: '$ext_cli' (see docs/agent/intake-schema.md)"
+    add_config_file "$bpath" ""
+  fi
+  [ "${#CONFIG_FILES[@]}" -gt 0 ] || return 0
+  for f in "${CONFIG_FILES[@]}"; do apply_intake_file "$f"; done
 }
 
 # --- commands --------------------------------------------------------------
@@ -644,7 +779,7 @@ cmd_init() {
   # intake-file values and defaults underneath (flags win). community_flag stays
   # "" until --community or an intake `community:` key sets it, so its default-off
   # is distinguishable from an explicit choice.
-  local from="" community_flag="" deploy="" agents="" flavors_raw=""
+  local from="" extends_cli="" community_flag="" deploy="" agents="" flavors_raw=""
   # PACKAGES holds space-separated <name>:<variant> specs; any --package turns init
   # into monorepo mode (multiple packages in one repo, aggregated CI, per-package
   # gates) and is mutually exclusive with the single-variant --variant.
@@ -653,6 +788,7 @@ cmd_init() {
   while [ "$#" -gt 0 ]; do
     case "$1" in
       --from) from="$2"; shift 2 ;;
+      --extends) extends_cli="$2"; shift 2 ;;
       --target) TARGET="$2"; shift 2 ;;
       --name) PROJECT_NAME="$2"; shift 2 ;;
       --variant) VARIANT="$2"; shift 2 ;;
@@ -673,11 +809,12 @@ cmd_init() {
     esac
   done
 
-  # Intake file fills any answer the CLI did not give (explicit flags win). Only
-  # variant/name/branches/community/contact/deploy come from the file; --target is
-  # always a CLI argument (it says *where* to scaffold, not *what*).
-  if [ -n "$from" ]; then
-    load_intake "$from"
+  # Intake file (and any org baseline it extends) fills every answer the CLI did
+  # not give - explicit flags still win. load_config layers the baseline under the
+  # project's intake file into the IN_* globals; --target is never among them (it
+  # says *where* to scaffold, not *what*, so it stays a CLI-only argument).
+  if [ -n "$from" ] || [ -n "$extends_cli" ]; then
+    load_config "$from" "$extends_cli"
     [ -n "$PROJECT_NAME" ] || PROJECT_NAME="$IN_NAME"
     [ -n "$VARIANT" ]      || VARIANT="$IN_VARIANT"
     [ -n "$MAIN_BRANCH" ]  || MAIN_BRANCH="$IN_MAIN"
@@ -685,6 +822,7 @@ cmd_init() {
     [ -n "$CONTACT" ]      || CONTACT="$IN_CONTACT"
     [ -n "$deploy" ]       || deploy="$IN_DEPLOY"
     [ -n "$flavors_raw" ]  || flavors_raw="$IN_FLAVORS"
+    [ -n "$agents" ]       || agents="$IN_AGENTS"
     if [ -z "$community_flag" ] && [ -n "$IN_COMMUNITY" ]; then
       case "$IN_COMMUNITY" in
         true|yes|on|1)  community_flag=1 ;;
@@ -874,9 +1012,9 @@ EOF
   if [ "$DRY_RUN" -eq 1 ]; then
     echo "Plan only - nothing was written. Apply it with:"
     if [ -n "$from" ]; then
-      echo "  devblueprint init --target $TARGET --from $from"
+      echo "  devblueprint init --target $TARGET --from $from${extends_cli:+ --extends $extends_cli}"
     else
-      echo "  devblueprint init --target $TARGET --variant $VARIANT${FLAVORS:+ --flavor ${FLAVORS// /,}}"
+      echo "  devblueprint init --target $TARGET --variant $VARIANT${extends_cli:+ --extends $extends_cli}${FLAVORS:+ --flavor ${FLAVORS// /,}}"
     fi
     return 0
   fi

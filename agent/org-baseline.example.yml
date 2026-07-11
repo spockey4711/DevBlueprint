@@ -1,0 +1,38 @@
+# DevBlueprint org baseline (example)
+#
+# A shared intake file of company defaults that projects inherit with
+#   extends: org-baseline        (in a project's .devblueprint-intake.yml)
+# or
+#   devblueprint init --target <dir> --variant <v> --extends org-baseline
+#
+# A baseline is an ordinary intake file (same flat `key: value` schema as
+# agent/intake.example.yml), so it can set any key a project can - except `name`,
+# which is per-project. Each project layers its own answers on top; explicit CLI
+# flags still win over both. See docs/agent/intake-schema.md ("Org baseline /
+# inheritance") for resolution and precedence.
+#
+# Drop this file where `extends: <bare-name>` looks it up, highest priority first:
+#   $DEVBLUEPRINT_BASELINE_DIR/                     (e.g. a checked-out standards repo)
+#   ${XDG_CONFIG_HOME:-~/.config}/devblueprint/baselines/
+#   ~/.devblueprint/baselines/
+# or reference it by path: `extends: ../shared/org-baseline.yml`.
+
+# Standard git workflow for the org. main is always-deployable; base is where
+# feature work integrates. base == main would select the single-branch (trunk) flow.
+main: main
+base: develop
+
+# Every repo ships the community-health files with the org security contact.
+community: true
+contact: security@example.com
+
+# Standardize the coding-agent instruction files across the org. claude is always
+# emitted; add the others your team uses. Comma-separated: claude, codex, cursor, copilot.
+agents: claude, cursor
+
+# A baseline may itself extend a broader one (inheritance chains). Uncomment to
+# layer this org baseline on top of, say, a division-wide baseline:
+# extends: division-baseline
+
+# variant, name, deploy and flavors are intentionally left to each project - they
+# vary per repo. A baseline may still set them as defaults if your org prefers.

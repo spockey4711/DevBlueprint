@@ -25,6 +25,19 @@ All notable changes are documented here, following
 
 ### Added
 
+- Org baseline / config inheritance: an intake file can declare `extends: <baseline>` (or
+  `init --extends <baseline>` on the CLI) to inherit a shared org baseline - a company default
+  intake file (branches, contact, community, agents, ...) that projects layer their own answers
+  over, turning the kit from a solo tool into a team standardizer. A baseline is an ordinary
+  intake file, so it may itself `extends` another (chained, with cycle detection). Resolution is
+  strict precedence: explicit CLI flags win, then the project's intake keys, then the baseline
+  chain (deepest last), then the built-in defaults. A bare `extends: org-baseline` is resolved
+  through `$DEVBLUEPRINT_BASELINE_DIR` and the user config dirs
+  (`$XDG_CONFIG_HOME/devblueprint/baselines`, `~/.devblueprint/baselines`); a reference with a
+  slash, a leading `~/`, or a `.yml`/`.yaml` suffix is a path relative to the referencing file.
+  Intake files also gain an `agents` key so a baseline can standardize the coding-agent toolset.
+  A ready-to-copy `agent/org-baseline.example.yml` ships alongside `agent/intake.example.yml`.
+  Refs: P7-4.
 - Ops artifacts for the `generic` variant: a `Dockerfile` + `.dockerignore` + `docker-compose.yml`,
   `deploy/` skeletons for Fly/Render/Terraform, and a `.env.schema` promoted from `.env.example` and
   enforced in the gate - `make check` runs `scripts/check-env.sh` (a new `validate-env` step) to keep
