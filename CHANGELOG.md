@@ -25,6 +25,15 @@ All notable changes are documented here, following
   the base: its version distinguishes an upstream kit change from a local edit, and its recorded
   variant resolves the two variant-overlaid docs so `--variant` is optional (but still overrides).
   Covered by a new `test/diff.bats`. README and usage updated. Refs: P5-1.
+- `devblueprint upgrade`: self-update the installed kit in place, with stable/next channels and
+  pinning, so `update` targets stay reproducible. `--channel stable` follows the latest GitHub
+  release tag; `--channel next` follows `master`; `--version <ver>` pins an exact release and
+  freezes it. `--check` (alias `--dry-run`) reports installed vs available without writing;
+  `--force` re-applies at the same version. The chosen channel and pin are recorded in a
+  kit-local `.channel` file (default channel `stable`). It fetches the target into a staging
+  dir and swaps it over the kit root - safe to replace itself mid-run because the old inode
+  stays open until exit. It refuses installs it must not touch (a git clone, npm, Homebrew),
+  pointing at the right tool for each. Refs: P4-2.
 - Static intake config builder: a single, backend-less HTML page
   (`web/config-builder/index.html`) that turns a short form into a
   `.devblueprint-intake.yml`, for users who set the kit up by hand instead of through an

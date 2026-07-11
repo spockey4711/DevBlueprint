@@ -94,6 +94,12 @@ bin/devblueprint diff --target ~/Projects/myapp
 # Later, pull core changes into an existing project (preview with --dry-run)
 bin/devblueprint update --target ~/Projects/myapp
 
+# Self-update the installed kit. `stable` follows the latest release, `next` follows
+# master; `--version <ver>` pins an exact release so `update` stays reproducible.
+# `--check` reports what an upgrade would do without writing.
+bin/devblueprint upgrade --check
+bin/devblueprint upgrade --channel stable
+
 # Print the kit version
 bin/devblueprint version
 
