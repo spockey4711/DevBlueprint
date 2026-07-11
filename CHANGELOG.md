@@ -12,6 +12,10 @@ All notable changes are documented here, following
   worktrees buy instead, and the wider "isolate units of work" and "make throwaway things
   disposable" habits behind the rule. Aimed at someone learning to be a good engineer, it links to
   the glossary for terms and to the git-workflow doc for the concrete commands. Refs: P11-3.
+- New concept note `docs/concepts/commits-and-gate.md` explaining *why* the repo uses
+  Conventional Commits and a green quality gate, and what each buys you - aimed at someone
+  learning to be a good engineer, linking out to the glossary and the mechanics rather than
+  restating the rules. Refs: P11-4.
 - Every variant now ships a `.vscode/tasks.json`, so a scaffolded project wires its quality gate
   into VS Code's task menu out of the box: `Cmd/Ctrl+Shift+B` runs the full gate (the default
   build task), and **Run Task...** exposes the individual steps (lint, type-check, tests, build)
