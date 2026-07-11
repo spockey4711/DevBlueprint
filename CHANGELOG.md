@@ -43,6 +43,10 @@ All notable changes are documented here, following
 - `docs/glossary.md`: a plain-language glossary defining the everyday terms a beginner meets in
   these docs (terminal, path, repo, branch, commit, PR, worktree, CI, lint, variant, quality
   gate), one sentence each. Refs: P9-1.
+- `GETTING-STARTED.md` "Choosing a folder for your project" section: explains what a path is,
+  absolute vs. relative paths, what `~` (the home folder) means, why to keep spaces and odd
+  characters out of a path, a suggested `~/Projects/<name>` default, and how to open that folder
+  in both the terminal (`cd` / `pwd`) and the editor (`code`, or File > Open Folder). Refs: P8-3.
 - `GETTING-STARTED.md`: a beginner-onboarding guide skeleton linked from the top of the README,
   with an intro and section headings for prerequisites, choosing a folder, the first run and the
   first task. The anchor the rest of the P8 onboarding docs fill in. Refs: P8-1.
