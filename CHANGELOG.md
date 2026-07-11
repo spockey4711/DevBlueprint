@@ -68,6 +68,12 @@ All notable changes are documented here, following
   coverage baseline + dependabot, `.tool-versions`, gitignore, wt.conf, and the conventions/quality
   docs), auto-discovered by the CLI. No `codeql.yml` (CodeQL has no PHP target); semgrep in
   `security.yml` covers PHP SAST. Refs: P6-2e.
+- New `elixir-phoenix` variant: an Elixir / Phoenix web stack built with Hex/mix, `mix format`
+  (formatting), Credo (style + consistency), Dialyzer (success-typing static analysis), and
+  ExUnit. Self-contained under `variants/elixir-phoenix/` (manifest, `setup.sh`, Makefile, CI with
+  Erlang/OTP + Elixir setup and PLT caching + the shared security/commit-checks/coverage baseline +
+  dependabot, `.tool-versions`, gitignore, wt.conf, and the conventions/quality docs),
+  auto-discovered by the CLI. Refs: P6-2g.
 - New `flutter` variant: a Flutter/Dart app stack (`dart format`, `flutter analyze` with
   `very_good_analysis` + strict analyzer modes, `flutter test`) with a `lib/`+`lib/src/`+`test/`
   +`integration_test/` scaffold, `Makefile` gate, CI (subosito/flutter-action), and `extras/`
