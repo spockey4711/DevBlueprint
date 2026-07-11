@@ -189,7 +189,7 @@ The biggest adoption lever - today you must clone the repo to run `bin/devbluepr
 - [ ] P4-2: (CLI) `devblueprint upgrade` - self-update the installed kit, with stable/next
   version channels and pinning, so `update` targets stay reproducible. **Owns:**
   `bin/devblueprint` (new `cmd_upgrade`), `test/`.
-- [ ] P4-3: Kit self-CI. A matrix workflow that scaffolds every variant into a throwaway dir,
+- [x] P4-3: Kit self-CI. A matrix workflow that scaffolds every variant into a throwaway dir,
   runs its `setup.sh` and quality gate in a container, and fails on any red - catches variant
   rot before release. **Owns:** `.github/workflows/scaffold-matrix.yml`,
   `scripts/scaffold-check.sh`.

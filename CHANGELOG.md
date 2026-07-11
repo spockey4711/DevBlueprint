@@ -19,6 +19,15 @@ All notable changes are documented here, following
 
 ### Added
 
+- Kit self-CI: a `scaffold-matrix.yml` workflow scaffolds every variant into a throwaway dir,
+  wires it with the variant's `setup.sh`, and runs its quality gate, failing on any red so
+  variant rot (a broken scaffold, `setup.sh`, `Makefile` or gate) is caught before a release.
+  Variants are discovered dynamically, so a new variant is covered without editing the workflow.
+  The per-variant engine is `scripts/scaffold-check.sh` (verifies each scaffold with
+  `devblueprint doctor`): variants whose `setup.sh` produces a complete, self-checking starter
+  (`generic`, `rust`, `backend-go`, `node-express`) run the full gate via `doctor --run-gate`;
+  the rest, which need you to create the real app/package first, get a scaffold plus an
+  idempotent `setup.sh` check via `doctor --strict`. Refs: P4-3.
 - Installability: DevBlueprint now runs without a clone via three channels. A root `package.json`
   exposes `npx devblueprint` through a Node launcher (`packaging/npm/launch.cjs`); a Homebrew
   formula (`packaging/homebrew/devblueprint.rb`) installs the kit into `libexec`; and a
