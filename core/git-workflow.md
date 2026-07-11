@@ -65,6 +65,18 @@ Two long-lived branches with short-lived feature branches integrating on `develo
   branch lives in its own worktree branched off `develop`. Never `git checkout` a feature
   branch in the main clone. See [Worktrees](#worktrees).
 
+### Enforcing the protection
+
+The rules above ("protected", "PRs only") describe intent; a host enforces them. Run
+`scripts/protect-branches.sh` to apply GitHub branch protection to the long-lived branches
+via `gh api`: it requires PRs and approving reviews and blocks direct pushes, force-pushes and
+branch deletion. It reads the branch names from `scripts/wt.conf`, so it protects the right
+branches for both the two-branch and single-branch layouts. When a `CODEOWNERS` file is present
+(scaffold it with `--community`, then replace the `@OWNER` placeholder), it also requires
+code-owner review. The script is opt-in and idempotent - re-run it after changing reviewers or
+branches. See `scripts/protect-branches.sh --help` for the options (`--reviews`, `--admins`,
+`--dry-run`).
+
 ### Solo / lightweight variant
 
 For a small solo project the two-branch model can feel heavy. Two acceptable simplifications,
