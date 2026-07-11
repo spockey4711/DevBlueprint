@@ -130,7 +130,7 @@ Each task is a brand-new standalone file, so all four are independent with zero 
 - [ ] P14-1: Clarify the onboarding surfaces so they stop overlapping - README = the pitch,
   `GETTING-STARTED.md` = the beginner path, `GUIDE.md` = the reference; trim duplicated
   content. (builds on P8, P13)
-- [ ] P14-2: Extend the bats suite to cover the new interactive CLI paths (wizard, `doctor
+- [x] P14-2: Extend the bats suite to cover the new interactive CLI paths (wizard, `doctor
   --env`, error messages). Owns `test/` only, no `bin/devblueprint` edit. (builds on
   P10-1/P11-1/P12-1)
 - [ ] P14-3: Harden the kit self-CI for the new beginner artifacts (`.vscode/`, devcontainer,

@@ -158,3 +158,45 @@ load helper
   [[ "$output" == *"git branch -M main"* ]]
   [[ "$output" != *"git switch -c"* ]]
 }
+
+@test "wizard opens with a welcome and a one-line explanation per question" {
+  # Decline at the end so nothing is written; we only assert the guiding copy.
+  run bash -c "printf 'X\n%s\ngeneric\n1\nn\n' '$TARGET' | '$DEVBLUEPRINT' init"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"Welcome to DevBlueprint"* ]]
+  # Each question is prefaced by plain-language guidance, so no flag knowledge
+  # is needed to answer it.
+  [[ "$output" == *"friendly name for the docs"* ]]
+  [[ "$output" == *"This folder will be created"* ]]
+  [[ "$output" == *"Which project type (variant)"* ]]
+  [[ "$output" == *"How should branches work?"* ]]
+}
+
+@test "wizard accepts every default on empty input and Enter confirms" {
+  # All answers blank: name -> my-project, variant -> generic, flow -> 1, and a
+  # blank final line (Enter) means yes. Only the target is supplied, so the
+  # scaffold lands in a temp dir instead of the suggested ~/Projects path.
+  run bash -c "printf '\n%s\n\n\n\n' '$TARGET' | '$DEVBLUEPRINT' init"
+  [ "$status" -eq 0 ]
+
+  # Defaults flowed through to the plan and the real scaffold.
+  [[ "$output" == *"my-project"* ]]
+  [ -f "$TARGET/CLAUDE.md" ]
+  grep -q "my-project" "$TARGET/CLAUDE.md"
+  run db doctor --target "$TARGET"
+  [ "$status" -eq 0 ]
+}
+
+@test "wizard notes when the chosen folder already has files" {
+  mkdir -p "$TARGET"
+  : > "$TARGET/keep-me.txt"
+
+  # Decline at the end - we only assert the reassurance shown at the path step.
+  run bash -c "printf 'X\n%s\ngeneric\n1\nn\n' '$TARGET' | '$DEVBLUEPRINT' init"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"already has files"* ]]
+  [[ "$output" == *"never overwritten"* ]]
+  # Nothing was written, so the pre-existing file is untouched.
+  [ -f "$TARGET/keep-me.txt" ]
+  [ ! -f "$TARGET/CLAUDE.md" ]
+}
