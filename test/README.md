@@ -16,7 +16,9 @@ CI installs it and runs the suite on every PR.
 ## Layout
 
 - `helper.bash` - shared `setup`/`teardown` (temp dir per test) and the `db` runner.
-- `init.bats` - `init` + `doctor` for every variant, plus argument and error handling.
+- `init.bats` - `init` + `doctor` for every variant, argument handling, and the no-flag guided wizard.
+- `doctor-env.bats` - `doctor --env` host prerequisite check (git / Node / shell) and its per-OS fixes.
+- `errors.bats` - beginner-friendly failures: every error prints a `next:` recovery hint.
 - `overwrite.bats` - overwrite safety: skip existing files vs. `--force`.
 - `tokens.bats` - token substitution and branch modes (two-branch default, `--base master`).
 - `update.bats` - `update` re-syncs core-owned files into an existing project (with `--dry-run`).

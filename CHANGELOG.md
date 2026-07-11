@@ -7,6 +7,14 @@ All notable changes are documented here, following
 
 ### Added
 
+- Extended the `bats` suite to cover the beginner-facing interactive CLI paths introduced in
+  P10/P11/P12. A new `test/errors.bats` asserts that every friendly failure (missing `--target`,
+  unknown command, a non-DevBlueprint or missing target, an unknown variant) prints a `next:`
+  recovery hint on its own line, not just what broke. `test/init.bats` now checks the no-flag
+  wizard's welcome copy and per-question guidance, its all-defaults path (blank answers plus an
+  Enter confirm still scaffold), and the "folder already has files" reassurance. `test/doctor-env.bats`
+  now covers a host missing more than one prerequisite (pluralised count and a fix per tool, in both
+  human and `--json` output). Tests only - no `bin/devblueprint` change. Refs: P14-2.
 - German (`de`) translation of `GETTING-STARTED.md` at `i18n/de/GETTING-STARTED.md`, the first
   locale in the new `i18n/` layer. It mirrors the English beginner path one-to-one, keeping every
   command, path, filename, code block and tool output verbatim and translating only the prose;

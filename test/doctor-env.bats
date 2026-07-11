@@ -82,6 +82,38 @@ make_stub_path() {
   [[ "$output" == *'"fix":'* ]]
 }
 
+@test "doctor --env counts every missing prerequisite, not just the first" {
+  # A host missing both git and Node: the summary must pluralise the count and
+  # print a fix for each, so a beginner installs everything in one pass.
+  local bindir="$TEST_TMP/stubbin" t real
+  mkdir -p "$bindir"
+  for t in env bash sh dirname uname; do
+    real="$(command -v "$t" 2>/dev/null)" || continue
+    ln -sf "$real" "$bindir/$t"
+  done
+
+  run env PATH="$bindir" "$DEVBLUEPRINT" doctor --env
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"git not found"* ]]
+  [[ "$output" == *"Node not found"* ]]
+  [[ "$output" == *"2 prerequisite(s) missing"* ]]
+}
+
+@test "doctor --env --json failures count matches the number missing" {
+  local bindir="$TEST_TMP/stubbin" t real
+  mkdir -p "$bindir"
+  for t in env bash sh dirname uname; do
+    real="$(command -v "$t" 2>/dev/null)" || continue
+    ln -sf "$real" "$bindir/$t"
+  done
+
+  run env PATH="$bindir" "$DEVBLUEPRINT" doctor --env --json
+  [ "$status" -ne 0 ]
+  [[ "$output" == *'"failures":2'* ]]
+  [[ "$output" == *'"name":"git","status":"miss"'* ]]
+  [[ "$output" == *'"name":"node","status":"miss"'* ]]
+}
+
 @test "doctor --env rejects unknown options" {
   run db doctor --env --bogus
   [ "$status" -ne 0 ]
