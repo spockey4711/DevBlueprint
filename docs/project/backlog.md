@@ -217,43 +217,69 @@ CLI tasks P5-1, P5-3, P5-5 each take their own wave.
   conflict. Makes long-lived projects safe to update. **Owns:** `bin/devblueprint`
   (`cmd_update`), `test/`. (own wave; builds on P5-1's diff logic)
 
-### P6 - breadth & hardening (Q3: monorepo, more stacks, security)
+The P6-P7 tasks below (Q3-Q4) are re-grouped into **parallel waves of four disjoint tasks**
+so you can open all four PRs of a wave at once. The wave grouping obeys the rules above: at
+most one `(CLI)` task per wave, and never two of the three `variants/*/github/` fan-outs
+(P6-4, P7-1, P7-2) in the same wave. The task definitions (scope, owned paths, deps) are
+unchanged - only their ordering into waves. The eight P6-2 variants are each their own PR.
+
+### Wave 1 - monorepo + security CI + first variants
 
 - [ ] P6-1: (CLI) Monorepo / multi-variant init - one repo, multiple packages, per-package
   quality gates, aggregated CI. The one large structural change; everything is single-variant
   today. **Owns:** `bin/devblueprint` (init multi-variant path), `test/`.
-- [ ] P6-2: New variants, each a self-contained `variants/<name>/` mirroring P2-4 and fully
-  parallel: `flutter`, `spring-java`, `dotnet`, `rails`, `laravel`, `sveltekit`,
-  `elixir-phoenix`, `terraform-iac`. Split one worktree per variant. **Owns:**
-  `variants/<name>/` (one per task). (dep: P2-1)
-- [ ] P6-3: (CLI) Variant add-on/flavor mechanism - orthogonal overlays (db, auth, container)
-  layered onto a base variant at init, e.g. `--flavor postgres,docker`. **Owns:**
-  `bin/devblueprint` (flavor resolution), `test/`, `variants/_flavors/`. (separate wave
-  from P6-1)
 - [ ] P6-4: Security-gate baseline across variants: gitleaks (secret scan), semgrep (SAST),
   dependency-review and CodeQL workflows, commitlint + PR-title check, and coverage
   thresholds - added to each variant's CI. Fan out per variant. **Owns:** `variants/*/github/`
   (one variant subtree per task).
-- [ ] P6-5: (CLI) `doctor --fix` - auto-repair missing or corrupted foundation files instead
-  of only reporting them. **Owns:** `bin/devblueprint` (`cmd_doctor`), `test/`. (separate
-  wave from P6-1/P6-3)
+- [ ] P6-2a: New variant `flutter`, self-contained mirroring P2-4. **Owns:** `variants/flutter/`.
+  (dep: P2-1)
+- [ ] P6-2b: New variant `spring-java`, self-contained mirroring P2-4. **Owns:**
+  `variants/spring-java/`. (dep: P2-1)
 
-### P7 - automation & team-scale (Q4)
+### Wave 2 - flavors + release automation + variants
 
+- [ ] P6-3: (CLI) Variant add-on/flavor mechanism - orthogonal overlays (db, auth, container)
+  layered onto a base variant at init, e.g. `--flavor postgres,docker`. **Owns:**
+  `bin/devblueprint` (flavor resolution), `test/`, `variants/_flavors/`.
 - [ ] P7-1: Release automation per variant - Conventional-Commits-driven versioning, CHANGELOG
   generation and GitHub releases (release-please or semantic-release), wired into each
   variant's CI. Closes the loop on the existing changelog discipline. Fan out per variant.
   **Owns:** `variants/*/github/` + release config (one variant subtree per task).
+- [ ] P6-2c: New variant `dotnet`, self-contained mirroring P2-4. **Owns:** `variants/dotnet/`.
+  (dep: P2-1)
+- [ ] P6-2d: New variant `rails`, self-contained mirroring P2-4. **Owns:** `variants/rails/`.
+  (dep: P2-1)
+
+### Wave 3 - doctor --fix + GitLab CI + variants
+
+- [ ] P6-5: (CLI) `doctor --fix` - auto-repair missing or corrupted foundation files instead
+  of only reporting them. **Owns:** `bin/devblueprint` (`cmd_doctor`), `test/`.
 - [ ] P7-2: Provider-agnostic + richer CI - GitLab CI templates alongside GitHub Actions, plus
   preview-deploy and dependency-review workflows. **Owns:** `variants/*/gitlab/`,
   `variants/*/github/` (one variant subtree per task).
+- [ ] P6-2e: New variant `laravel`, self-contained mirroring P2-4. **Owns:** `variants/laravel/`.
+  (dep: P2-1)
+- [ ] P6-2f: New variant `sveltekit`, self-contained mirroring P2-4. **Owns:**
+  `variants/sveltekit/`. (dep: P2-1)
+
+### Wave 4 - org baseline + ops artifacts + last variants
+
+- [ ] P7-4: (CLI) Org baseline / config inheritance - a company default that projects extend
+  (`extends: org-baseline`), turning the kit from a solo tool into a team standardizer.
+  **Owns:** `bin/devblueprint` (config resolution), `test/`.
 - [ ] P7-3: Ops artifacts beyond the runbook (builds on P3-4/P3-6): optional `Dockerfile`,
   `docker-compose.yml`, Fly/Vercel/Render config and Terraform snippets, plus `.env.example`
   promoted to a validated env schema checked in the gate. **Owns:** `variants/*/extras/`
   (one variant subtree per task).
-- [ ] P7-4: (CLI) Org baseline / config inheritance - a company default that projects extend
-  (`extends: org-baseline`), turning the kit from a solo tool into a team standardizer.
-  **Owns:** `bin/devblueprint` (config resolution), `test/`.
+- [ ] P6-2g: New variant `elixir-phoenix`, self-contained mirroring P2-4. **Owns:**
+  `variants/elixir-phoenix/`. (dep: P2-1)
+- [ ] P6-2h: New variant `terraform-iac`, self-contained mirroring P2-4. **Owns:**
+  `variants/terraform-iac/`. (dep: P2-1)
+
+### Wave 5 - governance (isolated)
+
 - [ ] P7-5: Governance scaffolding - a `CODEOWNERS` template and an opt-in
   branch-protection setup script (`gh api`), so the documented workflow is also technically
   enforced. **Owns:** `core/templates/CODEOWNERS.tmpl`, `scripts/protect-branches.sh`.
+  Conflicts with nothing above, so it can ride along with any earlier wave's PRs.
