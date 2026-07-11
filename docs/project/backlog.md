@@ -45,7 +45,7 @@ the other three fills a different section, so conflicts are limited to distinct 
 - [ ] P8-2: Prerequisites section - install a terminal, git, Node and an editor, split per OS
   (macOS / Windows / Linux), as copy-paste blocks with "you should see this if it worked".
   (builds on P8-1; own section)
-- [ ] P8-3: "Where do I put the project / which path do I pick" section - absolute vs. relative
+- [x] P8-3: "Where do I put the project / which path do I pick" section - absolute vs. relative
   paths, what `~` means, no spaces in paths, a suggested `~/Projects/<name>` default, and how
   to open that folder in the terminal and the editor. (builds on P8-1; own section)
 - [x] P8-4: End-to-end "your first project" tutorial section - one worked run from `init` to
@@ -56,7 +56,7 @@ the other three fills a different section, so conflicts are limited to distinct 
 
 Each task is a brand-new standalone file, so all four are independent with zero shared paths.
 
-- [ ] P9-1: Plain-language glossary at `docs/glossary.md` - terminal, path, repo, branch,
+- [x] P9-1: Plain-language glossary at `docs/glossary.md` - terminal, path, repo, branch,
   commit, PR, worktree, CI, lint, variant, quality gate; one sentence each.
 - [ ] P9-2: `docs/faq.md` - the common "why did this happen / what now" questions a beginner
   hits (directory already exists, not a git repo, gate is red, wrong branch), one answer each.

@@ -45,9 +45,20 @@ All notable changes are documented here, following
   setup, `doctor`, creating the GitHub remote, then the everyday loop (worktree, edit, `make
   check`, commit, push, PR, cleanup) - every command shown with its expected output, written
   against the `generic` variant so a beginner needs no toolchain. Refs: P8-4.
+- `docs/glossary.md`: a plain-language glossary defining the everyday terms a beginner meets in
+  these docs (terminal, path, repo, branch, commit, PR, worktree, CI, lint, variant, quality
+  gate), one sentence each. Refs: P9-1.
+- `GETTING-STARTED.md` "Choosing a folder for your project" section: explains what a path is,
+  absolute vs. relative paths, what `~` (the home folder) means, why to keep spaces and odd
+  characters out of a path, a suggested `~/Projects/<name>` default, and how to open that folder
+  in both the terminal (`cd` / `pwd`) and the editor (`code`, or File > Open Folder). Refs: P8-3.
 - `GETTING-STARTED.md`: a beginner-onboarding guide skeleton linked from the top of the README,
   with an intro and section headings for prerequisites, choosing a folder, the first run and the
   first task. The anchor the rest of the P8 onboarding docs fill in. Refs: P8-1.
+- `GETTING-STARTED.md` Prerequisites section: plain-language, copy-paste install steps for a
+  terminal, git, Node and VS Code, split per OS (macOS via Homebrew, Windows via winget, Linux
+  via apt/NodeSource), each with a check command and the expected output so a beginner can
+  confirm every tool works. Refs: P8-2.
 - Governance scaffolding: every project now ships `scripts/protect-branches.sh`, an opt-in
   helper that turns the documented git workflow into an enforced one by applying GitHub branch
   protection (required PRs, approving reviews, optional code-owner review, no direct/force pushes
