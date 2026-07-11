@@ -40,6 +40,9 @@ All notable changes are documented here, following
 
 ### Added
 
+- `docs/glossary.md`: a plain-language glossary defining the everyday terms a beginner meets in
+  these docs (terminal, path, repo, branch, commit, PR, worktree, CI, lint, variant, quality
+  gate), one sentence each. Refs: P9-1.
 - `GETTING-STARTED.md` "Choosing a folder for your project" section: explains what a path is,
   absolute vs. relative paths, what `~` (the home folder) means, why to keep spaces and odd
   characters out of a path, a suggested `~/Projects/<name>` default, and how to open that folder
