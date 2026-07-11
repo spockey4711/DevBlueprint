@@ -25,6 +25,15 @@ All notable changes are documented here, following
 
 ### Added
 
+- Governance scaffolding: every project now ships `scripts/protect-branches.sh`, an opt-in
+  helper that turns the documented git workflow into an enforced one by applying GitHub branch
+  protection (required PRs, approving reviews, optional code-owner review, no direct/force pushes
+  or deletions) to the long-lived branches via `gh api`. It reads the branch names from
+  `scripts/wt.conf` (the same source `wt.sh` uses), so a single-branch trunk project protects
+  only its one branch, and is idempotent. `--community` additionally scaffolds a
+  `.github/CODEOWNERS` review-routing file with a fill-in `@OWNER` handle, which
+  `protect-branches.sh` enforces once the "require review from Code Owners" rule is on.
+  Refs: P7-5.
 - Org baseline / config inheritance: an intake file can declare `extends: <baseline>` (or
   `init --extends <baseline>` on the CLI) to inherit a shared org baseline - a company default
   intake file (branches, contact, community, agents, ...) that projects layer their own answers

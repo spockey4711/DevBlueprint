@@ -169,8 +169,12 @@ Options: `--target <dir>` `--name <name>` `--variant <variant>` `--package <name
 `--flavor <list>` `--main <branch>` `--base <branch>` `--agents <list>` `--community`
 `--contact <method>` `--force`. Use
 `--base master` for a single-branch trunk workflow, and `--community` to add optional
-`SECURITY.md` and `CODE_OF_CONDUCT.md` (with `--contact` filling the reporting address in
-both). Pass `--agents claude,cursor,codex,copilot` (default: just `claude`) to also emit
+`SECURITY.md`, `CODE_OF_CONDUCT.md` (with `--contact` filling the reporting address in
+both) and a `.github/CODEOWNERS` review-routing file. Every project also ships
+`scripts/protect-branches.sh`, an opt-in `gh api` helper that applies GitHub branch
+protection to the long-lived branches so the documented workflow is technically enforced
+(see [`docs/engineering/git-workflow.md`](docs/engineering/git-workflow.md)). Pass
+`--agents claude,cursor,codex,copilot` (default: just `claude`) to also emit
 instruction files for other coding agents - `AGENTS.md` (Codex), a Cursor project rule, and
 Copilot instructions - rendered from the same canonical guidance as `CLAUDE.md`; `update`
 re-renders whichever were selected so they never drift.

@@ -281,7 +281,7 @@ unchanged - only their ordering into waves. The eight P6-2 variants are each the
 
 ### Wave 5 - governance (isolated)
 
-- [ ] P7-5: Governance scaffolding - a `CODEOWNERS` template and an opt-in
+- [x] P7-5: Governance scaffolding - a `CODEOWNERS` template and an opt-in
   branch-protection setup script (`gh api`), so the documented workflow is also technically
   enforced. **Owns:** `core/templates/CODEOWNERS.tmpl`, `scripts/protect-branches.sh`.
   Conflicts with nothing above, so it can ride along with any earlier wave's PRs.
