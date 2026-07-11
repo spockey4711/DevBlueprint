@@ -21,6 +21,18 @@
 - Configuration and secrets come from the environment read in `config/runtime.exs` (12-factor) -
   never commit real credentials, and never read `System.get_env/1` scattered through the app.
   Ship a `.env.example` (or documented env keys) with safe placeholders.
+- Validated env contract: `.env.schema` declares each variable (`SECRET_KEY_BASE`, `DATABASE_URL`,
+  `PHX_HOST`, `PORT`, `MIX_ENV`, ...) as required or optional with an optional value pattern.
+  `make check` runs `scripts/check-env.sh` first so `.env.example` and the schema stay in lockstep
+  and any real `.env` is checked for required keys and patterns; CI and `doctor --run-gate` run the
+  same check.
+- Ops artifacts: the shipped `Dockerfile` is a two-stage build - a `hexpm/elixir` stage that fetches
+  prod deps, runs `mix assets.deploy` and `MIX_ENV=prod mix release`, then a non-root
+  `debian:bookworm-slim` runtime running the self-contained release (its ERTS is bundled, so no
+  Elixir/Erlang install in the final image). `deploy/` carries Fly.io/Render/Terraform skeletons
+  (Fly.io is the common Phoenix target) and `docs/ops/deployment.md` is the runbook. Run Ecto
+  migrations as a deliberate release command (`bin/app eval "App.Release.migrate"`), never on boot -
+  a release has no `mix`, and coupling migrations to boot makes rollbacks unsafe.
 - User-facing copy lives in `priv/gettext/*.po` and is resolved through the `gettext/1` macro, not
   scattered string literals in controllers and templates.
 - Let it crash: supervise stateful processes and let a supervisor restart them rather than
