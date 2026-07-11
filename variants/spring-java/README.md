@@ -22,6 +22,12 @@ Or, with the shipped Makefile: `make check`.
 - `.github/workflows/ci.yml` (Spotless + Checkstyle + tests).
 - `.github/dependabot.yml` (gradle + github-actions updates) and `.tool-versions` (toolchain pin).
 - `.gitignore` for Java / Gradle / Spring Boot artifacts.
+- `docs/ops/deployment.md` (deploy runbook: managed/Docker/VPS + DB + env checklists) and
+  `.env.example` (committed template; real `.env*` stay ignored).
+- Ops artifacts: `Dockerfile` (JDK `bootJar` with layered-jar extraction -> JRE non-root runtime) +
+  `.dockerignore` + `docker-compose.yml`, `deploy/` (Fly/Render/Terraform skeletons), and
+  `.env.schema` + `scripts/check-env.sh` (the env contract `make check` and CI enforce). All
+  skeletons - fill the `<...>` placeholders.
 - `src/main/java`, `src/main/resources`, `src/test/java`, `src/test/resources` scaffold.
 
 ## After init (wire the toolchain)

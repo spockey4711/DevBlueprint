@@ -14,3 +14,13 @@
   `application-<profile>.yml`; never commit real credentials.
 - Prefer slice tests (`@WebMvcTest`, `@DataJpaTest`) over booting the whole context, and reach
   for Testcontainers when a test genuinely needs a real database or broker.
+- Ops artifacts ship as fillable skeletons: a multi-stage `Dockerfile` (a JDK build stage running
+  `./gradlew bootJar` and extracting the layered jar -> a JRE non-root runtime) + `.dockerignore` +
+  `docker-compose.yml` for containers, and `deploy/` for a hosted target (`fly.toml`, `render.yaml`,
+  `terraform/`). Keep the one target you deploy to and delete the rest. Run database migrations
+  (Flyway/Liquibase) as a deliberate release step, not on app boot.
+- The environment is a validated contract: `.env.schema` declares each variable (required/optional,
+  optional `pattern=`), and `make check` (plus CI) runs `scripts/check-env.sh` to keep `.env.example`
+  in lockstep with it and enforce required keys in any real `.env`. Spring binds these to properties
+  (`SPRING_DATASOURCE_URL` -> `spring.datasource.url`). Declare new variables in both the schema and
+  `.env.example`, or the gate fails.
