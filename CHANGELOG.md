@@ -59,6 +59,14 @@ All notable changes are documented here, following
   enforced in the gate - `make check` runs `scripts/check-env.sh` (a new `validate-env` step) to keep
   `.env.example` in lockstep with the schema and validate required keys/patterns in any real `.env`.
   Refs: P7-3.
+- Ops artifacts for the `dotnet` variant: a multi-stage `Dockerfile` (`sdk:8.0` build ->
+  `aspnet:8.0` runtime, non-root) + `.dockerignore` + `docker-compose.yml`, `deploy/` skeletons for
+  Fly/Render/Terraform, and a `.env.schema` + a new `.env.example` (keys use the `__` nesting
+  convention, e.g. `ConnectionStrings__Default`). `make check` gains a `validate-env` step, CI a
+  `Validate env schema` step, and `manifest.env`'s gate is prefixed with `sh scripts/check-env.sh`,
+  all running the shared `scripts/check-env.sh` to keep `.env.example` in lockstep with the schema
+  and validate required keys/patterns in any real `.env`. The runbook runs EF Core migrations as a
+  deliberate release step, not on boot. Refs: P7-3.
 - Provider-agnostic CI: every variant now ships a `.gitlab-ci.yml` alongside its GitHub Actions
   workflows, so a scaffolded project runs the same gates on either forge. The pipeline mirrors
   `ci.yml` (a `quality` stage running the variant's gate), the security baseline (a `security`
