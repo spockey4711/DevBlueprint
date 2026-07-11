@@ -25,6 +25,10 @@ All notable changes are documented here, following
   (`.tool-versions` SDK pin + `.github/dependabot.yml` for pub + github-actions). `setup.sh` wires
   `pubspec.yaml`, `analysis_options.yaml`, `.fvmrc`, a pre-commit config and a placeholder
   `lib/main.dart` + widget test. Refs: P6-2a.
+- New `spring-java` variant: a Java 21 + Spring Boot backend built with the Gradle wrapper,
+  Spotless (google-java-format), Checkstyle, and JUnit 5. Self-contained under
+  `variants/spring-java/` (manifest, `setup.sh`, Makefile, CI + dependabot, `.tool-versions`,
+  gitignore, wt.conf, and the conventions/quality docs), auto-discovered by the CLI. Refs: P6-2b.
 - `update` now three-way merges managed files instead of overwriting them, so local edits
   survive a re-sync. It caches the last-synced kit copy of each file under
   `.devblueprint-base/` as the merge base (base vs. the project's file vs. the current kit),
