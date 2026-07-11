@@ -6,7 +6,8 @@
 #   devblueprint list [--json]
 #   devblueprint init --target <dir> --variant <variant> [--name <name>] \
 #       [--from <intake.yml>] [--base <branch>] [--main <branch>] [--deploy <target>] \
-#       [--agents <list>] [--community] [--contact <method>] [--force] [--dry-run]
+#       [--flavor <list>] [--agents <list>] [--community] [--contact <method>] \
+#       [--force] [--dry-run]
 #   devblueprint init --target <dir> --package <name>:<variant> [--package ...] [init flags]
 #       (monorepo: one repo, many packages, aggregated CI + per-package quality gates)
 #   devblueprint plan --target <dir> --from <intake.yml> [init flags]
@@ -29,7 +30,11 @@
 # with the user first. `--agents claude,cursor,codex` emits instruction files for
 # other coding agents (AGENTS.md for Codex, a Cursor project rule, Copilot
 # instructions) from the same canonical guidance as CLAUDE.md, recording the choice
-# in the .devblueprint stamp so `update` re-renders them in step. `update` re-syncs
+# in the .devblueprint stamp so `update` re-renders them in step. `--flavor
+# postgres,docker` layers orthogonal add-on overlays (a database, container, auth,
+# ...) from variants/_flavors/ onto the chosen base variant at init - each flavor
+# drops in its own files (config + a docs/flavors/<name>.md note) and is recorded in
+# the stamp. `update` re-syncs
 # only the core-owned files (the agnostic engineering docs, wt.sh, the GitHub
 # PR/issue templates, and any selected agent files) into an existing project, so old
 # projects can pick up core changes without touching their CLAUDE.md or code. It
@@ -51,6 +56,11 @@ CORE="$ROOT/core"
 # variants dir without touching the developer's working tree; defaults to the
 # kit's own variants/.
 VARIANTS="${DEVBLUEPRINT_VARIANTS:-$ROOT/variants}"
+# Orthogonal add-on overlays (db, container, auth, ...) layered onto a base variant
+# at init with --flavor. Kept under an underscore-prefixed dir inside VARIANTS so it
+# rides the same DEVBLUEPRINT_VARIANTS override and is naturally skipped by
+# list_variants (which requires a manifest.env the _flavors/ dir does not have).
+FLAVORS_DIR="$VARIANTS/_flavors"
 VERSION_FILE="$ROOT/VERSION"
 # GitHub slug the kit is published from; used by `upgrade` to resolve release
 # tags and download tarballs. Mirrors install.sh's REPO (owned there; kept in
@@ -441,7 +451,85 @@ list_variants_json() {
     out="${out}${sep}{\"name\":\"$(json_esc "$name")\",\"title\":\"$(json_esc "$title")\",\"gate\":\"$(json_esc "$gate")\"}"
     sep=","
   done
-  printf '{"variants":[%s]}\n' "$out"
+  printf '{"variants":[%s],"flavors":[%s]}\n' "$out" "$(list_flavors_json)"
+}
+
+# flavor_field <flavor> <VAR> : print one key from a flavor's flavor.env, sourced in
+# a subshell so it never clobbers the caller's globals (same pattern as
+# manifest_field for variants).
+flavor_field() {
+  # shellcheck source=/dev/null
+  ( . "$FLAVORS_DIR/$1/flavor.env"; local __k="$2"; printf '%s' "${!__k:-}" )
+}
+
+# list_flavors : one aligned "<name> <title>" line per add-on flavor (a directory
+# under _flavors/ carrying a flavor.env). Empty output when no flavors are present.
+list_flavors() {
+  local d name
+  [ -d "$FLAVORS_DIR" ] || return 0
+  for d in "$FLAVORS_DIR"/*/; do
+    [ -f "$d/flavor.env" ] || continue
+    name="$(basename "$d")"
+    printf '  %-16s %s\n' "$name" "$(flavor_field "$name" FLAVOR_TITLE)"
+  done
+}
+
+# list_flavors_json : the flavors as a JSON array body [{name,title}, ...] (no
+# surrounding key), so list_variants_json can splice it into its object and an agent
+# can discover the orthogonal add-ons alongside the base variants.
+list_flavors_json() {
+  local d name title out="" sep=""
+  [ -d "$FLAVORS_DIR" ] || { printf ''; return 0; }
+  for d in "$FLAVORS_DIR"/*/; do
+    [ -f "$d/flavor.env" ] || continue
+    name="$(basename "$d")"
+    title="$(flavor_field "$name" FLAVOR_TITLE)"
+    out="${out}${sep}{\"name\":\"$(json_esc "$name")\",\"title\":\"$(json_esc "$title")\"}"
+    sep=","
+  done
+  printf '%s' "$out"
+}
+
+# resolve_flavors <comma-list> : validate, dedupe and canonicalize a --flavor
+# selection, echoing a space-separated list in the user's first-seen order. Each
+# name must be a directory with a flavor.env under _flavors/; an unknown name is a
+# hard error that lists what is available (so a typo surfaces instead of silently
+# doing nothing). An empty selection echoes nothing.
+resolve_flavors() {
+  local raw="$1" f out=""
+  # No selection: echo nothing. Guarding here also keeps the empty-array expansion
+  # below from tripping `set -u` on bash 3.2 (macOS).
+  [ -n "${raw//[[:space:]]/}" ] || { printf ''; return 0; }
+  local -a parts
+  IFS=',' read -ra parts <<< "$raw"
+  for f in "${parts[@]}"; do
+    f="${f//[[:space:]]/}"
+    [ -n "$f" ] || continue
+    [ -f "$FLAVORS_DIR/$f/flavor.env" ] || die "unknown flavor '$f' (see: devblueprint list)"
+    # Dedupe: skip a name already collected (the same overlay twice is a no-op).
+    case " $out " in *" $f "*) continue ;; esac
+    out="${out:+$out }$f"
+  done
+  printf '%s' "$out"
+}
+
+# apply_flavors : layer each resolved flavor's overlay onto TARGET, after the base
+# variant is fully scaffolded. A flavor ships an overlay/ tree copied verbatim into
+# the project root (config files plus its docs/flavors/<name>.md note) and an
+# optional gitignore.append merged into .gitignore. Every write goes through the
+# same guarded helpers as the base scaffold, so overwrite safety (place_guard/FORCE)
+# and DRY_RUN reporting stay consistent - a flavor never clobbers a base file unless
+# --force is given. Reads FLAVORS/TARGET/DRY_RUN/FORCE.
+apply_flavors() {
+  local f fdir
+  [ -n "$FLAVORS" ] || return 0
+  echo
+  echo "Flavors: ${FLAVORS// /, }"
+  for f in $FLAVORS; do
+    fdir="$FLAVORS_DIR/$f"
+    copy_tree "$fdir/overlay" "$TARGET"
+    append_if "$fdir/gitignore.append" "$TARGET/.gitignore"
+  done
 }
 
 # abspath <path> : absolute form of <path> without requiring it to exist (unlike
@@ -464,7 +552,7 @@ abspath() {
 load_intake() {
   local file="$1" line key val
   [ -f "$file" ] || die "intake file not found: $file"
-  IN_NAME="" IN_VARIANT="" IN_MAIN="" IN_BASE="" IN_COMMUNITY="" IN_CONTACT="" IN_DEPLOY=""
+  IN_NAME="" IN_VARIANT="" IN_MAIN="" IN_BASE="" IN_COMMUNITY="" IN_CONTACT="" IN_DEPLOY="" IN_FLAVORS=""
   while IFS= read -r line || [ -n "$line" ]; do
     line="${line#"${line%%[![:space:]]*}"}"        # ltrim
     case "$line" in ''|'#'*) continue ;; esac       # skip blank / comment lines
@@ -486,6 +574,7 @@ load_intake() {
       community) IN_COMMUNITY="$val" ;;
       contact)   IN_CONTACT="$val" ;;
       deploy)    IN_DEPLOY="$val" ;;
+      flavors)   IN_FLAVORS="$val" ;;
       *) die "unknown intake key '$key' in $file (see docs/agent/intake-schema.md)" ;;
     esac
   done < "$file"
@@ -507,6 +596,13 @@ cmd_list() {
   fi
   echo "Available variants:"
   list_variants
+  local flavors
+  flavors="$(list_flavors)"
+  if [ -n "$flavors" ]; then
+    echo
+    echo "Add-on flavors (--flavor <a,b>, layered onto a base variant):"
+    printf '%s\n' "$flavors"
+  fi
 }
 
 cmd_init() {
@@ -514,7 +610,7 @@ cmd_init() {
   # intake-file values and defaults underneath (flags win). community_flag stays
   # "" until --community or an intake `community:` key sets it, so its default-off
   # is distinguishable from an explicit choice.
-  local from="" community_flag="" deploy="" agents=""
+  local from="" community_flag="" deploy="" agents="" flavors_raw=""
   # PACKAGES holds space-separated <name>:<variant> specs; any --package turns init
   # into monorepo mode (multiple packages in one repo, aggregated CI, per-package
   # gates) and is mutually exclusive with the single-variant --variant.
@@ -532,6 +628,9 @@ cmd_init() {
       --base) BASE_BRANCH="$2"; shift 2 ;;
       --deploy) deploy="$2"; shift 2 ;;
       --agents) agents="$2"; shift 2 ;;
+      # --flavor is repeatable and each value may itself be a comma list, so accumulate
+      # into one comma-separated string that resolve_flavors splits and validates.
+      --flavor|--flavors) flavors_raw="${flavors_raw:+$flavors_raw,}$2"; shift 2 ;;
       --community) community_flag=1; shift ;;
       --contact) CONTACT="$2"; shift 2 ;;
       --force) FORCE=1; shift ;;
@@ -551,6 +650,7 @@ cmd_init() {
     [ -n "$BASE_BRANCH" ]  || BASE_BRANCH="$IN_BASE"
     [ -n "$CONTACT" ]      || CONTACT="$IN_CONTACT"
     [ -n "$deploy" ]       || deploy="$IN_DEPLOY"
+    [ -n "$flavors_raw" ]  || flavors_raw="$IN_FLAVORS"
     if [ -z "$community_flag" ] && [ -n "$IN_COMMUNITY" ]; then
       case "$IN_COMMUNITY" in
         true|yes|on|1)  community_flag=1 ;;
@@ -571,6 +671,11 @@ cmd_init() {
   [ -n "$agents" ] || agents="claude"
   AGENTS="$(resolve_agents "$agents")"
 
+  # --flavor layers orthogonal add-on overlays (db, container, auth, ...) onto the
+  # base variant. Resolve it here so an unknown name fails fast, before anything is
+  # written. FLAVORS is space-separated (empty when none given).
+  FLAVORS="$(resolve_flavors "$flavors_raw")"
+
   # {{CONTACT}} appears only in the optional community templates, but render()
   # substitutes it unconditionally, so it must always be defined. When neither the
   # CLI nor the intake file gives one, leave a visible placeholder to fill in.
@@ -583,6 +688,7 @@ cmd_init() {
   # overlay and its own gate, tied together by an aggregated CI + `make check`.
   if [ -n "$PACKAGES" ]; then
     [ -z "$VARIANT" ] || die "--variant and --package are mutually exclusive (a monorepo picks a variant per package)"
+    [ -z "$FLAVORS" ] || die "--flavor and --package are mutually exclusive (flavors layer onto a single base variant)"
     cmd_init_monorepo
     return 0
   fi
@@ -610,6 +716,7 @@ cmd_init() {
   fi
   echo "  branches: $BASE_BRANCH -> $MAIN_BRANCH   gate: $QUALITY_GATE"
   echo "  agents: ${AGENTS// /, }"
+  [ -n "$FLAVORS" ] && echo "  flavors: ${FLAVORS// /, }"
   [ -n "$DEPLOY_TARGET" ] && echo "  deploy target: $DEPLOY_TARGET (recorded; runbook lands in a later wave)"
   echo
 
@@ -652,10 +759,12 @@ EOF
   # scripts are stale. Shell-sourceable key=value; do not hand-edit the version.
   emit_stdin "$TARGET/.devblueprint" <<EOF
 # DevBlueprint scaffold stamp - read by \`devblueprint update\`.
-# Records the kit version, variant, and selected agents this project was scaffolded from.
+# Records the kit version, variant, selected agents, and any add-on flavors this
+# project was scaffolded from.
 version=$(kit_version)
 variant=$VARIANT
-agents=${AGENTS// /,}
+agents=${AGENTS// /,}${FLAVORS:+
+flavors=${FLAVORS// /,}}
 EOF
 
   # 4. Worktree tooling. Keep wt.conf's branches in sync with the chosen
@@ -736,13 +845,18 @@ with a follow-up still pending (see the task lifecycle in `docs/engineering/git-
 - [ ] P0-1: ...
 EOF
 
+  # 7. Flavor overlays: orthogonal add-ons (db, container, auth, ...) layered on top
+  # of the finished base scaffold, so their files land last and a flavor can ship
+  # anything a variant can (config + a docs/flavors/<name>.md note).
+  apply_flavors
+
   echo
   if [ "$DRY_RUN" -eq 1 ]; then
     echo "Plan only - nothing was written. Apply it with:"
     if [ -n "$from" ]; then
       echo "  devblueprint init --target $TARGET --from $from"
     else
-      echo "  devblueprint init --target $TARGET --variant $VARIANT"
+      echo "  devblueprint init --target $TARGET --variant $VARIANT${FLAVORS:+ --flavor ${FLAVORS// /,}}"
     fi
     return 0
   fi
@@ -759,6 +873,9 @@ EOF
     echo "  3. git init && git branch -M $MAIN_BRANCH && git switch -c $BASE_BRANCH"
   fi
   echo "  4. Start a task in its own worktree:  $WT_CMD new feat/first-task"
+  if [ -n "$FLAVORS" ]; then
+    echo "  5. Wire the add-ons - see docs/flavors/ for each flavor's setup note."
+  fi
 }
 
 # manifest_field <variant> <VAR> : print one key from a variant's manifest.env,
@@ -1814,7 +1931,7 @@ cmd_upgrade() {
 }
 
 usage() {
-  sed -n '5,18p' "$0" | sed 's/^# \{0,1\}//'
+  sed -n '5,20p' "$0" | sed 's/^# \{0,1\}//'
 }
 
 main() {

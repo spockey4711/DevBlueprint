@@ -130,6 +130,13 @@ root `Makefile`'s `check` target runs every package's own quality gate in turn, 
 `.github/workflows/ci.yml` runs each package's setup + gate as its own matrix job. `--package`
 is mutually exclusive with `--variant`, and works with `plan`/`--dry-run` like any other init.
 
+Pass `--flavor <a,b>` to layer orthogonal **add-on flavors** onto the base variant - a database,
+a container setup, auth scaffolding. Each flavor drops in its own files (config plus a
+`docs/flavors/<name>.md` note) with the same overwrite safety as the base scaffold, so a flavor
+never clobbers a variant's file. Flavors compose (`--flavor postgres,docker`) and are recorded
+in the `.devblueprint` stamp. See `devblueprint list` for the available set; `--flavor` is
+mutually exclusive with `--package`.
+
 `update` is the counterpart for projects already scaffolded: it re-syncs only the core-owned
 files (the agnostic engineering docs, `.editorconfig`, `.gitattributes`, `scripts/wt.sh`, and
 the GitHub PR/issue templates) so old projects pick up improvements to `core/`, and
@@ -152,8 +159,8 @@ upstream change to pull) or matches (so drift is a local edit), and the stamped 
 to compare the two overlaid docs automatically (`--variant <name>` overrides it).
 
 Options: `--target <dir>` `--name <name>` `--variant <variant>` `--package <name>:<variant>`
-`--main <branch>` `--base <branch>` `--agents <list>` `--community` `--contact <method>`
-`--force`. Use
+`--flavor <list>` `--main <branch>` `--base <branch>` `--agents <list>` `--community`
+`--contact <method>` `--force`. Use
 `--base master` for a single-branch trunk workflow, and `--community` to add optional
 `SECURITY.md` and `CODE_OF_CONDUCT.md` (with `--contact` filling the reporting address in
 both). Pass `--agents claude,cursor,codex,copilot` (default: just `claude`) to also emit
