@@ -1,5 +1,7 @@
 # Cheat sheet
 
+Deutsch: [i18n/de/docs/cheatsheet.md](../i18n/de/docs/cheatsheet.md).
+
 The everyday commands, in the order you use them. Keep this open beside you until they stick.
 Every term in **bold** is defined in the [glossary](glossary.md); the full reasoning lives in
 the [git workflow](engineering/git-workflow.md).

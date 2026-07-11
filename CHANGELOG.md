@@ -7,6 +7,12 @@ All notable changes are documented here, following
 
 ### Added
 
+- German (`de`) translations of the FAQ (`i18n/de/docs/faq.md`) and cheat sheet
+  (`i18n/de/docs/cheatsheet.md`), mirroring `docs/faq.md` and `docs/cheatsheet.md` under the
+  `i18n/de/` subtree. Each carries the canonical-source header (English stays authoritative) and
+  keeps every command, path, filename, code block and link target identical to its English source,
+  translating only the prose. The two English sources now link to their German versions, and the
+  `i18n/README.md` status table marks both as done. Refs: P13-4.
 - New `i18n/` localization layer with a short policy at `i18n/README.md`: English is the source of
   truth and stays the only language for code, engineering/reference docs, commits and PRs, while
   beginner tutorial copy (`GETTING-STARTED.md`, `docs/glossary.md`, `docs/faq.md`,
