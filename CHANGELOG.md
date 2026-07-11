@@ -19,6 +19,14 @@ All notable changes are documented here, following
 
 ### Added
 
+- Static intake config builder: a single, backend-less HTML page
+  (`web/config-builder/index.html`) that turns a short form into a
+  `.devblueprint-intake.yml`, for users who set the kit up by hand instead of through an
+  agent. It runs entirely in the browser - inline CSS/JS, no build step, no dependencies,
+  nothing hosted or sent anywhere - honoring the kit's no-runtime principle. The output is
+  the same flat `key: value` format the CLI reads, with a live preview plus copy/download.
+  The variant dropdown mirrors `devblueprint list` (inlined, since a static page cannot
+  query the CLI). README gains a pointer from the intake usage section. Refs: P5-4.
 - Installability: DevBlueprint now runs without a clone via three channels. A root `package.json`
   exposes `npx devblueprint` through a Node launcher (`packaging/npm/launch.cjs`); a Homebrew
   formula (`packaging/homebrew/devblueprint.rb`) installs the kit into `libexec`; and a
