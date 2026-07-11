@@ -57,6 +57,13 @@ All notable changes are documented here, following
 
 ### Added
 
+- `devblueprint init` with no flags now runs a guided interactive wizard: it asks a handful of
+  plain-language questions (each prefaced with a one-line explanation), suggests a sensible
+  default for every answer - especially a concrete `~/Projects/<slug>` target path - shows
+  exactly what would be written by reusing the `plan` (dry-run) output, and only scaffolds after
+  an explicit confirmation, so a newcomer can create a project without knowing a single flag.
+  Answers are read from stdin, so an early EOF falls back to the shown defaults and the final
+  confirm defaults to "no" - a missing answer never writes to disk. Refs: P10-1.
 - `docs/faq.md`: a plain-language FAQ answering the common "why did this happen, what now?"
   moments a beginner hits (a directory/file already exists, "not a git repository", a red quality
   gate, being on the wrong branch), with a symptom, a cause and a next step for each. Refs: P9-2.

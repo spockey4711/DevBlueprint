@@ -113,3 +113,48 @@ load helper
   [ "$status" -ne 0 ]
   [[ "$output" == *"unknown command"* ]]
 }
+
+# The no-flag interactive wizard: answers piped on stdin drive it in one shot.
+# Order: project name, target folder, variant, branch-workflow choice, confirm.
+
+@test "wizard (init with no flags) previews the plan, then scaffolds on confirm" {
+  run bash -c "printf 'Demo App\n%s\ngeneric\n1\ny\n' '$TARGET' | '$DEVBLUEPRINT' init"
+  [ "$status" -eq 0 ]
+
+  # It shows exactly what would be written before touching disk, reusing `plan`.
+  [[ "$output" == *"nothing has touched disk yet"* ]]
+  [[ "$output" == *"Plan: init would scaffold"* ]]
+
+  # Then it scaffolds for real: foundation files land and doctor passes.
+  [ -f "$TARGET/CLAUDE.md" ]
+  grep -q "Demo App" "$TARGET/CLAUDE.md"
+  run db doctor --target "$TARGET"
+  [ "$status" -eq 0 ]
+}
+
+@test "wizard writes nothing when the final confirm is declined" {
+  run bash -c "printf 'X\n%s\ngeneric\n1\nn\n' '$TARGET' | '$DEVBLUEPRINT' init"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"Cancelled - nothing was written"* ]]
+  [ ! -e "$TARGET" ]
+}
+
+@test "wizard re-prompts on an unknown variant" {
+  run bash -c "printf 'X\n%s\nnope\ngeneric\n1\nn\n' '$TARGET' | '$DEVBLUEPRINT' init"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"not a known variant"* ]]
+}
+
+@test "wizard with no input at all cancels without scaffolding" {
+  run bash -c "'$DEVBLUEPRINT' init </dev/null"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"Cancelled - nothing was written"* ]]
+  [ ! -e "$TARGET" ]
+}
+
+@test "wizard option 2 sets up a single-branch (trunk) workflow" {
+  run bash -c "printf 'X\n%s\ngeneric\n2\nmain\ny\n' '$TARGET' | '$DEVBLUEPRINT' init"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"git branch -M main"* ]]
+  [[ "$output" != *"git switch -c"* ]]
+}
