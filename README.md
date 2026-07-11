@@ -7,6 +7,10 @@ stack-agnostic. One command scaffolds a project with a professional process from
 It is **documentation-first** - the output is plain files you own and edit, not a framework you
 depend on. There is no runtime, no lock-in; delete DevBlueprint afterwards and nothing breaks.
 
+> **New to the terminal, git or programming?** Start with
+> [**GETTING-STARTED.md**](GETTING-STARTED.md) - a plain-language walkthrough from nothing
+> installed to your first pull request. The rest of this README assumes you are already fluent.
+
 ## What you get
 
 - **A git workflow that scales to parallel AI sessions.** Two long-lived branches

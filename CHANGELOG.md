@@ -34,6 +34,9 @@ All notable changes are documented here, following
 
 ### Added
 
+- `GETTING-STARTED.md`: a beginner-onboarding guide skeleton linked from the top of the README,
+  with an intro and section headings for prerequisites, choosing a folder, the first run and the
+  first task. The anchor the rest of the P8 onboarding docs fill in. Refs: P8-1.
 - Governance scaffolding: every project now ships `scripts/protect-branches.sh`, an opt-in
   helper that turns the documented git workflow into an enforced one by applying GitHub branch
   protection (required PRs, approving reviews, optional code-owner review, no direct/force pushes
