@@ -33,8 +33,9 @@ devblueprint/
   VERSION            the kit version, stamped into every scaffold
 ```
 
-Each **variant** adds only what is stack-specific: the concrete quality-gate commands, a CI
-workflow, a `.gitignore`, a `wt.conf` (branches + post-create install hook), a conventions
+Each **variant** adds only what is stack-specific: the concrete quality-gate commands, CI
+workflows for both GitHub Actions and GitLab CI (`.gitlab-ci.yml`) plus a provider-neutral
+preview-deploy, a `.gitignore`, a `wt.conf` (branches + post-create install hook), a conventions
 overlay, the `CLAUDE.md` stack-notes block, and a `setup.sh` that wires the toolchain (tool
 configs, pre-commit hook, dependency install) in one command after `init`.
 

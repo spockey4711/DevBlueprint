@@ -19,6 +19,17 @@ All notable changes are documented here, following
 
 ### Added
 
+- Provider-agnostic CI: every variant now ships a `.gitlab-ci.yml` alongside its GitHub Actions
+  workflows, so a scaffolded project runs the same gates on either forge. The pipeline mirrors
+  `ci.yml` (a `quality` stage running the variant's gate), the security baseline (a `security`
+  stage pulling in GitLab's managed SAST, secret detection and dependency scanning) and adds a
+  `deploy` stage. `workflow:` rules run it on merge requests and the protected branches without
+  duplicate pipelines. `init` copies the variant's `gitlab/` tree to the project root, the same
+  way it copies `github/` to `.github/`. Refs: P7-2.
+- Preview-deploy workflows for both forges: `preview-deploy.yml` (GitHub) and the `deploy:preview`
+  job (GitLab) stand up an ephemeral preview environment per PR/MR, comment its URL, and tear it
+  down on close. Provider-neutral - the environment plumbing is wired and only the deploy step is
+  a TODO, so a project points it at its host (Vercel, Netlify, Pages, Fly, ...). Refs: P7-2.
 - Add-on flavor mechanism for `init`: pass `--flavor <a,b>` to layer orthogonal overlays (a
   database, a container setup, auth scaffolding) onto the chosen base variant. Flavors live under
   `variants/_flavors/<name>/` (a `flavor.env` title, an `overlay/` tree copied into the project,
