@@ -48,6 +48,22 @@ The skill lives in [`agent/skills/devblueprint-setup/`](agent/skills/devblueprin
 and the full question flow in [`agent/setup-interview.md`](agent/setup-interview.md). Same
 result as the manual `init` above - just conversational.
 
+### Learning the workflow as you go
+
+New to worktrees, small commits, and PRs? After setup, run the mentor skill:
+
+```
+/devblueprint-mentor
+```
+
+It rides along while you do a task and narrates each step - where you are in git, why we make a
+worktree, why commits stay small, why the gate must be green, why the work goes through a PR -
+saying **what** to do next and **why**, one step at a time, from your real git state. It runs the
+same `wt.sh` / git / `make check` commands you would run anyway; it just explains them, so the
+process teaches itself. The skill lives in
+[`agent/skills/devblueprint-mentor/`](agent/skills/devblueprint-mentor/SKILL.md) and leans on the
+[concept notes](docs/concepts/) for the full reasoning.
+
 ## What `init` produces
 
 Into the target directory:

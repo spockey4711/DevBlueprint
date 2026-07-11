@@ -7,6 +7,19 @@ All notable changes are documented here, following
 
 ### Added
 
+- New agent skill `agent/skills/devblueprint-mentor/` narrates the everyday task workflow while
+  you work. Where `devblueprint-setup` scaffolds a project once, the mentor rides along after
+  setup and, one step at a time, says *what* to do next and *why* - orienting from real git state
+  (which branch, which folder), then fetch + worktree, small Conventional Commits, the `make
+  check` gate, push + PR, and hand-off (never self-merge). Each step's *why* stays to a line and
+  links the P11-3/P11-4 concept notes (`docs/concepts/worktrees.md`,
+  `docs/concepts/commits-and-gate.md`) for the full reasoning, so the process teaches itself. It
+  runs the real `wt.sh` / git / `make check` commands, never a simulated flow, and is documented
+  in `GUIDE.md`. Agent files only. Refs: P12-2.
+- New `docs/concepts/README.md` indexes the "why we work this way" concept notes: it explains how
+  concept notes differ from reference docs, gives newcomers a reading order (worktrees, then
+  commits-and-gate) with a one-line hook for each, points at the glossary for unfamiliar terms,
+  and links on to the reference layer for the concrete *how*. Refs: P12-4.
 - Every variant except `ios-swift` (which needs macOS + Xcode) now ships a
   `.devcontainer/devcontainer.json`, so a scaffolded project opens in GitHub Codespaces or a
   local VS Code Dev Container with the toolchain and recommended extensions ready and no local
@@ -93,6 +106,14 @@ All notable changes are documented here, following
   `docs/cheatsheet.md`, `docs/reading-errors.md`, `docs/codespaces.md` and the `docs/concepts/`
   notes links straight to its glossary entry (existing whole-file glossary links were upgraded to
   the specific anchor), so no term is left unexplained. Refs: P12-3.
+- Beginner-friendly CLI failures: `devblueprint` now tells you what to do next, not just what
+  broke. Errors that used to be a bare one-liner (`missing --target`, `target does not exist`,
+  `unknown option`, an intake/config/baseline file that is not found, a target that is not a
+  scaffolded project) now print a second indented `next:` line with a concrete recovery step -
+  an example command, the flag to add, or the command to run first. `doctor --strict` on a
+  project with no git repo and `doctor`'s failure summary point at `git init` and
+  `doctor --fix` respectively. The `die` helper gained an optional second "next step" argument
+  that renders this line, so the guidance stays consistent across every command. Refs: P12-1.
 - Restructured the P8-P15 beginner-onboarding roadmap into eight phases of exactly four
   parallel-first tasks each: at most one `(CLI)` task per phase, within-phase tasks touch
   disjoint files and do not build on each other (enabler exceptions like P8-1/P13-1 marked),

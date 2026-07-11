@@ -85,6 +85,21 @@ If reading it carefully still leaves you stuck:
 - **Ask for help with the exact message.** Paste the whole thing, say what command you ran, and
   say what you already tried - that is far easier to help with than "it broke".
 
+## DevBlueprint's own errors tell you the next step
+
+When the `devblueprint` command itself fails, it does more than say what broke - it prints a
+second indented `next:` line with what to do about it:
+
+```
+devblueprint: missing --target <dir>
+  next: name the folder to scaffold into, e.g. devblueprint init --target ./my-app --variant node-express
+```
+
+So when a DevBlueprint command stops, read both lines: the first is the problem, the `next:`
+line is your move. If you are ever unsure what a command expects, `devblueprint help` lists every
+command and its options, and `devblueprint doctor --env` checks that your machine has the tools
+the kit needs.
+
 ## The mindset
 
 An error is not the tool being angry at you - it is the tool doing its job, catching a problem
