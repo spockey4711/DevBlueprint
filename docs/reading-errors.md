@@ -35,7 +35,7 @@ skip until you need it.
 
 ### A lint failure
 
-[Lint](glossary.md) checks style and likely mistakes. Its errors are the friendliest: they name
+[Lint](glossary.md#lint) checks style and likely mistakes. Its errors are the friendliest: they name
 a rule, a file, and a line, and often tell you the fix.
 
 ```
@@ -48,14 +48,14 @@ Read it as: in `src/app.ts`, line 42, column 7, the rule `prefer-const` wants `c
 
 ### A red CI log
 
-[CI](glossary.md) runs your checks on a server after you push. When it goes red, open the failed
+[CI](glossary.md#ci) runs your checks on a server after you push. When it goes red, open the failed
 job and scroll to the **first** step marked with a red X - the later steps failed only because an
 earlier one did. Inside that step, the real error reads just like it would on your own machine.
 Two shortcuts:
 
 - Search the log for the word `error` or `failed` and jump to the first hit.
 - The check that failed in CI is one you can usually reproduce locally by running
-  [`make check`](glossary.md) yourself - fix it there, where the loop is faster, then push again.
+  [`make check`](glossary.md#quality-gate) yourself - fix it there, where the loop is faster, then push again.
 
 ### A stack trace
 

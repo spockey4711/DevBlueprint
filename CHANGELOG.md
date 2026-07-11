@@ -88,6 +88,11 @@ All notable changes are documented here, following
 
 ### Changed
 
+- Cross-linked the glossary and the reference-layer docs: every term in `docs/glossary.md` now
+  carries a stable anchor, and the first mention of each term in `docs/faq.md`,
+  `docs/cheatsheet.md`, `docs/reading-errors.md`, `docs/codespaces.md` and the `docs/concepts/`
+  notes links straight to its glossary entry (existing whole-file glossary links were upgraded to
+  the specific anchor), so no term is left unexplained. Refs: P12-3.
 - Restructured the P8-P15 beginner-onboarding roadmap into eight phases of exactly four
   parallel-first tasks each: at most one `(CLI)` task per phase, within-phase tasks touch
   disjoint files and do not build on each other (enabler exceptions like P8-1/P13-1 marked),
