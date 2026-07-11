@@ -257,7 +257,7 @@ unchanged - only their ordering into waves. The eight P6-2 variants are each the
 
 - [x] P6-5: (CLI) `doctor --fix` - auto-repair missing or corrupted foundation files instead
   of only reporting them. **Owns:** `bin/devblueprint` (`cmd_doctor`), `test/`.
-- [ ] P7-2: Provider-agnostic + richer CI - GitLab CI templates alongside GitHub Actions, plus
+- [x] P7-2: Provider-agnostic + richer CI - GitLab CI templates alongside GitHub Actions, plus
   preview-deploy and dependency-review workflows. **Owns:** `variants/*/gitlab/`,
   `variants/*/github/` (one variant subtree per task).
 - [x] P6-2e: New variant `laravel`, self-contained mirroring P2-4. **Owns:** `variants/laravel/`.
@@ -276,7 +276,7 @@ unchanged - only their ordering into waves. The eight P6-2 variants are each the
   (one variant subtree per task).
 - [x] P6-2g: New variant `elixir-phoenix`, self-contained mirroring P2-4. **Owns:**
   `variants/elixir-phoenix/`. (dep: P2-1)
-- [ ] P6-2h: New variant `terraform-iac`, self-contained mirroring P2-4. **Owns:**
+- [x] P6-2h: New variant `terraform-iac`, self-contained mirroring P2-4. **Owns:**
   `variants/terraform-iac/`. (dep: P2-1)
 
 ### Wave 5 - governance (isolated)

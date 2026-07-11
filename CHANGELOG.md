@@ -32,6 +32,17 @@ All notable changes are documented here, following
   Intake files also gain an `agents` key so a baseline can standardize the coding-agent toolset.
   A ready-to-copy `agent/org-baseline.example.yml` ships alongside `agent/intake.example.yml`.
   Refs: P7-4.
+- Provider-agnostic CI: every variant now ships a `.gitlab-ci.yml` alongside its GitHub Actions
+  workflows, so a scaffolded project runs the same gates on either forge. The pipeline mirrors
+  `ci.yml` (a `quality` stage running the variant's gate), the security baseline (a `security`
+  stage pulling in GitLab's managed SAST, secret detection and dependency scanning) and adds a
+  `deploy` stage. `workflow:` rules run it on merge requests and the protected branches without
+  duplicate pipelines. `init` copies the variant's `gitlab/` tree to the project root, the same
+  way it copies `github/` to `.github/`. Refs: P7-2.
+- Preview-deploy workflows for both forges: `preview-deploy.yml` (GitHub) and the `deploy:preview`
+  job (GitLab) stand up an ephemeral preview environment per PR/MR, comment its URL, and tear it
+  down on close. Provider-neutral - the environment plumbing is wired and only the deploy step is
+  a TODO, so a project points it at its host (Vercel, Netlify, Pages, Fly, ...). Refs: P7-2.
 - `doctor --fix` auto-repairs foundation files instead of only reporting them: a missing or
   corrupted (zero-byte) foundation file is rebuilt from the kit, exactly as `init` produced it
   (core copies, the variant's copies, and the templated `CLAUDE.md`/`CONTRIBUTING.md`/`CHANGELOG`
@@ -96,6 +107,14 @@ All notable changes are documented here, following
   Erlang/OTP + Elixir setup and PLT caching + the shared security/commit-checks/coverage baseline +
   dependabot, `.tool-versions`, gitignore, wt.conf, and the conventions/quality docs),
   auto-discovered by the CLI. Refs: P6-2g.
+- New `terraform-iac` variant: a Terraform Infrastructure-as-Code stack built with the terraform
+  CLI, `terraform fmt` (formatting), `terraform validate` (configuration + types), tflint (lint),
+  the native `terraform test` framework, and Trivy for IaC misconfiguration scanning. Self-contained
+  under `variants/terraform-iac/` (manifest, `setup.sh`, Makefile, CI with Terraform + tflint setup
+  + the shared security/commit-checks baseline extended with a Trivy `iac-scan` job + dependabot,
+  `.tool-versions`, gitignore, wt.conf, and the conventions/quality docs), auto-discovered by the
+  CLI. No `coverage.yml` (Terraform has no line-coverage metric; `terraform test` runs in `ci.yml`).
+  Refs: P6-2h.
 - New `sveltekit` variant: a TypeScript / SvelteKit web stack built with pnpm, Prettier
   (with `prettier-plugin-svelte`), ESLint + `svelte-check` (linting + type-checking), Vitest
   (unit/component), and Playwright (e2e). Self-contained under `variants/sveltekit/` (manifest,
