@@ -287,7 +287,7 @@ unchanged - only their ordering into waves. The eight P6-2 variants are each the
   branch-protection setup script (`gh api`), so the documented workflow is also technically
   enforced. **Owns:** `core/templates/CODEOWNERS.tmpl`, `scripts/protect-branches.sh`.
   Conflicts with nothing above, so it can ride along with any earlier wave's PRs.
-- [ ] P7-6: Backfill the security + release CI baseline into the variants added after the
+- [x] P7-6: Backfill the security + release CI baseline into the variants added after the
   P6-4/P7-1 sweeps. Those sweeps only touched the variants that existed at the time, so the
   newer ones ship an incomplete `github/` tree. Add `release.yml` + `release-please-config.json`
   + `release-please-manifest.json` to `elixir-phoenix`, `laravel`, `rails` and `sveltekit`

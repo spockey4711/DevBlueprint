@@ -7,6 +7,15 @@ All notable changes are documented here, following
 
 ### Fixed
 
+- The `elixir-phoenix`, `laravel`, `rails` and `sveltekit` variants shipped with an incomplete
+  `github/` tree: added after the P6-4/P7-1 sweeps, they missed the security and release CI
+  baseline every older variant (incl. `generic`) carries. Backfilled release automation
+  (`workflows/release.yml` + `release-please-config.json` + `release-please-manifest.json`, each
+  variant's release-please strategy picked native where one exists - `elixir`, `php`, `ruby`,
+  `node` - else `simple`) into all four, and added a `codeql.yml` for the variants whose language
+  has a CodeQL target: `dotnet` (`csharp`), `laravel` (`php`), `rails` (`ruby`) and `sveltekit`
+  (`javascript-typescript`). `elixir-phoenix`, `flutter`, `rust` and `generic` stay without
+  CodeQL, matching the P6-4 note. Refs: P7-6.
 - The `terraform-iac` variant shipped without the provider-agnostic CI baseline: it landed
   right after the P7-2 sweep and so had no `gitlab/.gitlab-ci.yml` or
   `github/workflows/preview-deploy.yml`. The `init scaffolds provider-agnostic CI for every
