@@ -113,7 +113,7 @@ Each task is a brand-new standalone file, so all four are independent with zero 
 
 #### P13 - Localization of user-facing copy (docs only; enabler + three translations)
 
-- [ ] P13-1: Establish an `i18n/` layer and a short policy - repo/code/docs stay English
+- [x] P13-1: Establish an `i18n/` layer and a short policy - repo/code/docs stay English
   (CLAUDE.md rule), but beginner tutorial copy may be localised in a dedicated layer.
   (enabler - do first)
 - [ ] P13-2: German translation of `GETTING-STARTED.md` as the first locale, since raw

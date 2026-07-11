@@ -6,7 +6,7 @@ years. This file is the short version; the full detail lives in
 
 ## Ground rules
 
-- **Language:** code, comments, docs, commits and PRs are in **English**. Localize user-facing copy in a dedicated layer, never as scattered string literals.
+- **Language:** code, comments, docs, commits and PRs are in **English**. Localize user-facing copy in a dedicated layer ([`i18n/`](i18n/README.md)), never as scattered string literals.
 - **Style:** plain and direct. No emojis anywhere in the repo. Use the regular hyphen `-` only.
 - **Small steps:** small commits and small PRs beat big ones. One logical change per commit.
 
