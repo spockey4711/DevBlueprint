@@ -19,6 +19,11 @@ All notable changes are documented here, following
 
 ### Added
 
+- Ops artifacts for the `generic` variant: a `Dockerfile` + `.dockerignore` + `docker-compose.yml`,
+  `deploy/` skeletons for Fly/Render/Terraform, and a `.env.schema` promoted from `.env.example` and
+  enforced in the gate - `make check` runs `scripts/check-env.sh` (a new `validate-env` step) to keep
+  `.env.example` in lockstep with the schema and validate required keys/patterns in any real `.env`.
+  Refs: P7-3.
 - `doctor --fix` auto-repairs foundation files instead of only reporting them: a missing or
   corrupted (zero-byte) foundation file is rebuilt from the kit, exactly as `init` produced it
   (core copies, the variant's copies, and the templated `CLAUDE.md`/`CONTRIBUTING.md`/`CHANGELOG`
