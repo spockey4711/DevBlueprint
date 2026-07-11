@@ -54,6 +54,13 @@ All notable changes are documented here, following
   workflow inlines the gate rather than calling `make check`), both running `scripts/check-env.sh`
   to keep `.env.example` in lockstep with the schema and validate required keys/patterns in any real
   `.env`; the `doctor --run-gate` gate runs it too. Refs: P7-3.
+- Ops artifacts for the `node-express` variant: a multi-stage `Dockerfile` (`node:22-slim` build ->
+  slim non-root runtime running the compiled `dist/server.js`) + `.dockerignore` +
+  `docker-compose.yml`, `deploy/` skeletons for Fly/Render/Terraform, and a `.env.schema` reconciled
+  key-for-key with `.env.example` and enforced in the gate. `make check` gains a `validate-env` step
+  and CI a `Validate env schema` step, both running `scripts/check-env.sh` (copied verbatim from the
+  `backend-go` variant) to keep `.env.example` in lockstep with the schema and validate required
+  keys/patterns in any real `.env`; `QUALITY_GATE` runs it too. Refs: P7-3.
 - Ops artifacts for the `generic` variant: a `Dockerfile` + `.dockerignore` + `docker-compose.yml`,
   `deploy/` skeletons for Fly/Render/Terraform, and a `.env.schema` promoted from `.env.example` and
   enforced in the gate - `make check` runs `scripts/check-env.sh` (a new `validate-env` step) to keep
