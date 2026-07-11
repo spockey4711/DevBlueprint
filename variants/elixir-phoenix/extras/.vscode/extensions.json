@@ -1,0 +1,8 @@
+{
+  "recommendations": [
+    "JakeBecker.elixir-ls",
+    "phoenixframework.phoenix",
+    "EditorConfig.EditorConfig",
+    "github.vscode-github-actions"
+  ]
+}

@@ -7,6 +7,14 @@ All notable changes are documented here, following
 
 ### Added
 
+- Every variant now ships a `.vscode/extensions.json` with recommended extensions for its stack
+  (via the variant's `extras/` tree), so opening a scaffolded project in VS Code offers the right
+  tooling - the language server, formatter and linter that back the quality gate - in one click.
+  The lists are tailored per variant (e.g. `charliermarsh.ruff` + `ms-python.python` for the
+  Python variants, `dbaeumer.vscode-eslint` + `esbenp.prettier-vscode` for the TypeScript ones,
+  `rust-lang.rust-analyzer` for Rust), with `EditorConfig.EditorConfig` and
+  `github.vscode-github-actions` as the shared baseline. A new `test/vscode.bats` guards that every
+  variant carries a valid, non-empty list and that `init` scaffolds it. Refs: P10-3.
 - The `devblueprint-setup` interview skill gained a **Beginner mode**: when the user signals they
   are new, it assumes zero prior knowledge, glosses every term the interview raises (variant,
   deploy target, branch, two-branch vs. trunk, worktree, PR, quality gate, intake file) in one
