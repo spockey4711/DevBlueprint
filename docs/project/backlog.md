@@ -186,7 +186,7 @@ The biggest adoption lever - today you must clone the repo to run `bin/devbluepr
   a Homebrew tap, and a `curl | sh` installer, so the kit runs without a clone. Update the
   README install section. No CLI-internals change. **Owns:** `packaging/`, `install.sh`,
   root `package.json`, README install section.
-- [ ] P4-2: (CLI) `devblueprint upgrade` - self-update the installed kit, with stable/next
+- [x] P4-2: (CLI) `devblueprint upgrade` - self-update the installed kit, with stable/next
   version channels and pinning, so `update` targets stay reproducible. **Owns:**
   `bin/devblueprint` (new `cmd_upgrade`), `test/`.
 - [x] P4-3: Kit self-CI. A matrix workflow that scaffolds every variant into a throwaway dir,
