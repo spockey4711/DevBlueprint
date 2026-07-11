@@ -1,5 +1,7 @@
 # FAQ
 
+Deutsch: [i18n/de/docs/faq.md](../i18n/de/docs/faq.md).
+
 The "why did this happen, and what do I do now?" moments that trip up almost everyone at the
 start. Each entry names the symptom, explains why it happens, and tells you the one thing to do
 next. If a word here is new, check the [glossary](glossary.md) first.

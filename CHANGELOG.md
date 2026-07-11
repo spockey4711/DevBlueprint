@@ -13,6 +13,12 @@ All notable changes are documented here, following
   cross-file links resolve back to the canonical English files. The file carries the
   canonical-source header, the English source links to it, and the `i18n/README.md` status table
   is updated. Refs: P13-2.
+- German (`de`) translations of the FAQ (`i18n/de/docs/faq.md`) and cheat sheet
+  (`i18n/de/docs/cheatsheet.md`), mirroring `docs/faq.md` and `docs/cheatsheet.md` under the
+  `i18n/de/` subtree. Each carries the canonical-source header (English stays authoritative) and
+  keeps every command, path, filename, code block and link target identical to its English source,
+  translating only the prose. The two English sources now link to their German versions, and the
+  `i18n/README.md` status table marks both as done. Refs: P13-4.
 - German translation of the glossary at `i18n/de/docs/glossary.md`, the first locale to land
   under the `i18n/` layer. It mirrors `docs/glossary.md` one-to-one, carries the canonical-source
   header that marks English as authoritative, keeps every term headword, command, path and anchor
