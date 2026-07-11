@@ -7,6 +7,16 @@ All notable changes are documented here, following
 
 ### Added
 
+- Every variant except `ios-swift` (which needs macOS + Xcode) now ships a
+  `.devcontainer/devcontainer.json`, so a scaffolded project opens in GitHub Codespaces or a
+  local VS Code Dev Container with the toolchain and recommended extensions ready and no local
+  install - the first-class beginner path. Each container starts from the official image for its
+  stack (or a pinned vendor image for `elixir`/`flutter`/`android-kotlin`), auto-installs the same
+  extensions as the variant's `.vscode/extensions.json`, and runs `setup.sh` on create to warm the
+  toolchain and dependencies. A new `docs/codespaces.md` promotes the path (linked from
+  `GETTING-STARTED.md` and the README), and `test/vscode.bats` guards that every Linux-capable
+  variant carries a valid `devcontainer.json` whose extensions match its `extensions.json` and
+  that `init` scaffolds it. Refs: P11-2.
 - Every variant now ships a `.vscode/tasks.json`, so a scaffolded project wires its quality gate
   into VS Code's task menu out of the box: `Cmd/Ctrl+Shift+B` runs the full gate (the default
   build task), and **Run Task...** exposes the individual steps (lint, type-check, tests, build)

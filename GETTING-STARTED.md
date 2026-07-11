@@ -7,6 +7,12 @@ nothing installed to your first green pull request, explaining each step in plai
 If you are already fluent with a terminal, git and package managers, you can skip this guide
 and go straight to the [README](README.md) - it covers the same ground faster.
 
+> **Want to skip installing anything?** Every DevBlueprint project ships a ready-to-use cloud
+> environment. Open it in **GitHub Codespaces** (or a local Dev Container) and you get a working
+> editor and toolchain in a couple of minutes with nothing installed on your machine. See
+> [Zero-install setup: Codespaces and Dev Containers](docs/codespaces.md) - it is the fastest
+> way in, and lets you skip the Prerequisites below.
+
 > This guide is being written in stages. Sections marked _(coming soon)_ are placeholders that
 > will be filled in shortly; the headings show what is planned so you know what to expect.
 
@@ -496,6 +502,8 @@ docs is detail on top of it.
 
 ## Where to go next
 
+- [Zero-install setup: Codespaces and Dev Containers](docs/codespaces.md) - open any project in
+  a ready cloud environment, no local install.
 - [README](README.md) - the fast overview and full command reference.
 - [`CONTRIBUTING.md`](CONTRIBUTING.md) - the day-to-day process in detail.
 - [`docs/`](docs/) - the engineering standards, conventions and quality bar behind the workflow.
