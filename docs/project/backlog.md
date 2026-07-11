@@ -246,7 +246,7 @@ unchanged - only their ordering into waves. The eight P6-2 variants are each the
   generation and GitHub releases (release-please or semantic-release), wired into each
   variant's CI. Closes the loop on the existing changelog discipline. Fan out per variant.
   **Owns:** `variants/*/github/` + release config (one variant subtree per task).
-- [ ] P6-2c: New variant `dotnet`, self-contained mirroring P2-4. **Owns:** `variants/dotnet/`.
+- [x] P6-2c: New variant `dotnet`, self-contained mirroring P2-4. **Owns:** `variants/dotnet/`.
   (dep: P2-1)
 - [ ] P6-2d: New variant `rails`, self-contained mirroring P2-4. **Owns:** `variants/rails/`.
   (dep: P2-1)
