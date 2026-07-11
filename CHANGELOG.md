@@ -29,6 +29,8 @@ All notable changes are documented here, following
 
 ### Changed
 
+- Split `docs/project/backlog.md`: the completed P0-P7 phases moved to a new
+  `docs/project/backlog-archive.md`, leaving the active P8-P15 roadmap in the main backlog.
 - Reworked DevBlueprint from the `apkit` spec-scaffolding CLI into a documentation-first
   engineering-setup kit centered on the git workflow, quality gate and AI-assistant guidance.
 
