@@ -40,6 +40,9 @@ All notable changes are documented here, following
 
 ### Added
 
+- `docs/faq.md`: a plain-language FAQ answering the common "why did this happen, what now?"
+  moments a beginner hits (a directory/file already exists, "not a git repository", a red quality
+  gate, being on the wrong branch), with a symptom, a cause and a next step for each. Refs: P9-2.
 - `docs/glossary.md`: a plain-language glossary defining the everyday terms a beginner meets in
   these docs (terminal, path, repo, branch, commit, PR, worktree, CI, lint, variant, quality
   gate), one sentence each. Refs: P9-1.

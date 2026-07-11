@@ -58,7 +58,7 @@ Each task is a brand-new standalone file, so all four are independent with zero 
 
 - [x] P9-1: Plain-language glossary at `docs/glossary.md` - terminal, path, repo, branch,
   commit, PR, worktree, CI, lint, variant, quality gate; one sentence each.
-- [ ] P9-2: `docs/faq.md` - the common "why did this happen / what now" questions a beginner
+- [x] P9-2: `docs/faq.md` - the common "why did this happen / what now" questions a beginner
   hits (directory already exists, not a git repo, gate is red, wrong branch), one answer each.
 - [ ] P9-3: `docs/cheatsheet.md` - a one-page everyday-commands reference (the wt.sh, git,
   and `make check` calls used in the normal loop) that a beginner can keep open beside them.
