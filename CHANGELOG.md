@@ -19,6 +19,11 @@ All notable changes are documented here, following
 
 ### Added
 
+- New `dotnet` variant: a C# / .NET 10 backend built with the `dotnet` CLI (SDK pinned in
+  `global.json`), `dotnet format`, Roslyn analyzers with warnings-as-errors, and xUnit.
+  Self-contained under `variants/dotnet/` (manifest, `setup.sh`, Makefile, CI + dependabot,
+  `.tool-versions`, gitignore, wt.conf, and the conventions/quality docs), auto-discovered by
+  the CLI. Refs: P6-2c.
 - New `spring-java` variant: a Java 21 + Spring Boot backend built with the Gradle wrapper,
   Spotless (google-java-format), Checkstyle, and JUnit 5. Self-contained under
   `variants/spring-java/` (manifest, `setup.sh`, Makefile, CI + dependabot, `.tool-versions`,

@@ -1,0 +1,44 @@
+# Build output
+bin/
+obj/
+out/
+publish/
+*.dll
+*.exe
+
+# .NET / MSBuild
+project.lock.json
+project.fragment.lock.json
+artifacts/
+*.binlog
+msbuild.log
+
+# Test / coverage reports
+[Tt]est[Rr]esult*/
+coverage/
+*.coverage
+*.coveragexml
+*.trx
+
+# NuGet
+*.nupkg
+*.snupkg
+.nuget/
+packages/
+!packages/build/
+
+# IDE / editor cruft
+.vs/
+.idea/
+*.user
+*.suo
+*.userprefs
+.vscode/*
+!.vscode/extensions.json
+.DS_Store
+
+# Env (keep the example)
+.env
+.env.*
+!.env.example
+appsettings.Local.json
