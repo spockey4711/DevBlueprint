@@ -87,7 +87,7 @@ Each task is a brand-new standalone file, so all four are independent with zero 
 - [ ] P11-1: (CLI) `devblueprint doctor --env` prerequisite check - verifies git / Node / a
   working shell are present and prints per-OS copy-paste fixes when they are not. The first
   command a beginner runs.
-- [ ] P11-2: Promote a devcontainer / Codespaces "click here, get a ready environment" path as
+- [x] P11-2: Promote a devcontainer / Codespaces "click here, get a ready environment" path as
   a first-class beginner option - a short doc plus making sure the relevant variants ship a
   `.devcontainer`. Zero local install. (references P8-1)
 - [ ] P11-3: Concept note `docs/concepts/worktrees.md` - why we work one-directory-per-branch,
