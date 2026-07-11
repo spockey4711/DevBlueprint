@@ -6,7 +6,7 @@ Vitest + Testing Library, Playwright, ESLint/Prettier, GitHub Actions CI, pnpm.
 ## Quality gate
 
 ```bash
-pnpm lint && pnpm typecheck && pnpm test && pnpm build
+sh scripts/check-env.sh && pnpm lint && pnpm typecheck && pnpm test && pnpm build
 ```
 
 ## What `devblueprint init --variant web-nextjs` adds
@@ -20,6 +20,10 @@ pnpm lint && pnpm typecheck && pnpm test && pnpm build
 - `.gitignore` for Node/Next.
 - `docs/ops/deployment.md` (deploy runbook: managed/Docker/VPS + DB + env checklists) and
   `.env.example` (committed template; real `.env*` stay ignored).
+- Ops artifacts: `Dockerfile` (Next.js standalone output -> slim non-root `node server.js`) +
+  `.dockerignore` + `docker-compose.yml`, `deploy/` (Vercel/Render/Fly/Terraform skeletons - Vercel
+  is the primary managed target and needs no Dockerfile), and `.env.schema` + `scripts/check-env.sh`
+  (the env contract the gate and CI enforce). All skeletons - fill the `<...>` placeholders.
 - `src/` and `tests/` skeleton.
 
 ## After init (wire the toolchain)

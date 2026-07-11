@@ -57,7 +57,8 @@ load helper
 
   run cat "$TARGET/Makefile"
   [[ "$output" == *"cd packages/api && ruff check ."* ]]
-  [[ "$output" == *"cd packages/web && pnpm lint"* ]]
+  # web-nextjs leads its gate with the env-schema check.
+  [[ "$output" == *"cd packages/web && sh scripts/check-env.sh && pnpm lint"* ]]
 }
 
 @test "root Makefile doubles a literal \$ in a gate so make passes it to the shell" {
