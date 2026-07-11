@@ -82,6 +82,19 @@ CODE_OF_CONDUCT.md                 Contributor Covenant 2.1
 carry an `INSERT CONTACT METHOD` placeholder for you to replace. These are off by default and are
 not required by `doctor`.
 
+Working with more than one coding agent? Pass `--agents` to emit instruction files for them
+alongside `CLAUDE.md`, all rendered from the same canonical guidance:
+
+```
+--agents cursor       .cursor/rules/<project>.mdc     a Cursor project rule
+--agents codex        AGENTS.md                       the tool-neutral agents.md convention
+--agents copilot      .github/copilot-instructions.md GitHub Copilot repository instructions
+```
+
+Combine them in one comma-separated list (`--agents claude,cursor,codex`). `claude` is always
+included, so the default is `CLAUDE.md` only. The choice is recorded in `.devblueprint`, and
+`devblueprint update` re-renders the selected files so they stay in step with `CLAUDE.md`.
+
 Everything is a plain file you own. Edit freely - DevBlueprint is not a dependency.
 
 ## Intake files and `plan`

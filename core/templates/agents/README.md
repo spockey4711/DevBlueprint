@@ -6,8 +6,9 @@ the DevBlueprint process is not Claude-only. They use the identical `{{TOKEN}}` 
 `{{#TWO_BRANCH}}` / `{{#SINGLE_BRANCH}}` conditional blocks, so the CLI's existing `render()`
 and `select_workflow_block()` handle them with no new substitution logic.
 
-This directory ships **templates only**. Wiring them into `init --agents ...` and keeping them
-in sync on `update` is a separate task (backlog P5-3); nothing here is emitted yet.
+`devblueprint init --agents <list>` emits these files (see the mapping below) and records the
+selection in the `.devblueprint` stamp, and `devblueprint update` re-renders whichever were
+selected so they stay in step with `CLAUDE.md` (P5-3).
 
 ## Source -> target mapping
 

@@ -19,6 +19,13 @@ All notable changes are documented here, following
 
 ### Added
 
+- `init --agents <list>` wires the multi-agent instruction templates into the CLI: it emits
+  `AGENTS.md` (Codex), a Cursor project rule (`.cursor/rules/<project>.mdc`), and Copilot
+  instructions (`.github/copilot-instructions.md`) from the same canonical guidance as
+  `CLAUDE.md`, for whichever agents you name (default: just `claude`, which is always
+  included). The selection is recorded in the `.devblueprint` stamp, and `devblueprint update`
+  re-renders the selected files from the current templates so they never drift from
+  `CLAUDE.md` - while leaving the user-owned `CLAUDE.md` itself untouched. Refs: P5-3.
 - Static intake config builder: a single, backend-less HTML page
   (`web/config-builder/index.html`) that turns a short form into a
   `.devblueprint-intake.yml`, for users who set the kit up by hand instead of through an
