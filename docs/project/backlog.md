@@ -241,7 +241,7 @@ unchanged - only their ordering into waves. The eight P6-2 variants are each the
 
 ### Wave 2 - flavors + release automation + variants
 
-- [ ] P6-3: (CLI) Variant add-on/flavor mechanism - orthogonal overlays (db, auth, container)
+- [x] P6-3: (CLI) Variant add-on/flavor mechanism - orthogonal overlays (db, auth, container)
   layered onto a base variant at init, e.g. `--flavor postgres,docker`. **Owns:**
   `bin/devblueprint` (flavor resolution), `test/`, `variants/_flavors/`.
 - [ ] P7-1: Release automation per variant - Conventional-Commits-driven versioning, CHANGELOG

@@ -19,6 +19,14 @@ All notable changes are documented here, following
 
 ### Added
 
+- Add-on flavor mechanism for `init`: pass `--flavor <a,b>` to layer orthogonal overlays (a
+  database, a container setup, auth scaffolding) onto the chosen base variant. Flavors live under
+  `variants/_flavors/<name>/` (a `flavor.env` title, an `overlay/` tree copied into the project,
+  and an optional `gitignore.append`), compose with each other, and apply last with the same
+  overwrite safety as the base scaffold - so a flavor never clobbers a variant file. The
+  selection is validated up front, echoed by `init`/`plan`, recorded in the `.devblueprint` stamp
+  (`flavors=...`), and available through `devblueprint list` (and `list --json`) and the intake
+  `flavors:` key. Ships `postgres`, `docker` and `auth`. Refs: P6-3.
 - Backlog checkbox convention documented in the git-workflow task lifecycle (core-owned, so it
   ships to every scaffolded project) and surfaced as a marker legend in the backlog header and
   the `init` backlog stub: tick a task `- [x]` as soon as its PR is ready to merge, never leave a

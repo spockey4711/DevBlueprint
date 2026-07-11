@@ -95,6 +95,21 @@ Combine them in one comma-separated list (`--agents claude,cursor,codex`). `clau
 included, so the default is `CLAUDE.md` only. The choice is recorded in `.devblueprint`, and
 `devblueprint update` re-renders the selected files so they stay in step with `CLAUDE.md`.
 
+Need a database, a container setup or auth? Pass `--flavor` to layer orthogonal **add-on
+flavors** onto the base variant - each drops in its own config plus a `docs/flavors/<name>.md`
+note explaining how to wire it:
+
+```
+--flavor postgres     docker-compose.yml (a local Postgres) + a setup note
+--flavor docker        .dockerignore + a Dockerfile skeleton note
+--flavor auth          .gitignore rules for secrets + an auth security note
+```
+
+Combine them in one comma-separated list (`--flavor postgres,docker`). Flavors layer on last,
+after the base variant, with the same overwrite safety (a flavor never clobbers a variant file),
+and the selection is recorded in `.devblueprint`. Run `bin/devblueprint list` for the current
+set. `--flavor` is mutually exclusive with the monorepo `--package` mode.
+
 Everything is a plain file you own. Edit freely - DevBlueprint is not a dependency.
 
 ## Intake files and `plan`
