@@ -1,0 +1,4 @@
+# Toolchain pin for asdf / mise. Keeps local, CI and teammates on one PHP.
+# Match this to the PHP version installed in CI (setup-php) and the `php`
+# platform constraint in composer.json.
+php 8.4.3

@@ -50,6 +50,22 @@ percentage or every `const` widget.
 - **FVM / .tool-versions** - pin one Flutter SDK (Dart ships inside it) so local and CI match.
 - **CI** - `.github/workflows/ci.yml` runs the full gate on every PR into `develop`/`master`.
 
+## Release automation
+
+On every push to `master`, `release.yml` runs
+[release-please](https://github.com/googleapis/release-please), turning the
+Conventional-Commits history into releases and closing the loop on the changelog
+discipline above:
+
+- It maintains a standing **release PR** whose diff is the next SemVer bump plus
+  the generated `CHANGELOG.md` entries (`feat` -> minor, `fix`/`perf` -> patch,
+  `BREAKING CHANGE` -> major). Merging that PR tags the release and publishes a
+  GitHub Release.
+- `release-please-config.json` pins the release strategy to `dart`, so it also bumps
+  the version in `pubspec.yaml` in the release PR.
+- This automates the manual "move `[Unreleased]`, tag, publish" steps in the git
+  workflow: let the merged commits drive `CHANGELOG.md` instead of hand-editing it.
+
 ## Definition of done
 
 1. It works on the target platforms and the feature behaves as specified.

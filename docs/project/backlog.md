@@ -244,13 +244,13 @@ unchanged - only their ordering into waves. The eight P6-2 variants are each the
 - [x] P6-3: (CLI) Variant add-on/flavor mechanism - orthogonal overlays (db, auth, container)
   layered onto a base variant at init, e.g. `--flavor postgres,docker`. **Owns:**
   `bin/devblueprint` (flavor resolution), `test/`, `variants/_flavors/`.
-- [ ] P7-1: Release automation per variant - Conventional-Commits-driven versioning, CHANGELOG
+- [x] P7-1: Release automation per variant - Conventional-Commits-driven versioning, CHANGELOG
   generation and GitHub releases (release-please or semantic-release), wired into each
   variant's CI. Closes the loop on the existing changelog discipline. Fan out per variant.
   **Owns:** `variants/*/github/` + release config (one variant subtree per task).
 - [x] P6-2c: New variant `dotnet`, self-contained mirroring P2-4. **Owns:** `variants/dotnet/`.
   (dep: P2-1)
-- [ ] P6-2d: New variant `rails`, self-contained mirroring P2-4. **Owns:** `variants/rails/`.
+- [x] P6-2d: New variant `rails`, self-contained mirroring P2-4. **Owns:** `variants/rails/`.
   (dep: P2-1)
 
 ### Wave 3 - doctor --fix + GitLab CI + variants
@@ -260,7 +260,7 @@ unchanged - only their ordering into waves. The eight P6-2 variants are each the
 - [ ] P7-2: Provider-agnostic + richer CI - GitLab CI templates alongside GitHub Actions, plus
   preview-deploy and dependency-review workflows. **Owns:** `variants/*/gitlab/`,
   `variants/*/github/` (one variant subtree per task).
-- [ ] P6-2e: New variant `laravel`, self-contained mirroring P2-4. **Owns:** `variants/laravel/`.
+- [x] P6-2e: New variant `laravel`, self-contained mirroring P2-4. **Owns:** `variants/laravel/`.
   (dep: P2-1)
 - [ ] P6-2f: New variant `sveltekit`, self-contained mirroring P2-4. **Owns:**
   `variants/sveltekit/`. (dep: P2-1)
