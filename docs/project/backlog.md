@@ -234,7 +234,7 @@ unchanged - only their ordering into waves. The eight P6-2 variants are each the
   (one variant subtree per task).
 - [x] P6-2a: New variant `flutter`, self-contained mirroring P2-4. **Owns:** `variants/flutter/`.
   (dep: P2-1)
-- [ ] P6-2b: New variant `spring-java`, self-contained mirroring P2-4. **Owns:**
+- [x] P6-2b: New variant `spring-java`, self-contained mirroring P2-4. **Owns:**
   `variants/spring-java/`. (dep: P2-1)
 
 ### Wave 2 - flavors + release automation + variants
