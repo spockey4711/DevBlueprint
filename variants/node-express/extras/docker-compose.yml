@@ -1,0 +1,39 @@
+# Run the service in a container locally, close to how it runs in production but
+# wired for development. `docker compose up --build` builds the Dockerfile in this
+# directory and starts the app on port 3000.
+#
+# Secrets come from a local .env (gitignored) via env_file - never hard-code them
+# here. Need a database too? Uncomment the `db` service and the `depends_on` block
+# below to wait on a local Postgres.
+services:
+  app:
+    build: .
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: development
+    ports:
+      - "3000:3000"
+    restart: unless-stopped
+    # depends_on:
+    #   db:
+    #     condition: service_healthy
+
+  # db:
+  #   image: postgres:16
+  #   environment:
+  #     POSTGRES_USER: app
+  #     POSTGRES_PASSWORD: app
+  #     POSTGRES_DB: app
+  #   ports:
+  #     - "5432:5432"
+  #   volumes:
+  #     - db-data:/var/lib/postgresql/data
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "pg_isready -U app"]
+  #     interval: 5s
+  #     timeout: 3s
+  #     retries: 5
+
+# volumes:
+#   db-data:
