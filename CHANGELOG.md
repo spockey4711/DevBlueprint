@@ -45,6 +45,14 @@ All notable changes are documented here, following
   steps, `make check`, `git push`, `gh pr create`, `wt.sh gc`) plus quick-reference tables for
   the `scripts/wt.sh`, daily git and `make check` commands and the commit-message format, with
   bold terms linked to the glossary. Refs: P9-3.
+- `docs/reading-errors.md`: a plain-language guide to reading an unexpected error - the read /
+  look / change-one-thing / re-run loop, where the useful part of a message is, and how to read a
+  lint failure, a red CI log and a stack trace, with links to the glossary. Refs: P9-4.
+- `GETTING-STARTED.md`: filled the "Your first run" and "Your first task" sections with a
+  complete worked tutorial - one narrated run from `devblueprint init` through `setup.sh`, git
+  setup, `doctor`, creating the GitHub remote, then the everyday loop (worktree, edit, `make
+  check`, commit, push, PR, cleanup) - every command shown with its expected output, written
+  against the `generic` variant so a beginner needs no toolchain. Refs: P8-4.
 - `docs/glossary.md`: a plain-language glossary defining the everyday terms a beginner meets in
   these docs (terminal, path, repo, branch, commit, PR, worktree, CI, lint, variant, quality
   gate), one sentence each. Refs: P9-1.
