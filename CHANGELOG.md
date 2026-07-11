@@ -68,6 +68,12 @@ All notable changes are documented here, following
   coverage baseline + dependabot, `.tool-versions`, gitignore, wt.conf, and the conventions/quality
   docs), auto-discovered by the CLI. No `codeql.yml` (CodeQL has no PHP target); semgrep in
   `security.yml` covers PHP SAST. Refs: P6-2e.
+- New `elixir-phoenix` variant: an Elixir / Phoenix web stack built with Hex/mix, `mix format`
+  (formatting), Credo (style + consistency), Dialyzer (success-typing static analysis), and
+  ExUnit. Self-contained under `variants/elixir-phoenix/` (manifest, `setup.sh`, Makefile, CI with
+  Erlang/OTP + Elixir setup and PLT caching + the shared security/commit-checks/coverage baseline +
+  dependabot, `.tool-versions`, gitignore, wt.conf, and the conventions/quality docs),
+  auto-discovered by the CLI. Refs: P6-2g.
 - New `sveltekit` variant: a TypeScript / SvelteKit web stack built with pnpm, Prettier
   (with `prettier-plugin-svelte`), ESLint + `svelte-check` (linting + type-checking), Vitest
   (unit/component), and Playwright (e2e). Self-contained under `variants/sveltekit/` (manifest,

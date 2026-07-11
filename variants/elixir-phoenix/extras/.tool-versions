@@ -1,0 +1,6 @@
+# Toolchain pin for asdf / mise. Keeps local, CI and teammates on one Erlang +
+# Elixir. Match this to the versions installed in CI (erlef/setup-beam) and the
+# `elixir`/`erlang` constraints in mix.exs. The `-otp-27` suffix pins the Elixir
+# build to the Erlang/OTP major above it.
+erlang 27.2.1
+elixir 1.18.3-otp-27
