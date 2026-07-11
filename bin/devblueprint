@@ -7,6 +7,8 @@
 #   devblueprint init --target <dir> --variant <variant> [--name <name>] \
 #       [--from <intake.yml>] [--base <branch>] [--main <branch>] [--deploy <target>] \
 #       [--agents <list>] [--community] [--contact <method>] [--force] [--dry-run]
+#   devblueprint init --target <dir> --package <name>:<variant> [--package ...] [init flags]
+#       (monorepo: one repo, many packages, aggregated CI + per-package quality gates)
 #   devblueprint plan --target <dir> --from <intake.yml> [init flags]
 #   devblueprint update --target <dir> [--variant <variant>] [--dry-run]
 #   devblueprint diff --target <dir> [--variant <variant>]
@@ -513,6 +515,10 @@ cmd_init() {
   # "" until --community or an intake `community:` key sets it, so its default-off
   # is distinguishable from an explicit choice.
   local from="" community_flag="" deploy="" agents=""
+  # PACKAGES holds space-separated <name>:<variant> specs; any --package turns init
+  # into monorepo mode (multiple packages in one repo, aggregated CI, per-package
+  # gates) and is mutually exclusive with the single-variant --variant.
+  PACKAGES=""
   TARGET="" PROJECT_NAME="" VARIANT="" MAIN_BRANCH="" BASE_BRANCH="" CONTACT="" FORCE=0 DRY_RUN=0
   while [ "$#" -gt 0 ]; do
     case "$1" in
@@ -520,6 +526,8 @@ cmd_init() {
       --target) TARGET="$2"; shift 2 ;;
       --name) PROJECT_NAME="$2"; shift 2 ;;
       --variant) VARIANT="$2"; shift 2 ;;
+      --package) PACKAGES="$PACKAGES $2"; shift 2 ;;
+      --packages) PACKAGES="$PACKAGES ${2//,/ }"; shift 2 ;;
       --main) MAIN_BRANCH="$2"; shift 2 ;;
       --base) BASE_BRANCH="$2"; shift 2 ;;
       --deploy) deploy="$2"; shift 2 ;;
@@ -569,6 +577,16 @@ cmd_init() {
   [ -n "$CONTACT" ] || CONTACT="INSERT CONTACT METHOD"
 
   [ -n "$TARGET" ] || die "missing --target <dir>"
+
+  # Monorepo mode: one or more --package <name>:<variant> given. Shared docs and
+  # workflow tooling land once at the repo root; each package carries its stack
+  # overlay and its own gate, tied together by an aggregated CI + `make check`.
+  if [ -n "$PACKAGES" ]; then
+    [ -z "$VARIANT" ] || die "--variant and --package are mutually exclusive (a monorepo picks a variant per package)"
+    cmd_init_monorepo
+    return 0
+  fi
+
   [ -n "$VARIANT" ] || die "missing --variant <variant> (see: devblueprint list)"
   local vdir="$VARIANTS/$VARIANT"
   [ -d "$vdir" ] || die "unknown variant '$VARIANT' (see: devblueprint list)"
@@ -740,6 +758,306 @@ EOF
     echo "  3. git init && git branch -M $MAIN_BRANCH && git switch -c $BASE_BRANCH"
   fi
   echo "  4. Start a task in its own worktree:  $WT_CMD new feat/first-task"
+}
+
+# manifest_field <variant> <VAR> : print one key from a variant's manifest.env,
+# read in a subshell so sourcing it never clobbers the caller's render globals
+# (cmd_init_monorepo sets its own VARIANT_TITLE/QUALITY_GATE for the root docs).
+manifest_field() {
+  # shellcheck source=/dev/null
+  ( . "$VARIANTS/$1/manifest.env"; local __k="$2"; printf '%s' "${!__k}" )
+}
+
+# write_monorepo_makefile <dest> : the root Makefile whose `check` target runs each
+# package's own quality gate in turn (cd into the package, run its gate). A literal
+# `$` in a gate - e.g. the `$(...)` in the Go gate - is doubled so make hands it to
+# the shell unexpanded instead of treating it as a make variable.
+write_monorepo_makefile() {
+  local spec name variant gate d='$' recipes=""
+  # Build the recipe body in the current shell (not a pipeline subshell) so the
+  # loop's assignments are visible and shellcheck stays clean; the gate's value is
+  # inserted literally, so its already-doubled `$$` is not re-expanded.
+  for spec in $PACKAGES; do
+    name="${spec%%:*}"; variant="${spec#*:}"
+    gate="$(manifest_field "$variant" QUALITY_GATE)"
+    gate="${gate//$d/$d$d}"
+    recipes+=$'\t'"@echo \"==> $name\""$'\n'
+    recipes+=$'\t'"cd packages/$name && $gate"$'\n'
+  done
+  emit_stdin "$1" <<EOF
+# Aggregated quality gate for the monorepo.
+# \`make check\` runs every package's own gate; per-package standards
+# live in each packages/<name>/docs/engineering/quality-and-testing.md.
+.PHONY: check
+
+check:
+$recipes
+EOF
+}
+
+# write_monorepo_ci <dest> : an aggregated GitHub Actions workflow - one matrix job
+# per package that checks out, runs the package's setup.sh when present, then its
+# quality gate. This reuses each variant's own setup + gate instead of duplicating
+# toolchain logic at the workspace level; the per-variant github/ trees are not
+# copied because their workflows assume a single-stack repo root. Each gate is
+# emitted as a single-quoted YAML scalar (any embedded quote doubled).
+write_monorepo_ci() {
+  local spec name variant gate branches q="'" include=""
+  branches="\"$BASE_BRANCH\""
+  [ "$BASE_BRANCH" = "$MAIN_BRANCH" ] || branches="$branches, \"$MAIN_BRANCH\""
+  # Assemble the matrix entries in the current shell; each gate is a single-quoted
+  # YAML scalar (any embedded quote doubled). The workflow's own `${{ ... }}`
+  # expressions are escaped in the heredoc so bash leaves them for Actions.
+  for spec in $PACKAGES; do
+    name="${spec%%:*}"; variant="${spec#*:}"
+    gate="$(manifest_field "$variant" QUALITY_GATE)"
+    gate="${gate//$q/$q$q}"
+    include+="          - package: $name"$'\n'
+    include+="            gate: $q$gate$q"$'\n'
+  done
+  emit_stdin "$1" <<EOF
+name: CI
+on:
+  push:
+    branches: [ $branches ]
+  pull_request:
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+$include    steps:
+      - uses: actions/checkout@v4
+      - name: \${{ matrix.package }} quality gate
+        working-directory: packages/\${{ matrix.package }}
+        run: |
+          if [ -f setup.sh ]; then ./setup.sh; fi
+          \${{ matrix.gate }}
+EOF
+}
+
+# scaffold_package <name> <variant> : lay down one package's stack overlay under
+# packages/<name>/. The shared core docs and workflow tooling live once at the repo
+# root; a package carries only what is specific to its stack - its quality-and-testing
+# doc, .gitignore, Makefile, setup.sh, config extras, source skeleton, and a stamp
+# recording its own variant so a future update/doctor can walk the packages.
+scaffold_package() {
+  local name="$1" variant="$2"
+  local vdir="$VARIANTS/$variant"
+  local pkg="$TARGET/packages/$name" rel="packages/$name" src_dirs dir
+
+  copy "$vdir/docs/quality-and-testing.md" "$pkg/docs/engineering/quality-and-testing.md"
+  copy "$vdir/gitignore" "$pkg/.gitignore"
+  [ -f "$vdir/Makefile" ] && copy "$vdir/Makefile" "$pkg/Makefile"
+  copy_tree "$vdir/extras" "$pkg"
+  if [ -f "$vdir/setup.sh" ]; then
+    copy "$vdir/setup.sh" "$pkg/setup.sh"
+    chmod +x "$pkg/setup.sh" 2>/dev/null || true
+  fi
+
+  emit_stdin "$pkg/.devblueprint" <<EOF
+# DevBlueprint per-package stamp - one package of a monorepo (see the repo-root stamp).
+version=$(kit_version)
+variant=$variant
+package=$name
+EOF
+
+  src_dirs="$(manifest_field "$variant" SRC_DIRS)"
+  for dir in $src_dirs; do
+    if [ "$DRY_RUN" -eq 1 ]; then
+      info "would create $rel/$dir/"
+    else
+      mkdir -p "$pkg/$dir"
+      [ -e "$pkg/$dir/.gitkeep" ] || touch "$pkg/$dir/.gitkeep"
+    fi
+  done
+}
+
+# cmd_init_monorepo : the multi-variant init path. Reached from cmd_init once one or
+# more --package <name>:<variant> are given (mutually exclusive with --variant). It
+# writes the shared root (core docs, CLAUDE.md/CONTRIBUTING.md rendered against
+# workspace-level values, worktree tooling, hygiene, an aggregated CI + Makefile)
+# once, then scaffolds each package's stack overlay under packages/<name>/. Runs
+# with the same globals cmd_init resolved (TARGET, AGENTS, branches, FORCE, DRY_RUN,
+# COMMUNITY, CONTACT) plus PACKAGES.
+cmd_init_monorepo() {
+  local spec name variant seen="" count=0 names_csv=""
+
+  # Validate every spec up front so a bad --package fails before anything is written.
+  for spec in $PACKAGES; do
+    name="${spec%%:*}"; variant="${spec#*:}"
+    if [ "$name" = "$spec" ] || [ -z "$name" ] || [ -z "$variant" ]; then
+      die "invalid --package '$spec' (expected <name>:<variant>)"
+    fi
+    [ -d "$VARIANTS/$variant" ] || die "unknown variant '$variant' in --package '$spec' (see: devblueprint list)"
+    case " $seen " in *" $name "*) die "duplicate package name '$name' in --package list" ;; esac
+    seen="$seen $name"
+    count=$((count + 1))
+    names_csv="${names_csv:+$names_csv, }$name"
+  done
+
+  [ -n "$PROJECT_NAME" ] || PROJECT_NAME="$(basename "$TARGET")"
+
+  # A monorepo has no single variant, so the shared root docs render against
+  # workspace-level values: the aggregated `make check` gate and the language-
+  # agnostic worktree script. The per-package stacks live in the variant notes.
+  VARIANT_TITLE="Monorepo ($count packages)"
+  QUALITY_GATE="make check"
+  WT_CMD="./scripts/wt.sh"
+  COPY_LANGUAGE_NOTE="Localize user-facing copy in a dedicated layer, never as scattered string literals."
+
+  local nl=$'\n' overview
+  overview="This is a monorepo. Each package under \`packages/\` is its own stack with its own quality gate:$nl"
+  for spec in $PACKAGES; do
+    overview="$overview$nl- \`packages/${spec%%:*}\` - $(manifest_field "${spec#*:}" VARIANT_TITLE)"
+  done
+  overview="$overview${nl}${nl}Run a package's gate from its own directory; the root \`make check\` runs every package's gate in turn."
+  VARIANT_NOTES="$overview"
+
+  if [ "$DRY_RUN" -eq 1 ]; then
+    TARGET="$(abspath "$TARGET")"
+    echo "Plan: init would scaffold monorepo '$PROJECT_NAME' ($count packages) into $TARGET"
+  else
+    TARGET="$(mkdir -p "$TARGET" && cd "$TARGET" && pwd)"
+    echo "Scaffolding monorepo '$PROJECT_NAME' ($count packages) into $TARGET"
+  fi
+  echo "  branches: $BASE_BRANCH -> $MAIN_BRANCH   gate: aggregated (make check)"
+  echo "  agents: ${AGENTS// /, }"
+  for spec in $PACKAGES; do
+    echo "  package: ${spec%%:*} -> $(manifest_field "${spec#*:}" VARIANT_TITLE)"
+  done
+  echo
+
+  # 1. Shared engineering docs (core, agnostic) - once at the root. No variant
+  # conventions overlay here; per-stack standards live in each package's
+  # quality-and-testing doc.
+  local eng="$TARGET/docs/engineering"
+  copy "$CORE/git-workflow.md"          "$eng/git-workflow.md"
+  copy "$CORE/engineering-standards.md" "$eng/engineering-standards.md"
+  copy "$CORE/conventions.md"           "$eng/conventions.md"
+
+  # 2. AI-assistant guidance + contributing (shared, once) - same agent loop as the
+  # single-variant path, rendered against the workspace-level values set above.
+  local agent tmpl_dest
+  for agent in $AGENTS; do
+    if [ "$agent" = claude ]; then
+      render "$CORE/templates/CLAUDE.md.tmpl" "$TARGET/CLAUDE.md"
+      continue
+    fi
+    tmpl_dest="$(agent_dest "$agent")"
+    render "${tmpl_dest%%|*}" "$TARGET/${tmpl_dest#*|}"
+  done
+  render "$CORE/templates/CONTRIBUTING.md.tmpl" "$TARGET/CONTRIBUTING.md"
+
+  # 3. Fresh changelog.
+  emit_stdin "$TARGET/CHANGELOG.md" <<EOF
+# Changelog
+
+All notable changes are documented here, following
+[Keep a Changelog](https://keepachangelog.com/) and [SemVer](https://semver.org/).
+
+## [Unreleased]
+
+- Monorepo scaffolded from DevBlueprint ($count packages: $names_csv).
+EOF
+
+  # 3b. Root scaffold stamp: records the monorepo package map so a future
+  # update/doctor can walk the packages. Each package also carries its own stamp.
+  emit_stdin "$TARGET/.devblueprint" <<EOF
+# DevBlueprint scaffold stamp - read by \`devblueprint update\`.
+# A monorepo: the package map lives here; each packages/<name>/ has its own stamp.
+version=$(kit_version)
+monorepo=true
+packages=$(printf '%s' "$PACKAGES" | xargs | tr ' ' ',')
+agents=${AGENTS// /,}
+EOF
+
+  # 4. Worktree tooling (generic, language-agnostic wt.conf) + branch sync, mirroring
+  # the single-variant path but with the stack-neutral generic wt.conf.
+  copy "$ROOT/scripts/wt.sh" "$TARGET/scripts/wt.sh"
+  chmod +x "$TARGET/scripts/wt.sh" 2>/dev/null || true
+  local wtconf="$TARGET/scripts/wt.conf" wrote_conf=0
+  [ -e "$wtconf" ] || wrote_conf=1
+  copy "$VARIANTS/generic/wt.conf" "$wtconf"
+  if [ "$DRY_RUN" -eq 0 ] && { [ "$wrote_conf" -eq 1 ] || [ "$FORCE" -eq 1 ]; }; then
+    local tmp
+    tmp="$(mktemp)"
+    awk -v mb="$MAIN_BRANCH" -v bb="$BASE_BRANCH" '
+      /^MAIN_BRANCH=/ { print "MAIN_BRANCH=\"" mb "\""; next }
+      /^BASE_BRANCH=/ { print "BASE_BRANCH=\"" bb "\""; next }
+      { print }
+    ' "$wtconf" > "$tmp" && mv "$tmp" "$wtconf"
+  fi
+
+  # 5. Aggregated CI (one job per package) + root hygiene. The per-variant github/
+  # trees are deliberately not copied - their workflows assume a single-stack root.
+  write_monorepo_ci "$TARGET/.github/workflows/ci.yml"
+  copy "$VARIANTS/generic/gitignore" "$TARGET/.gitignore"
+
+  # 5a. Stack-agnostic repo hygiene shared by every variant.
+  copy "$CORE/.editorconfig"  "$TARGET/.editorconfig"
+  copy "$CORE/.gitattributes" "$TARGET/.gitattributes"
+
+  # 5a-ii. GitHub meta: PR template + issue templates (core-owned, stack-agnostic).
+  copy "$CORE/github/pull_request_template.md"          "$TARGET/.github/pull_request_template.md"
+  copy "$CORE/github/ISSUE_TEMPLATE/bug_report.md"      "$TARGET/.github/ISSUE_TEMPLATE/bug_report.md"
+  copy "$CORE/github/ISSUE_TEMPLATE/feature_request.md" "$TARGET/.github/ISSUE_TEMPLATE/feature_request.md"
+  copy "$CORE/github/ISSUE_TEMPLATE/config.yml"         "$TARGET/.github/ISSUE_TEMPLATE/config.yml"
+
+  # 5b. Aggregated quality gate: root `make check` runs each package's own gate.
+  write_monorepo_makefile "$TARGET/Makefile"
+
+  # 5c. Optional community-health files (opt-in with --community).
+  if [ "$COMMUNITY" -eq 1 ]; then
+    render "$CORE/templates/SECURITY.md.tmpl"        "$TARGET/SECURITY.md"
+    render "$CORE/templates/CODE_OF_CONDUCT.md.tmpl" "$TARGET/CODE_OF_CONDUCT.md"
+  fi
+
+  # 6. Shared backlog stub.
+  emit_stdin "$TARGET/docs/project/backlog.md" <<'EOF'
+# Backlog
+
+The prioritized task list - the source of truth for what to build next. Reference an id in
+commits and PRs (e.g. `Refs: P0-1`).
+
+## P0 - foundation
+
+- [ ] P0-1: ...
+EOF
+
+  # 7. Per-package stack overlays.
+  for spec in $PACKAGES; do
+    scaffold_package "${spec%%:*}" "${spec#*:}"
+  done
+
+  echo
+  if [ "$DRY_RUN" -eq 1 ]; then
+    echo "Plan only - nothing was written. Apply it with:"
+    printf '  devblueprint init --target %s' "$TARGET"
+    for spec in $PACKAGES; do printf ' --package %s' "$spec"; done
+    printf '\n'
+    return 0
+  fi
+  echo "Done. Next steps:"
+  echo "  1. cd $TARGET"
+  echo "  2. Set up each package:"
+  for spec in $PACKAGES; do
+    name="${spec%%:*}"
+    if [ -f "$TARGET/packages/$name/setup.sh" ]; then
+      echo "       (cd packages/$name && ./setup.sh)"
+    else
+      echo "       packages/$name - wire the toolchain (see its docs/engineering/quality-and-testing.md)"
+    fi
+  done
+  if [ "$BASE_BRANCH" = "$MAIN_BRANCH" ]; then
+    echo "  3. git init && git branch -M $MAIN_BRANCH"
+  else
+    echo "  3. git init && git branch -M $MAIN_BRANCH && git switch -c $BASE_BRANCH"
+  fi
+  echo "  4. make check   (runs every package's gate)"
+  echo "  5. Start a task in its own worktree:  ./scripts/wt.sh new feat/first-task"
 }
 
 # cmd_plan : preview mode. Exactly `init --dry-run` so the plan can never drift
@@ -1495,7 +1813,7 @@ cmd_upgrade() {
 }
 
 usage() {
-  sed -n '5,16p' "$0" | sed 's/^# \{0,1\}//'
+  sed -n '5,18p' "$0" | sed 's/^# \{0,1\}//'
 }
 
 main() {
