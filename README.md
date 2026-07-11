@@ -75,6 +75,10 @@ bin/devblueprint detect --target ~/Projects/myapp
 # Scaffold a new project's engineering setup
 bin/devblueprint init --target ~/Projects/myapp --name myapp --variant web-nextjs
 
+# Or a monorepo: one repo, several packages, each its own stack and quality gate,
+# with an aggregated CI workflow and a root `make check` that runs every package's gate.
+bin/devblueprint init --target ~/Projects/shop --package api:backend-python --package web:web-nextjs
+
 # Or capture the answers in an intake file and preview before writing anything.
 # `plan` prints exactly what init would create; `init --from` then applies it.
 # (Explicit flags still override the file, e.g. add --base master.)
@@ -119,6 +123,13 @@ you with a wrapper.)
 `init` is overwrite-safe: it never clobbers an existing file unless you pass `--force`, so you
 can run it on an existing repo to add the workflow without losing your code.
 
+Pass one or more `--package <name>:<variant>` (instead of a single `--variant`) to scaffold a
+**monorepo**: the shared docs, worktree tooling and repo hygiene land once at the root, while
+each package gets its own stack overlay and `.devblueprint` stamp under `packages/<name>/`. The
+root `Makefile`'s `check` target runs every package's own quality gate in turn, and a generated
+`.github/workflows/ci.yml` runs each package's setup + gate as its own matrix job. `--package`
+is mutually exclusive with `--variant`, and works with `plan`/`--dry-run` like any other init.
+
 `update` is the counterpart for projects already scaffolded: it re-syncs only the core-owned
 files (the agnostic engineering docs, `.editorconfig`, `.gitattributes`, `scripts/wt.sh`, and
 the GitHub PR/issue templates) so old projects pick up improvements to `core/`, and
@@ -140,8 +151,9 @@ the stamped version says whether the kit has advanced since you scaffolded (so d
 upstream change to pull) or matches (so drift is a local edit), and the stamped variant is used
 to compare the two overlaid docs automatically (`--variant <name>` overrides it).
 
-Options: `--target <dir>` `--name <name>` `--variant <variant>` `--main <branch>`
-`--base <branch>` `--agents <list>` `--community` `--contact <method>` `--force`. Use
+Options: `--target <dir>` `--name <name>` `--variant <variant>` `--package <name>:<variant>`
+`--main <branch>` `--base <branch>` `--agents <list>` `--community` `--contact <method>`
+`--force`. Use
 `--base master` for a single-branch trunk workflow, and `--community` to add optional
 `SECURITY.md` and `CODE_OF_CONDUCT.md` (with `--contact` filling the reporting address in
 both). Pass `--agents claude,cursor,codex,copilot` (default: just `claude`) to also emit

@@ -19,6 +19,12 @@ All notable changes are documented here, following
 
 ### Added
 
+- Monorepo / multi-variant `init`: pass one or more `--package <name>:<variant>` (mutually
+  exclusive with `--variant`) to scaffold several packages in one repo. Shared docs, worktree
+  tooling and repo hygiene land once at the root; each package gets its stack overlay and a
+  per-package `.devblueprint` stamp under `packages/<name>/`. A generated root `Makefile`
+  aggregates every package's own quality gate, and a matrix `.github/workflows/ci.yml` runs each
+  package's setup + gate as its own job. Works with `plan`/`--dry-run`. Refs: P6-1.
 - `update` now three-way merges managed files instead of overwriting them, so local edits
   survive a re-sync. It caches the last-synced kit copy of each file under
   `.devblueprint-base/` as the merge base (base vs. the project's file vs. the current kit),
