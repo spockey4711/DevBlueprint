@@ -1026,8 +1026,11 @@ project_name_of() {
 # tokens are reconstructed from the project itself - branches from scripts/wt.conf,
 # project name from CLAUDE.md, and the variant tokens from the stamped (or
 # --variant) variant's manifest. CLAUDE.md is never touched: it is the user-owned
-# canonical copy. Reads TARGET/VARIANT/DRY_RUN/STAMPED/CURRENT and reconciles each
-# file through merge_file, so local edits to an agent file are merged, not lost.
+# canonical copy. The agent files are the opposite: pure rendered artifacts derived
+# from that canonical guidance, with no init-time merge base of their own, so they
+# are re-rendered through sync_file (overwrite) rather than three-way merged - edits
+# belong in CLAUDE.md, and a drifted agent file heals on the next update. Reads
+# TARGET/VARIANT/DRY_RUN.
 sync_agent_files() {
   local list variant a tmpl_dest tmp
   local PROJECT_NAME MAIN_BRANCH BASE_BRANCH WT_CMD QUALITY_GATE COPY_LANGUAGE_NOTE \
@@ -1054,7 +1057,7 @@ sync_agent_files() {
     [ -n "$tmpl_dest" ] || continue
     tmp="$(mktemp)"
     render_content "${tmpl_dest%%|*}" > "$tmp"
-    merge_file "$tmp" "${tmpl_dest#*|}"
+    sync_file "$tmp" "$TARGET/${tmpl_dest#*|}"
     rm -f "$tmp"
   done
 }
