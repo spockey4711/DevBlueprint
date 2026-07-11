@@ -23,6 +23,12 @@ All notable changes are documented here, following
   ships to every scaffolded project) and surfaced as a marker legend in the backlog header and
   the `init` backlog stub: tick a task `- [x]` as soon as its PR is ready to merge, never leave a
   merged task `- [ ]`, and use `- [~]` when a follow-up step remains after the merge.
+- Monorepo / multi-variant `init`: pass one or more `--package <name>:<variant>` (mutually
+  exclusive with `--variant`) to scaffold several packages in one repo. Shared docs, worktree
+  tooling and repo hygiene land once at the root; each package gets its stack overlay and a
+  per-package `.devblueprint` stamp under `packages/<name>/`. A generated root `Makefile`
+  aggregates every package's own quality gate, and a matrix `.github/workflows/ci.yml` runs each
+  package's setup + gate as its own job. Works with `plan`/`--dry-run`. Refs: P6-1.
 - Security-gate baseline added to every variant's CI (`variants/*/github/workflows/`): a shared
   `security.yml` (gitleaks secret scan, semgrep SAST, and PR `dependency-review`), a per-language
   `codeql.yml` (skipped for `rust` and `generic`, which have no supported/needed CodeQL target), a
