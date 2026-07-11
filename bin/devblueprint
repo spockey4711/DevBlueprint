@@ -86,7 +86,15 @@ CHANNEL_FILE="$ROOT/.channel"
 # base.
 DB_BASE_DIR=".devblueprint-base"
 
-die() { echo "devblueprint: $*" >&2; exit 1; }
+# die <message> [next-step] : print an error to stderr and exit non-zero. The
+# optional second argument is a beginner-facing "what to do next" hint, printed on
+# its own indented line so every failure tells the user how to recover, not just
+# what broke. Callers that already fold the recovery into <message> may omit it.
+die() {
+  printf 'devblueprint: %s\n' "$1" >&2
+  [ -n "${2:-}" ] && printf '  next: %s\n' "$2" >&2
+  exit 1
+}
 info() { printf '  %s\n' "$*"; }
 
 # ask <prompt> <default> : print <prompt> (with the default shown in brackets)
@@ -708,8 +716,10 @@ resolve_baseline_path() {
 # an extends cycle. Reads/writes the CONFIG_FILES array and CONFIG_SEEN string.
 add_config_file() {
   local file="$1" override="$2" abs ext bdir bpath
-  abs="$(canon_file "$file")" || die "config file not found: $file"
-  case " $CONFIG_SEEN " in *" $abs "*) die "circular 'extends' detected at $file" ;; esac
+  abs="$(canon_file "$file")" || die "config file not found: $file" \
+    "check the path - this is an intake or baseline file pulled in via --from or an 'extends:' key"
+  case " $CONFIG_SEEN " in *" $abs "*) die "circular 'extends' detected at $file" \
+    "an 'extends:' chain loops back on itself - remove the extends line that points at an already-included file" ;; esac
   CONFIG_SEEN="$CONFIG_SEEN $abs"
   if [ -n "$override" ]; then ext="$override"; else ext="$(read_extends "$file")"; fi
   if [ -n "$ext" ]; then
@@ -734,7 +744,8 @@ load_config() {
     IN_DEPLOY="" IN_FLAVORS="" IN_AGENTS=""
   CONFIG_FILES=(); CONFIG_SEEN=""
   if [ -n "$from" ]; then
-    [ -f "$from" ] || die "intake file not found: $from"
+    [ -f "$from" ] || die "intake file not found: $from" \
+      "check the --from path - it should point at an intake YAML file (see docs/agent/intake-schema.md)"
     add_config_file "$from" "$ext_cli"
   elif [ -n "$ext_cli" ]; then
     bpath="$(resolve_baseline_path "$ext_cli" "$(pwd)")" \
@@ -752,7 +763,8 @@ cmd_list() {
   while [ "$#" -gt 0 ]; do
     case "$1" in
       --json) json=1; shift ;;
-      *) die "unknown option: $1" ;;
+      *) die "unknown option: $1" \
+           "run 'devblueprint help' to see the valid commands and their options" ;;
     esac
   done
   if [ "$json" -eq 1 ]; then
@@ -835,7 +847,8 @@ cmd_init() {
       --contact) CONTACT="$2"; shift 2 ;;
       --force) FORCE=1; shift ;;
       --dry-run) DRY_RUN=1; shift ;;
-      *) die "unknown option: $1" ;;
+      *) die "unknown option: $1" \
+           "run 'devblueprint help' to see the valid commands and their options" ;;
     esac
   done
 
@@ -883,7 +896,8 @@ cmd_init() {
   # CLI nor the intake file gives one, leave a visible placeholder to fill in.
   [ -n "$CONTACT" ] || CONTACT="INSERT CONTACT METHOD"
 
-  [ -n "$TARGET" ] || die "missing --target <dir>"
+  [ -n "$TARGET" ] || die "missing --target <dir>" \
+    "name the folder to scaffold into, e.g. devblueprint init --target ./my-app --variant node-express (see: devblueprint list). Or run 'devblueprint init' with no flags for a guided wizard."
 
   # Monorepo mode: one or more --package <name>:<variant> given. Shared docs and
   # workflow tooling land once at the repo root; each package carries its stack
@@ -1202,7 +1216,8 @@ cmd_init_monorepo() {
       die "invalid --package '$spec' (expected <name>:<variant>)"
     fi
     [ -d "$VARIANTS/$variant" ] || die "unknown variant '$variant' in --package '$spec' (see: devblueprint list)"
-    case " $seen " in *" $name "*) die "duplicate package name '$name' in --package list" ;; esac
+    case " $seen " in *" $name "*) die "duplicate package name '$name' in --package list" \
+      "each --package needs a unique <name>: prefix - rename one, e.g. --package api:node-express --package web:web-nextjs" ;; esac
     seen="$seen $name"
     count=$((count + 1))
     names_csv="${names_csv:+$names_csv, }$name"
@@ -1523,10 +1538,12 @@ cmd_doctor() {
       --fix) fix=1; shift ;;
       --variant) VARIANT="$2"; shift 2 ;;
       --json) JSON=1; shift ;;
-      *) die "unknown option: $1" ;;
+      *) die "unknown option: $1" \
+           "run 'devblueprint help' to see the valid commands and their options" ;;
     esac
   done
-  [ -n "$target" ] || die "missing --target <dir>"
+  [ -n "$target" ] || die "missing --target <dir>" \
+    "point --target at a scaffolded project to check, e.g. devblueprint doctor --target . (or 'devblueprint doctor --env' to check your machine's tools instead)"
   [ -z "$VARIANT" ] || [ -f "$VARIANTS/$VARIANT/manifest.env" ] || die "unknown variant '$VARIANT' (see: devblueprint list)"
   # failures accumulates every hard problem (missing/corrupted files that could not
   # be repaired + strict escalations + a failing quality gate); doctor exits
@@ -1593,7 +1610,8 @@ cmd_doctor() {
       fi
       report_check ok git-repo "git repo on $branch ($dirty)"
     else
-      report_check fail git-repo "not a git repository - run git init (strict)"
+      report_check fail git-repo "not a git repository (strict)" \
+        "run 'git init' inside $target to start tracking it with git, then commit the scaffolded files"
       failures=$((failures + 1))
     fi
   fi
@@ -1638,7 +1656,8 @@ cmd_doctor() {
     stamped="$(stamp_version "$target")"
     echo "doctor: all foundation files present (scaffolded from DevBlueprint ${stamped:-unknown}; current $(kit_version))"
   else
-    die "$failures check(s) failed"
+    die "$failures check(s) failed" \
+      "fix the FAIL/MISS lines above; 'devblueprint doctor --target $target --fix' can rebuild missing foundation files from the kit"
   fi
 }
 
@@ -1935,11 +1954,14 @@ cmd_detect() {
   while [ "$#" -gt 0 ]; do
     case "$1" in
       --target) target="$2"; shift 2 ;;
-      *) die "unknown option: $1" ;;
+      *) die "unknown option: $1" \
+           "run 'devblueprint help' to see the valid commands and their options" ;;
     esac
   done
-  [ -n "$target" ] || die "missing --target <dir>"
-  [ -d "$target" ] || die "target '$target' does not exist"
+  [ -n "$target" ] || die "missing --target <dir>" \
+    "point --target at the repo to inspect, e.g. devblueprint detect --target ."
+  [ -d "$target" ] || die "target '$target' does not exist" \
+    "check the path for typos - detect reads an existing folder's files to guess its stack"
   target="$(cd "$target" && pwd)"
 
   echo "Inspecting $target for stack fingerprints"
@@ -2040,16 +2062,20 @@ cmd_update() {
       --target) TARGET="$2"; shift 2 ;;
       --variant) VARIANT="$2"; shift 2 ;;
       --dry-run) DRY_RUN=1; shift ;;
-      *) die "unknown option: $1" ;;
+      *) die "unknown option: $1" \
+           "run 'devblueprint help' to see the valid commands and their options" ;;
     esac
   done
-  [ -n "$TARGET" ] || die "missing --target <dir>"
-  [ -d "$TARGET" ] || die "target '$TARGET' does not exist"
+  [ -n "$TARGET" ] || die "missing --target <dir>" \
+    "point --target at a scaffolded project to re-sync, e.g. devblueprint update --target ."
+  [ -d "$TARGET" ] || die "target '$TARGET' does not exist" \
+    "check the path for typos, or run 'devblueprint init' first - update re-syncs an already scaffolded project"
   TARGET="$(cd "$TARGET" && pwd)"
   # Refuse to run outside a scaffolded project so we never scatter core files
   # into an unrelated directory.
   if [ ! -d "$TARGET/docs/engineering" ] && [ ! -f "$TARGET/CLAUDE.md" ]; then
-    die "'$TARGET' does not look like a DevBlueprint project (no docs/engineering/ or CLAUDE.md)"
+    die "'$TARGET' does not look like a DevBlueprint project (no docs/engineering/ or CLAUDE.md)" \
+      "run 'devblueprint init --target $TARGET --variant <variant>' to scaffold it first, or point --target at an already scaffolded project"
   fi
 
   local vdir=""
@@ -2174,16 +2200,20 @@ cmd_diff() {
     case "$1" in
       --target) target="$2"; shift 2 ;;
       --variant) variant="$2"; shift 2 ;;
-      *) die "unknown option: $1" ;;
+      *) die "unknown option: $1" \
+           "run 'devblueprint help' to see the valid commands and their options" ;;
     esac
   done
-  [ -n "$target" ] || die "missing --target <dir>"
-  [ -d "$target" ] || die "target '$target' does not exist"
+  [ -n "$target" ] || die "missing --target <dir>" \
+    "point --target at a scaffolded project to compare, e.g. devblueprint diff --target ."
+  [ -d "$target" ] || die "target '$target' does not exist" \
+    "check the path for typos - diff compares an already scaffolded project against the current kit"
   target="$(cd "$target" && pwd)"
   # Refuse to run outside a scaffolded project (same guard as update) so we never
   # report an unrelated directory as one big pile of "missing" managed files.
   if [ ! -d "$target/docs/engineering" ] && [ ! -f "$target/CLAUDE.md" ]; then
-    die "'$target' does not look like a DevBlueprint project (no docs/engineering/ or CLAUDE.md)"
+    die "'$target' does not look like a DevBlueprint project (no docs/engineering/ or CLAUDE.md)" \
+      "run 'devblueprint init --target $target --variant <variant>' to scaffold it first, or point --target at an already scaffolded project"
   fi
 
   # Resolve the variant for the overlaid docs: explicit --variant wins, else the
@@ -2261,7 +2291,8 @@ cmd_version() {
   while [ "$#" -gt 0 ]; do
     case "$1" in
       --json) json=1; shift ;;
-      *) die "unknown option: $1" ;;
+      *) die "unknown option: $1" \
+           "run 'devblueprint help' to see the valid commands and their options" ;;
     esac
   done
   if [ "$json" -eq 1 ]; then
@@ -2282,7 +2313,8 @@ fetch_url() {
   elif command -v wget >/dev/null 2>&1; then
     wget -qO- "$1"
   else
-    die "need curl or wget to reach $1"
+    die "need curl or wget to reach $1" \
+      "install curl (or wget) with your package manager, then rerun - 'devblueprint doctor --env' lists the tools the kit needs"
   fi
 }
 
@@ -2323,7 +2355,8 @@ fetch_kit() {
     tar -C "$DEVBLUEPRINT_UPGRADE_SRC" -cf - . | tar -C "$dest" -xf -
     return 0
   fi
-  command -v tar >/dev/null 2>&1 || die "need tar to unpack DevBlueprint"
+  command -v tar >/dev/null 2>&1 || die "need tar to unpack DevBlueprint" \
+    "install tar with your package manager, then rerun 'devblueprint upgrade'"
   case "$kind" in
     tag)  url="https://github.com/$REPO/archive/refs/tags/$ref.tar.gz" ;;
     *)    url="https://github.com/$REPO/archive/refs/heads/$ref.tar.gz" ;;
@@ -2380,7 +2413,8 @@ cmd_upgrade() {
       --version) version="$2"; shift 2 ;;
       --check | --dry-run) check=1; shift ;;
       --force) force=1; shift ;;
-      *) die "unknown option: $1" ;;
+      *) die "unknown option: $1" \
+           "run 'devblueprint help' to see the valid commands and their options" ;;
     esac
   done
 
@@ -2422,7 +2456,8 @@ cmd_upgrade() {
   local current target
   current="$(kit_version)"
   target="$(remote_version "$ref")"
-  [ -n "$target" ] || die "could not read the version for ref '$ref'"
+  [ -n "$target" ] || die "could not read the version for ref '$ref'" \
+    "check the ref exists (e.g. 'devblueprint upgrade --channel stable'), or your network connection to github.com"
 
   echo "Channel: $chan${pin:+ (pinned $pin)}   ref: $ref"
   echo "  installed: $current   available: $target"
