@@ -1,0 +1,3 @@
+# Toolchain pin for asdf / mise. Keeps local, CI and teammates on one Ruby.
+# Match this to the version pinned in .ruby-version and installed in CI.
+ruby 3.4.2
