@@ -19,6 +19,13 @@ All notable changes are documented here, following
 
 ### Added
 
+- Multi-agent instruction templates under `core/templates/agents/`: `AGENTS.md.tmpl` (Codex and
+  the tool-neutral agentsmd convention), `cursor.mdc.tmpl` (a Cursor project rule with
+  `alwaysApply` frontmatter) and `copilot-instructions.md.tmpl` (GitHub Copilot repository
+  instructions). All three carry the same canonical workflow guidance as `CLAUDE.md.tmpl` and
+  reuse its exact `{{TOKEN}}` set and `{{#TWO_BRANCH}}` / `{{#SINGLE_BRANCH}}` blocks, so the
+  process is not Claude-only. Templates only; a `README.md` documents the source-to-target
+  mapping. Wiring them into `init`/`update` is P5-3. Refs: P5-2.
 - Installability: DevBlueprint now runs without a clone via three channels. A root `package.json`
   exposes `npx devblueprint` through a Node launcher (`packaging/npm/launch.cjs`); a Homebrew
   formula (`packaging/homebrew/devblueprint.rb`) installs the kit into `libexec`; and a
