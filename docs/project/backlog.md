@@ -273,7 +273,9 @@ unchanged - only their ordering into waves. The eight P6-2 variants are each the
 - [ ] P7-3: Ops artifacts beyond the runbook (builds on P3-4/P3-6): optional `Dockerfile`,
   `docker-compose.yml`, Fly/Vercel/Render config and Terraform snippets, plus `.env.example`
   promoted to a validated env schema checked in the gate. **Owns:** `variants/*/extras/`
-  (one variant subtree per task).
+  (one variant subtree per task). Mobile variants (android-kotlin, ios-swift, flutter) are
+  out of scope: they ship to app stores, not container/PaaS targets, so they receive no
+  container/deploy ops artifacts.
 - [x] P6-2g: New variant `elixir-phoenix`, self-contained mirroring P2-4. **Owns:**
   `variants/elixir-phoenix/`. (dep: P2-1)
 - [x] P6-2h: New variant `terraform-iac`, self-contained mirroring P2-4. **Owns:**

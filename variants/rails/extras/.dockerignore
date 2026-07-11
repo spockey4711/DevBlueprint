@@ -1,0 +1,41 @@
+# Keep the Docker build context small and secret-free. A leaner context uploads
+# and builds faster and, crucially, keeps local secrets and VCS history out of the
+# image. The build stage regenerates gems and assets from the sources.
+
+# Version control and CI
+.git
+.gitignore
+.github
+
+# Local environment and secrets - never ship these into an image (.env.example
+# is the one tracked template, and even it is not needed inside the image). The
+# master.key stays out; Rails reads RAILS_MASTER_KEY from the environment.
+.env
+.env.*
+!.env.example
+config/master.key
+config/credentials/*.key
+
+# Runtime, logs and caches - regenerated at run time, not needed in the image.
+/log/*
+/tmp/*
+/storage/*
+/db/*.sqlite3
+/db/*.sqlite3-*
+
+# Precompiled assets and JS deps - the build stage runs assets:precompile.
+/public/assets
+/public/packs
+/node_modules
+/app/assets/builds/*
+
+# Test and coverage artifacts
+/coverage
+/tmp/screenshots
+
+# Docs and editor / OS cruft
+docs
+.DS_Store
+.idea
+.vscode
+*.swp

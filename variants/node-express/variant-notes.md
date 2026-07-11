@@ -11,3 +11,11 @@
   input. Read config and secrets from the environment (`.env`, gitignored) - never hard-code them.
 - ESLint (typescript-eslint, type-checked) is the lint gate; Prettier owns formatting. Vitest +
   supertest cover units and HTTP endpoints.
+- Ops artifacts ship as fillable skeletons: a multi-stage `Dockerfile` (`node:22-slim` build ->
+  slim non-root runtime running the compiled `dist/server.js`) + `.dockerignore` +
+  `docker-compose.yml` for containers, and `deploy/` for a hosted target (`fly.toml`, `render.yaml`,
+  `terraform/`). Keep the one target you deploy to and delete the rest.
+- The environment is a validated contract: `.env.schema` declares each variable (required/optional,
+  optional `pattern=`), and `make check` (plus CI) runs `scripts/check-env.sh` to keep `.env.example`
+  in lockstep with it and enforce required keys in any real `.env`. Declare new variables in both the
+  schema and `.env.example`, or the gate fails.

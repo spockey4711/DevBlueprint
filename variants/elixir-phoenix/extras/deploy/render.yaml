@@ -1,0 +1,28 @@
+# Render Blueprint (skeleton) - https://render.com/docs/blueprint-spec
+# Commit this, connect the repo in Render, and it provisions the service from the
+# repo's Dockerfile. Set real secrets (SECRET_KEY_BASE, DATABASE_URL) in the Render
+# dashboard (or keep `sync: false` below so Render prompts for them) - never commit
+# them here. Run migrations as a release command, not on boot - see
+# docs/ops/deployment.md.
+services:
+  - type: web
+    name: <your-app-name>
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: <health-check-path>   # e.g. /healthz or /
+    autoDeploy: true
+    # Ecto migrations as a deliberate pre-deploy step, never on boot.
+    preDeployCommand: /app/bin/app eval "App.Release.migrate"
+    envVars:
+      - key: MIX_ENV
+        value: prod
+      - key: PORT
+        value: "4000"
+      - key: PHX_SERVER
+        value: "true"
+      - key: PHX_HOST
+        sync: false          # set to the service's public host in the dashboard
+      - key: SECRET_KEY_BASE  # secret - set it in the dashboard, not here
+        sync: false
+      - key: DATABASE_URL     # secret/managed - set it in the dashboard, not here
+        sync: false

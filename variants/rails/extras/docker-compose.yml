@@ -1,0 +1,47 @@
+# Run the Rails app in a container locally, close to how it runs in production but
+# wired for development. `docker compose up --build` builds the Dockerfile in this
+# directory and starts the app on port 3000.
+#
+# Secrets come from a local .env (gitignored) via env_file - never hard-code them
+# here. Need a database or Redis too? Uncomment the commented services below and
+# the matching depends_on, then point DATABASE_URL / REDIS_URL at them in .env.
+services:
+  app:
+    build: .
+    env_file:
+      - .env
+    environment:
+      RAILS_ENV: development
+    ports:
+      - "3000:3000"
+    restart: unless-stopped
+    # depends_on:
+    #   db:
+    #     condition: service_healthy
+    #   redis:
+    #     condition: service_started
+
+  # db:
+  #   image: postgres:16-alpine
+  #   environment:
+  #     POSTGRES_USER: rails
+  #     POSTGRES_PASSWORD: rails
+  #     POSTGRES_DB: app_development
+  #   ports:
+  #     - "5432:5432"
+  #   volumes:
+  #     - pgdata:/var/lib/postgresql/data
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "pg_isready -U rails"]
+  #     interval: 5s
+  #     timeout: 3s
+  #     retries: 5
+
+  # redis:
+  #   image: redis:7-alpine
+  #   ports:
+  #     - "6379:6379"
+  #   restart: unless-stopped
+
+# volumes:
+#   pgdata:

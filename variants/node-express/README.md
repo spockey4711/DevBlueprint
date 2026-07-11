@@ -8,7 +8,7 @@ is green from the first commit.
 ## Quality gate
 
 ```bash
-npm run lint && npm run typecheck && npm test && npm run build
+sh scripts/check-env.sh && npm run lint && npm run typecheck && npm test && npm run build
 ```
 
 Or, with the shipped Makefile: `make check`.
@@ -20,11 +20,15 @@ Or, with the shipped Makefile: `make check`.
 - `CLAUDE.md`, `CONTRIBUTING.md`, `CHANGELOG.md` filled in for this stack.
 - `scripts/wt.sh` + `scripts/wt.conf` (post-create runs `npm install`).
 - `Makefile` wiring the quality gate (`make check`).
-- `.github/workflows/ci.yml` (lint + typecheck + test + build).
+- `.github/workflows/ci.yml` (env-schema check + lint + typecheck + test + build).
 - `.github/dependabot.yml` (npm + github-actions updates) and `.tool-versions` (toolchain pin).
 - `.gitignore` for Node build/test artifacts.
 - `docs/ops/deployment.md` (deploy runbook: managed/Docker/VPS + DB + env checklists) and
   `.env.example` (committed template; real `.env*` stay ignored).
+- Ops artifacts: `Dockerfile` (node:22-slim build -> slim non-root runtime) + `.dockerignore` +
+  `docker-compose.yml`, `deploy/` (Fly/Render/Terraform skeletons), and `.env.schema` +
+  `scripts/check-env.sh` (the env contract `make check` and CI enforce). All skeletons - fill the
+  `<...>` placeholders.
 - `src/{routes,middleware,services,lib}`, `tests/{unit,integration}` scaffold.
 
 ## After init (wire the toolchain)

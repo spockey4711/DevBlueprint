@@ -24,6 +24,19 @@ Or, with the shipped Makefile: `make check`.
 - `.github/dependabot.yml` (hex + github-actions updates) and `.tool-versions` (Erlang + Elixir pin).
 - `.gitignore` for `_build`, `deps`, the Dialyzer PLT and Phoenix asset output.
 - `lib`, `test` scaffold.
+- Ops artifacts: a multi-stage `Dockerfile` (a `hexpm/elixir` build stage running `MIX_ENV=prod
+  mix release` -> a non-root `debian:bookworm-slim` runtime running the release), `.dockerignore`,
+  `docker-compose.yml`, `deploy/` skeletons for Fly.io/Render/Terraform, and a `docs/ops/deployment.md`
+  runbook (migrations run as a release command, `bin/app eval "App.Release.migrate"`, never on boot).
+
+## Validated env contract
+
+`.env.example` is paired with a `.env.schema` that declares each variable (`SECRET_KEY_BASE`,
+`DATABASE_URL`, `PHX_HOST`, `PORT`, `MIX_ENV`, ...) as required or optional with an optional value
+pattern. `make check` runs `scripts/check-env.sh` first (the `validate-env` target) so the example
+can never drift from the schema, and a real `.env` is checked for every required key and pattern
+before you ship. CI runs the same check as its first step, and `doctor --run-gate` picks it up via
+the manifest's `QUALITY_GATE`.
 
 ## After init (wire the toolchain)
 

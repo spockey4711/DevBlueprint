@@ -31,3 +31,13 @@
   resolved through a helper, not scattered string literals through the components.
 - Prefer fast Vitest unit tests for `$lib` logic and components (jsdom + Testing Library); reserve
   Playwright e2e for the few critical user journeys, run against the production `preview` server.
+- Ops artifacts ship as fillable skeletons: the managed, zero-Dockerfile path uses a Vercel/Netlify
+  adapter (`deploy/vercel.json`), while the self-hosting path assumes `@sveltejs/adapter-node` - a
+  multi-stage `Dockerfile` (`pnpm build` -> a slim non-root runtime running `node build`) +
+  `.dockerignore` + `docker-compose.yml` on port 3000, plus `deploy/` targets (`fly.toml`,
+  `render.yaml`, `terraform/`). Pick one adapter and one target and delete the rest.
+- The environment is a validated contract: `.env.schema` declares each variable (required/optional,
+  optional `pattern=`), distinguishing `PUBLIC_*` build-time vars (inlined into the client bundle,
+  never secret) from server-only secrets. `make check` (plus CI) runs `scripts/check-env.sh` to keep
+  `.env.example` in lockstep with the schema and enforce required keys in any real `.env`. Declare
+  new variables in both the schema and `.env.example`, or the gate fails.

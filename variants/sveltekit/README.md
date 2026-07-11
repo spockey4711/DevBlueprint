@@ -25,6 +25,12 @@ Or, with the shipped Makefile: `make check`.
   baseline.
 - `.github/dependabot.yml` (npm + github-actions updates) and `.tool-versions` (Node + pnpm pin).
 - `.gitignore` for `node_modules`, the `.svelte-kit/` output and build artifacts.
+- `docs/ops/deployment.md` (deploy runbook: managed/Docker/VPS + adapter choice + DB + env
+  checklists) and `.env.example` (committed template; real `.env*` stay ignored).
+- Ops artifacts: an adapter-node `Dockerfile` (`node build` on a slim non-root runtime) +
+  `.dockerignore` + `docker-compose.yml`, `deploy/` (Vercel/Fly/Render/Terraform skeletons), and
+  `.env.schema` + `scripts/check-env.sh` (the env contract `make check` and CI enforce). All
+  skeletons - fill the `<...>` placeholders.
 - `src/routes`, `src/lib`, `src/lib/components`, `src/lib/server`, `tests/unit`, `tests/e2e`
   scaffold.
 

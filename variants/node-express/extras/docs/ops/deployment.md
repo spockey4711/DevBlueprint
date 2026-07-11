@@ -18,13 +18,17 @@ CI runs the same gate on every PR - never deploy a commit that has not passed it
 
 Copy `.env.example` to `.env` for local work and set the same keys in your deploy target's secret
 store. Never commit a real `.env*` file (only `.env.example` is tracked). Read config from the
-environment (`process.env`, validated at startup) - never hard-code a secret.
+environment (`process.env`, validated at startup) - never hard-code a secret. `.env.schema` is the
+contract these variables must satisfy, and `make check` fails if `.env.example` drifts from it (or if
+a real `.env` is missing a required key) - so the environment stays validated, not just documented.
 
 - [ ] Every key in `.env.example` has a value in the target's secret store.
 - [ ] Secrets (DB URLs, API keys) are read from the environment, never committed or logged.
 - [ ] `NODE_ENV=production` in the deployed environment (Express skips dev-only work, and deps
       install with `npm ci --omit=dev` for the runtime).
 - [ ] Values differ per environment (staging/production) - no shared production secrets.
+- [ ] Required keys and value formats are declared in `.env.schema` so the gate catches a missing
+      or malformed one before deploy.
 - [ ] Rotate any secret that has ever been committed or pasted into a log/PR.
 
 ## Database
@@ -44,9 +48,14 @@ Skip this section if the service has no database.
 
 A PaaS that builds and hosts from your repo - the path of least resistance.
 
+Starter configs ship under `deploy/` - `deploy/fly.toml` (Fly.io), `deploy/render.yaml` (Render),
+and `deploy/terraform/` for declarative provisioning; keep the one you use and fill in its `<...>`
+placeholders (see `deploy/README.md`).
+
 1. Connect the Git repository; set the production branch to your default branch.
-2. Build command `npm ci && npm run build`; start command `node dist/index.js` (never `tsx`/`ts-node`
-   in production - ship the compiled `dist/`).
+2. Build command `npm ci && npm run build`; start command `node dist/server.js` (never `tsx`/`ts-node`
+   in production - ship the compiled `dist/`). Many platforms detect Node automatically; the shipped
+   `Dockerfile` (below) gives you full control.
 3. Add every key from `.env.example` to the platform's secret/config store, scoped per environment.
 4. Add a health check pointing at `GET /health`. Deploy from the production branch; roll back by
    re-promoting the previous release.
@@ -55,10 +64,12 @@ A PaaS that builds and hosts from your repo - the path of least resistance.
 
 Ship a reproducible image and run it anywhere a container runtime exists.
 
-1. Write a multi-stage `Dockerfile`: a build stage (`npm ci && npm run build`), then a slim
-   `node:22-slim` runtime stage that runs `npm ci --omit=dev`, copies `dist/`, and runs
-   `node dist/index.js` as a non-root user.
-2. Build and run:
+1. Fill in the shipped multi-stage `Dockerfile`: a `node:22-slim` build stage that runs
+   `npm ci && npm run build`, then a slim runtime stage that carries only the production
+   `node_modules` (`npm ci --omit=dev`) and `dist/` and runs `node dist/server.js` as the non-root
+   `node` user. `.dockerignore` already keeps VCS history and `.env*` out of the build context.
+2. Build and run - or use `docker compose up --build`, which reads the shipped
+   `docker-compose.yml`:
 
    ```bash
    docker build -t my-app .

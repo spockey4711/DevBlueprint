@@ -47,6 +47,33 @@ All notable changes are documented here, following
   Intake files also gain an `agents` key so a baseline can standardize the coding-agent toolset.
   A ready-to-copy `agent/org-baseline.example.yml` ships alongside `agent/intake.example.yml`.
   Refs: P7-4.
+- Ops artifacts for the `spring-java` variant: a multi-stage `Dockerfile` (an `eclipse-temurin:21-jdk`
+  build stage running `./gradlew bootJar` and extracting the layered jar -> an `eclipse-temurin:21-jre`
+  non-root runtime) + `.dockerignore` + `docker-compose.yml`, `deploy/` skeletons for Fly/Render/
+  Terraform, a deployment runbook re-targeted to Spring Boot (bootJar, JRE runtime, Flyway/Liquibase
+  migrations as a release step), and a `.env.schema` + `.env.example` env contract. `make check` gains
+  a `validate-env` step (first) and CI a `Validate env schema` step after checkout, both running
+  `scripts/check-env.sh` to keep `.env.example` in lockstep with the schema and validate required
+  keys/patterns in any real `.env`; the manifest `QUALITY_GATE` prepends it so `doctor --run-gate`
+  runs it too. Refs: P7-3.
+- Ops artifacts for the `elixir-phoenix` variant: a multi-stage `Dockerfile` (a `hexpm/elixir` build
+  stage running `MIX_ENV=prod mix release` -> a non-root `debian:bookworm-slim` runtime) +
+  `.dockerignore` + `docker-compose.yml`, `deploy/` skeletons for Fly/Render/Terraform (Fly.io is the
+  common Phoenix target), and a `.env.schema` + new `.env.example` (`SECRET_KEY_BASE`, `DATABASE_URL`,
+  `PHX_HOST`, `PORT`, `MIX_ENV`) enforced in the gate. `make check` gains a `validate-env` step (first)
+  and CI a `Validate env schema` step, both running `scripts/check-env.sh` to keep `.env.example` in
+  lockstep with the schema and validate required keys/patterns in any real `.env`; the manifest's
+  `QUALITY_GATE` (so `doctor --run-gate`) runs it too. The `docs/ops/deployment.md` runbook runs Ecto
+  migrations as a release command (`bin/app eval "App.Release.migrate"`), never on boot. Refs: P7-3.
+- Ops artifacts for the `web-nextjs` variant: a multi-stage `Dockerfile` (Next.js `output:
+  "standalone"` built on `node:22-slim` -> a slim non-root runtime running `node server.js`) +
+  `.dockerignore` + `docker-compose.yml`, `deploy/` skeletons for Vercel/Render/Fly/Terraform (with
+  Vercel as the primary managed target, which needs no Dockerfile), and a `.env.schema` (distinguishing
+  build-time `NEXT_PUBLIC_*` values from server-only secrets) enforced in the gate. The variant has no
+  Makefile, so the contract is wired via `manifest.env` (the quality gate is prefixed with
+  `sh scripts/check-env.sh`) and CI (a `Validate env schema` step), both running `scripts/check-env.sh`
+  to keep `.env.example` in lockstep with the schema and validate required keys/patterns in any real
+  `.env`; the `doctor --run-gate` gate runs it too. Refs: P7-3.
 - Ops artifacts for the `backend-go` variant: a multi-stage `Dockerfile` (static `CGO_ENABLED=0`
   binary -> `distroless/static:nonroot`) + `.dockerignore` + `docker-compose.yml`, `deploy/`
   skeletons for Fly/Render/Terraform, and a `.env.schema` promoted from `.env.example` and enforced
@@ -54,11 +81,91 @@ All notable changes are documented here, following
   workflow inlines the gate rather than calling `make check`), both running `scripts/check-env.sh`
   to keep `.env.example` in lockstep with the schema and validate required keys/patterns in any real
   `.env`; the `doctor --run-gate` gate runs it too. Refs: P7-3.
+- Ops artifacts for the `backend-python` variant: a multi-stage `Dockerfile` (uv-built venv ->
+  slim `python:3.12-slim` running uvicorn as a non-root user) + `.dockerignore` + `docker-compose.yml`,
+  `deploy/` skeletons for Fly/Render/Terraform, and a `.env.schema` reconciled with `.env.example` and
+  enforced in the gate. The variant has no Makefile, so the contract is wired via the manifest
+  `QUALITY_GATE` (prepended `sh scripts/check-env.sh`) and a `Validate env schema` CI step, both
+  running `scripts/check-env.sh` to keep `.env.example` in lockstep with the schema and validate
+  required keys/patterns in any real `.env`. Refs: P7-3.
+- Ops artifacts for the `node-express` variant: a multi-stage `Dockerfile` (`node:22-slim` build ->
+  slim non-root runtime running the compiled `dist/server.js`) + `.dockerignore` +
+  `docker-compose.yml`, `deploy/` skeletons for Fly/Render/Terraform, and a `.env.schema` reconciled
+  key-for-key with `.env.example` and enforced in the gate. `make check` gains a `validate-env` step
+  and CI a `Validate env schema` step, both running `scripts/check-env.sh` (copied verbatim from the
+  `backend-go` variant) to keep `.env.example` in lockstep with the schema and validate required
+  keys/patterns in any real `.env`; `QUALITY_GATE` runs it too. Refs: P7-3.
+- Ops artifacts for the `rails` variant: a multi-stage `Dockerfile` (`ruby:3.3-slim` build stage
+  running `bundle install` + `rails assets:precompile` -> a slim non-root Puma runtime) +
+  `.dockerignore` + `docker-compose.yml` (with commented postgres and redis services), `deploy/`
+  skeletons for Fly/Render/Terraform, a new `.env.schema` + key-for-key `.env.example`, and a Rails
+  deployment runbook (`docs/ops/deployment.md`, covering `rails db:migrate` as a release step,
+  `assets:precompile` and `SECRET_KEY_BASE`). `make check` gains a `validate-env` step and CI a
+  `Validate env schema` step, both running `scripts/check-env.sh` (copied verbatim from `backend-go`)
+  to keep `.env.example` in lockstep with the schema and validate required keys/patterns in any real
+  `.env`; the gate string in `manifest.env` gains the same check. Refs: P7-3.
+- Ops artifacts for the `rust` variant: a multi-stage `Dockerfile` (`cargo build --release` binary,
+  dependencies compiled first for layer reuse -> `distroless/cc-debian12:nonroot`, with a musl/
+  `scratch` static option noted in a comment) + `.dockerignore` + `docker-compose.yml`, `deploy/`
+  skeletons for Fly/Render/Terraform, and a `.env.schema` (with `APP_ENV`/`PORT`/`DATABASE_URL`/
+  `RUST_LOG`) paired with a key-for-key `.env.example`. `make check` gains a `validate-env` step (run
+  first) and CI a `Validate env schema` step, and the manifest `QUALITY_GATE` is prefixed with
+  `scripts/check-env.sh`, all running the same check to keep `.env.example` in lockstep with the
+  schema and validate required keys/patterns in any real `.env`. Ships a Rust-targeted deployment
+  runbook under `docs/ops/deployment.md`. Refs: P7-3.
+- Ops artifacts for the `terraform-iac` variant, in adapted (env-contract-only) form: a
+  `.env.schema` + key-for-key `.env.example` declaring the inputs a plan/apply needs (provider
+  credentials, region, remote-state backend, `TF_VAR_*`), the stack-agnostic `scripts/check-env.sh`,
+  and a `docs/ops/deployment.md` runbook re-targeted to the `init` -> `plan` -> `apply` workflow
+  (remote state backend, secrets from a manager / `TF_VAR_*`, CI apply gated on plan review).
+  `make check` gains a `validate-env` step and CI a `Validate env schema` step, both running
+  `scripts/check-env.sh` to keep `.env.example` in lockstep with the schema. The container/PaaS
+  artifacts (`Dockerfile`, `docker-compose.yml`, `deploy/` skeletons) are intentionally omitted -
+  this variant already is the deploy/IaC layer, so there is nothing to containerize or a separate
+  deploy tree to scaffold. Refs: P7-3.
+- Ops artifacts for the `laravel` variant: a multi-stage `Dockerfile` (a `php:8.3-fpm` Composer
+  build stage running `composer install --no-dev --optimize-autoloader` -> a non-root php-fpm
+  runtime) + `.dockerignore` + `docker-compose.yml` (a php-fpm `app` service plus commented nginx
+  and db skeletons), `deploy/` skeletons for Fly/Render/Terraform, a Laravel-targeted deployment
+  runbook (`docs/ops/deployment.md`, covering `php artisan migrate`, `config:cache`/`route:cache`
+  and storage permissions), and a `.env.schema`/`.env.example` pair enforced in the gate. `make
+  check` gains a `validate-env` step (first) and CI a `Validate env schema` step, both running
+  `scripts/check-env.sh` to keep `.env.example` in lockstep with the schema and validate required
+  keys/patterns in any real `.env`. `APP_KEY` must be generated with `php artisan key:generate` and
+  kept in the platform's secret store, never committed. Refs: P7-3.
+- Ops artifacts for the `data-python` variant, adapted for a batch/pipeline project (not a
+  long-running web service): a `python:3.12-slim`, non-root `Dockerfile` whose ENTRYPOINT runs the
+  pipeline to completion and exits (no exposed port) + `.dockerignore` + a run-once
+  `docker-compose.yml`, and a `.env.schema` promoted from `.env.example` (warehouse connection
+  strings and object-store credentials, all optional until real) enforced in the gate. Deployment is
+  scheduled, not always-on, so there is no `fly.toml`/`render.yaml`: `deploy/README.md` points at a
+  scheduler/registry/managed Batch service (cron, Airflow, AWS Batch, Cloud Run jobs) and
+  `deploy/terraform/` provisions the compute + object storage; `docs/ops/deployment.md` is a runbook
+  for those targets with job success/alerting in place of a health check. `make check` gains a
+  `validate-env` step and CI a `Validate env schema` step, both running `scripts/check-env.sh` to
+  keep `.env.example` in lockstep with the schema and validate required keys/patterns in any real
+  `.env`; the `doctor --run-gate` gate runs it too. Refs: P7-3.
 - Ops artifacts for the `generic` variant: a `Dockerfile` + `.dockerignore` + `docker-compose.yml`,
   `deploy/` skeletons for Fly/Render/Terraform, and a `.env.schema` promoted from `.env.example` and
   enforced in the gate - `make check` runs `scripts/check-env.sh` (a new `validate-env` step) to keep
   `.env.example` in lockstep with the schema and validate required keys/patterns in any real `.env`.
   Refs: P7-3.
+- Ops artifacts for the `dotnet` variant: a multi-stage `Dockerfile` (`sdk:8.0` build ->
+  `aspnet:8.0` runtime, non-root) + `.dockerignore` + `docker-compose.yml`, `deploy/` skeletons for
+  Fly/Render/Terraform, and a `.env.schema` + a new `.env.example` (keys use the `__` nesting
+  convention, e.g. `ConnectionStrings__Default`). `make check` gains a `validate-env` step, CI a
+  `Validate env schema` step, and `manifest.env`'s gate is prefixed with `sh scripts/check-env.sh`,
+  all running the shared `scripts/check-env.sh` to keep `.env.example` in lockstep with the schema
+  and validate required keys/patterns in any real `.env`. The runbook runs EF Core migrations as a
+  deliberate release step, not on boot. Refs: P7-3.
+- Ops artifacts for the `sveltekit` variant: an `@sveltejs/adapter-node` `Dockerfile` (`pnpm build`
+  -> a slim non-root runtime running `node build`) + `.dockerignore` + `docker-compose.yml` on port
+  3000, `deploy/` skeletons for Vercel/Fly/Render/Terraform (with the Vercel/Netlify adapters called
+  out as the zero-Dockerfile managed path), a `docs/ops/deployment.md` runbook, and a `.env.schema` +
+  `.env.example` env contract that distinguishes `PUBLIC_*` build-time vars from server-only secrets.
+  `make check` gains a `validate-env` step and CI a `Validate env schema` step, both running
+  `scripts/check-env.sh` to keep `.env.example` in lockstep with the schema and validate required
+  keys/patterns in any real `.env`. Refs: P7-3.
 - Provider-agnostic CI: every variant now ships a `.gitlab-ci.yml` alongside its GitHub Actions
   workflows, so a scaffolded project runs the same gates on either forge. The pipeline mirrors
   `ci.yml` (a `quality` stage running the variant's gate), the security baseline (a `security`
