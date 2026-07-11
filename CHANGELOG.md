@@ -29,6 +29,10 @@ All notable changes are documented here, following
 
 ### Changed
 
+- Restructured the P8-P15 beginner-onboarding roadmap into eight phases of exactly four
+  parallel-first tasks each: at most one `(CLI)` task per phase, within-phase tasks touch
+  disjoint files and do not build on each other (enabler exceptions like P8-1/P13-1 marked),
+  so all four PRs of a wave can be opened at once. Cross-phase dependencies stay allowed.
 - Split `docs/project/backlog.md`: the completed P0-P7 phases moved to a new
   `docs/project/backlog-archive.md`, leaving the active P8-P15 roadmap in the main backlog.
 - Reworked DevBlueprint from the `apkit` spec-scaffolding CLI into a documentation-first
