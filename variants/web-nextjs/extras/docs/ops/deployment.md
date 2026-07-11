@@ -16,13 +16,18 @@ CI runs the same gate on every PR - never deploy a commit that has not passed it
 ## Environment variables
 
 Copy `.env.example` to `.env.local` for local work and set the same keys in your deploy target's
-secret store. Never commit a real `.env*` file (only `.env.example` is tracked).
+secret store. Never commit a real `.env*` file (only `.env.example` is tracked). `.env.schema` is
+the contract these variables must satisfy, and the quality gate fails if `.env.example` drifts from
+it (or if a real `.env` is missing a required key or has a value that breaks a declared `pattern=`) -
+so the environment stays validated, not just documented.
 
 - [ ] Every key in `.env.example` has a value in the target's secret store.
 - [ ] Server-only secrets (DB URLs, API keys) are **not** prefixed `NEXT_PUBLIC_` - that prefix
       inlines the value into the client bundle and ships it to every visitor.
 - [ ] `NODE_ENV=production` in the deployed environment.
 - [ ] Values differ per environment (preview/staging/production) - no shared production secrets.
+- [ ] Required keys and value formats are declared in `.env.schema` so the gate catches a missing
+      or malformed one before deploy.
 - [ ] Rotate any secret that has ever been committed or pasted into a log/PR.
 
 ## Database
@@ -38,23 +43,32 @@ secret store. Never commit a real `.env*` file (only `.env.example` is tracked).
 
 ## Target: managed platform (Vercel / Netlify)
 
-The path of least resistance for Next.js - the platform builds and hosts from your repo.
+The path of least resistance for Next.js - the platform builds and hosts from your repo. Vercel is
+the primary managed target and needs **no Dockerfile**: it builds Next.js natively. Starter configs
+ship under `deploy/` - `deploy/vercel.json` (Vercel), `deploy/render.yaml` (Render), `deploy/fly.toml`
+(Fly.io), and `deploy/terraform/` for declarative provisioning; keep the one you use and fill in its
+`<...>` placeholders (see `deploy/README.md`).
 
 1. Connect the Git repository; set the production branch to your default branch.
-2. Framework preset: **Next.js**. Build command `pnpm build`, install command `pnpm install`.
+2. Framework preset: **Next.js**. Build command `pnpm build`, install command `pnpm install`
+   (`deploy/vercel.json` pins both).
 3. Add every key from `.env.example` under the project's Environment Variables, scoped per
-   environment.
+   environment. Remember `NEXT_PUBLIC_*` values are inlined at build time, so they must be present
+   when the platform builds.
 4. Push to the production branch (or promote a preview) to release. Roll back by re-promoting the
    previous deployment.
 
 ## Target: Docker
 
-Use Next.js standalone output so the image ships only the traced runtime deps.
+Self-host the image on any container runtime. Uses Next.js standalone output so the image ships only
+the traced runtime deps.
 
-1. Set `output: 'standalone'` in `next.config.js`.
-2. Build a multi-stage image (deps -> build -> runtime); the runtime stage copies
-   `.next/standalone`, `.next/static`, and `public/`, then runs `node server.js` as a non-root user.
-3. Build and run:
+1. Set `output: 'standalone'` in `next.config.js` (the shipped `Dockerfile` assumes it).
+2. The shipped multi-stage `Dockerfile` handles the rest: a `node:22-slim` build stage runs
+   `pnpm install` + `pnpm build`, then a slim runtime stage copies `.next/standalone`, `.next/static`,
+   and `public/` and runs `node server.js` as a non-root user. `.dockerignore` already keeps VCS
+   history and `.env*` out of the build context.
+3. Build and run - or use `docker compose up --build`, which reads the shipped `docker-compose.yml`:
 
    ```bash
    docker build -t my-app .

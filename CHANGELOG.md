@@ -47,6 +47,15 @@ All notable changes are documented here, following
   Intake files also gain an `agents` key so a baseline can standardize the coding-agent toolset.
   A ready-to-copy `agent/org-baseline.example.yml` ships alongside `agent/intake.example.yml`.
   Refs: P7-4.
+- Ops artifacts for the `web-nextjs` variant: a multi-stage `Dockerfile` (Next.js `output:
+  "standalone"` built on `node:22-slim` -> a slim non-root runtime running `node server.js`) +
+  `.dockerignore` + `docker-compose.yml`, `deploy/` skeletons for Vercel/Render/Fly/Terraform (with
+  Vercel as the primary managed target, which needs no Dockerfile), and a `.env.schema` (distinguishing
+  build-time `NEXT_PUBLIC_*` values from server-only secrets) enforced in the gate. The variant has no
+  Makefile, so the contract is wired via `manifest.env` (the quality gate is prefixed with
+  `sh scripts/check-env.sh`) and CI (a `Validate env schema` step), both running `scripts/check-env.sh`
+  to keep `.env.example` in lockstep with the schema and validate required keys/patterns in any real
+  `.env`; the `doctor --run-gate` gate runs it too. Refs: P7-3.
 - Ops artifacts for the `backend-go` variant: a multi-stage `Dockerfile` (static `CGO_ENABLED=0`
   binary -> `distroless/static:nonroot`) + `.dockerignore` + `docker-compose.yml`, `deploy/`
   skeletons for Fly/Render/Terraform, and a `.env.schema` promoted from `.env.example` and enforced
