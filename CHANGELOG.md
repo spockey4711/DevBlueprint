@@ -45,6 +45,10 @@ All notable changes are documented here, following
   Swift, generic), with `release-please-manifest.json` as the pre-launch `0.0.0` version source
   of truth. Files ship through the existing `github/` tree copy, so no CLI change was needed;
   each variant's quality doc gains a "Release automation" section. Refs: P7-1.
+- New `rails` variant: a Ruby on Rails 8 web app built with Bundler, RuboCop
+  (`rubocop-rails-omakase`), Brakeman for security scanning, and Minitest. Self-contained under
+  `variants/rails/` (manifest, `setup.sh`, Makefile, CI + dependabot, `.tool-versions`, gitignore,
+  wt.conf, and the conventions/quality docs), auto-discovered by the CLI. Refs: P6-2d.
 - New `dotnet` variant: a C# / .NET 10 backend built with the `dotnet` CLI (SDK pinned in
   `global.json`), `dotnet format`, Roslyn analyzers with warnings-as-errors, and xUnit.
   Self-contained under `variants/dotnet/` (manifest, `setup.sh`, Makefile, CI + dependabot,
