@@ -40,6 +40,11 @@ All notable changes are documented here, following
 
 ### Added
 
+- `GETTING-STARTED.md`: filled the "Your first run" and "Your first task" sections with a
+  complete worked tutorial - one narrated run from `devblueprint init` through `setup.sh`, git
+  setup, `doctor`, creating the GitHub remote, then the everyday loop (worktree, edit, `make
+  check`, commit, push, PR, cleanup) - every command shown with its expected output, written
+  against the `generic` variant so a beginner needs no toolchain. Refs: P8-4.
 - `GETTING-STARTED.md`: a beginner-onboarding guide skeleton linked from the top of the README,
   with an intro and section headings for prerequisites, choosing a folder, the first run and the
   first task. The anchor the rest of the P8 onboarding docs fill in. Refs: P8-1.
