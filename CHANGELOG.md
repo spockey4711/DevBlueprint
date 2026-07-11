@@ -43,6 +43,10 @@ All notable changes are documented here, following
 - `GETTING-STARTED.md`: a beginner-onboarding guide skeleton linked from the top of the README,
   with an intro and section headings for prerequisites, choosing a folder, the first run and the
   first task. The anchor the rest of the P8 onboarding docs fill in. Refs: P8-1.
+- `GETTING-STARTED.md` Prerequisites section: plain-language, copy-paste install steps for a
+  terminal, git, Node and VS Code, split per OS (macOS via Homebrew, Windows via winget, Linux
+  via apt/NodeSource), each with a check command and the expected output so a beginner can
+  confirm every tool works. Refs: P8-2.
 - Governance scaffolding: every project now ships `scripts/protect-branches.sh`, an opt-in
   helper that turns the documented git workflow into an enforced one by applying GitHub branch
   protection (required PRs, approving reviews, optional code-owner review, no direct/force pushes
