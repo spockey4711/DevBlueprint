@@ -58,7 +58,7 @@ Each task is a brand-new standalone file, so all four are independent with zero 
 
 - [x] P9-1: Plain-language glossary at `docs/glossary.md` - terminal, path, repo, branch,
   commit, PR, worktree, CI, lint, variant, quality gate; one sentence each.
-- [ ] P9-2: `docs/faq.md` - the common "why did this happen / what now" questions a beginner
+- [x] P9-2: `docs/faq.md` - the common "why did this happen / what now" questions a beginner
   hits (directory already exists, not a git repo, gate is red, wrong branch), one answer each.
 - [x] P9-3: `docs/cheatsheet.md` - a one-page everyday-commands reference (the wt.sh, git,
   and `make check` calls used in the normal loop) that a beginner can keep open beside them.
@@ -73,7 +73,7 @@ Each task is a brand-new standalone file, so all four are independent with zero 
   prompt that explains each question, suggests sensible defaults (especially the target path),
   and shows exactly what will be written before touching disk (reuse the existing `plan`
   output). The single biggest lever - no flag knowledge required.
-- [ ] P10-2: Beginner mode for the `devblueprint-setup` interview skill - assume zero
+- [x] P10-2: Beginner mode for the `devblueprint-setup` interview skill - assume zero
   knowledge, gloss every term in one line, and actively help at the path step. Agent files
   only. (pairs with P9-1 for shared glossary wording)
 - [ ] P10-3: Ship `.vscode/extensions.json` (recommended extensions) per variant, so opening

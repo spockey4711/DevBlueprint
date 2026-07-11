@@ -5,6 +5,23 @@ All notable changes are documented here, following
 
 ## [Unreleased]
 
+### Added
+
+- The `devblueprint-setup` interview skill gained a **Beginner mode**: when the user signals they
+  are new, it assumes zero prior knowledge, glosses every term the interview raises (variant,
+  deploy target, branch, two-branch vs. trunk, worktree, PR, quality gate, intake file) in one
+  line using the `docs/glossary.md` wording, and actively helps at the path step (glosses the
+  target path, offers a concrete default, shows `pwd`/`ls` when the user is lost, and confirms the
+  resolved absolute path before writing). Same five questions, same `plan`-before-`init`. Refs:
+  P10-2.
+- The static config builder (`web/config-builder/`) now covers everything the CLI accepts, not
+  just a subset. It gained the missing intake keys (`flavors`, `agents`, `extends`), refreshed the
+  variant dropdown to all 17 stacks, and added a **Target directory** field plus a second output
+  pane that renders the ready-to-run `devblueprint plan`/`init` command with `--target` (and, in
+  the new **Monorepo** layout, one `--package name:variant` flag per package) filled in. `--target`
+  and `--package` stay command-line only - the file still holds only *what*, the command carries
+  *where*.
+
 ### Fixed
 
 - The `elixir-phoenix`, `laravel`, `rails` and `sveltekit` variants shipped with an incomplete
@@ -47,6 +64,9 @@ All notable changes are documented here, following
   an explicit confirmation, so a newcomer can create a project without knowing a single flag.
   Answers are read from stdin, so an early EOF falls back to the shown defaults and the final
   confirm defaults to "no" - a missing answer never writes to disk. Refs: P10-1.
+- `docs/faq.md`: a plain-language FAQ answering the common "why did this happen, what now?"
+  moments a beginner hits (a directory/file already exists, "not a git repository", a red quality
+  gate, being on the wrong branch), with a symptom, a cause and a next step for each. Refs: P9-2.
 - `docs/cheatsheet.md`: a one-page everyday-commands reference a beginner can keep open beside
   them - the normal loop top to bottom (`git fetch`, `wt.sh new`, small `git add`/`commit`
   steps, `make check`, `git push`, `gh pr create`, `wt.sh gc`) plus quick-reference tables for
