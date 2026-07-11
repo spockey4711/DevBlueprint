@@ -7,6 +7,12 @@ All notable changes are documented here, following
 
 ### Fixed
 
+- The `terraform-iac` variant shipped without the provider-agnostic CI baseline: it landed
+  right after the P7-2 sweep and so had no `gitlab/.gitlab-ci.yml` or
+  `github/workflows/preview-deploy.yml`. The `init scaffolds provider-agnostic CI for every
+  variant` test iterates over all variants, so the gap turned the whole `bats` suite red. Added
+  a Terraform-flavored `.gitlab-ci.yml` (a `quality` stage running `terraform fmt`/`validate`/
+  `tflint`/`test` on the pinned versions) plus the stack-neutral `preview-deploy.yml`. Refs: P7-2.
 - `doctor --run-gate` test for the `backend-go` variant asserted the gate line started with
   `gofumpt`, but the variant's gate is `test -z "$(gofumpt -l .)" && ...`. The assertion now
   matches the real gate string, so CI's stricter `bats` (which aborts a test on any failing
