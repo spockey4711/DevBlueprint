@@ -19,6 +19,16 @@ All notable changes are documented here, following
 
 ### Added
 
+- Kit self-CI: a `scaffold-matrix.yml` workflow scaffolds every variant into a throwaway dir,
+  wires it with the variant's `setup.sh`, and runs its quality gate, failing on any red so
+  variant rot (a broken scaffold, `setup.sh`, `Makefile` or gate) is caught before a release.
+  Variants are discovered dynamically, so a new variant is covered without editing the workflow.
+  The per-variant engine is `scripts/scaffold-check.sh` (verifies each scaffold with
+  `devblueprint doctor`): variants whose `setup.sh` produces a complete, self-checking starter
+  on a toolchain the runner already ships (`generic`, `rust`, `node-express`) run the full gate
+  via `doctor --run-gate`; the rest - those that need you to create the real app/package first,
+  plus `backend-go` (its gate needs separately-pinned linters) - get a scaffold plus an
+  idempotent `setup.sh` check via `doctor --strict`. Refs: P4-3.
 - `devblueprint upgrade`: self-update the installed kit in place, with stable/next channels and
   pinning, so `update` targets stay reproducible. `--channel stable` follows the latest GitHub
   release tag; `--channel next` follows `master`; `--version <ver>` pins an exact release and
