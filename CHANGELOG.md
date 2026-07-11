@@ -137,6 +137,14 @@ All notable changes are documented here, following
   all running the shared `scripts/check-env.sh` to keep `.env.example` in lockstep with the schema
   and validate required keys/patterns in any real `.env`. The runbook runs EF Core migrations as a
   deliberate release step, not on boot. Refs: P7-3.
+- Ops artifacts for the `sveltekit` variant: an `@sveltejs/adapter-node` `Dockerfile` (`pnpm build`
+  -> a slim non-root runtime running `node build`) + `.dockerignore` + `docker-compose.yml` on port
+  3000, `deploy/` skeletons for Vercel/Fly/Render/Terraform (with the Vercel/Netlify adapters called
+  out as the zero-Dockerfile managed path), a `docs/ops/deployment.md` runbook, and a `.env.schema` +
+  `.env.example` env contract that distinguishes `PUBLIC_*` build-time vars from server-only secrets.
+  `make check` gains a `validate-env` step and CI a `Validate env schema` step, both running
+  `scripts/check-env.sh` to keep `.env.example` in lockstep with the schema and validate required
+  keys/patterns in any real `.env`. Refs: P7-3.
 - Provider-agnostic CI: every variant now ships a `.gitlab-ci.yml` alongside its GitHub Actions
   workflows, so a scaffolded project runs the same gates on either forge. The pipeline mirrors
   `ci.yml` (a `quality` stage running the variant's gate), the security baseline (a `security`

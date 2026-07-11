@@ -1,0 +1,16 @@
+{
+  "//": "Vercel project config (skeleton) - the zero-Dockerfile managed path. Swap the",
+  "//build": "SvelteKit adapter to @sveltejs/adapter-vercel in svelte.config.js, connect the repo",
+  "//deploy": "in Vercel, and it builds and serves the app - no Dockerfile, no process manager.",
+  "//secrets": "Set env vars in the Vercel dashboard (per environment), never in this file.",
+  "//public": "PUBLIC_* vars are inlined at build time, so add them in Vercel's Build env too.",
+  "//runbook": "See ../docs/ops/deployment.md and ./README.md.",
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "sveltekit",
+  "git": {
+    "deploymentEnabled": {
+      "master": true,
+      "develop": true
+    }
+  }
+}

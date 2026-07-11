@@ -1,0 +1,21 @@
+# Render Blueprint (skeleton) - https://render.com/docs/blueprint-spec
+# Commit this, connect the repo in Render, and it provisions the service from the
+# repo's Dockerfile (adapter-node image). Set real secrets in the Render dashboard
+# (or keep `sync: false` below so Render prompts for them) - never commit them
+# here. See docs/ops/deployment.md.
+services:
+  - type: web
+    name: <your-app-name>
+    runtime: docker            # or the native `node` runtime if you prefer no Dockerfile
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: <health-check-path>   # e.g. / or /healthz
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: "3000"
+      - key: ORIGIN
+        value: <https://your-app.example.com>
+      - key: DATABASE_URL      # secret/managed - set it in the dashboard, not here
+        sync: false

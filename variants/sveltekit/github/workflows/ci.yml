@@ -1,8 +1,8 @@
 name: CI
 
-# The quality gate for every change. Runs the same four gates as
-# `pnpm lint && pnpm check && pnpm test && pnpm build` plus the Playwright smoke
-# suite. Must be green before a PR can merge. Gates both integration branches:
+# The quality gate for every change. Runs the env-schema contract check plus the
+# same four gates as `pnpm lint && pnpm check && pnpm test && pnpm build` and the
+# Playwright smoke suite. Must be green before a PR can merge. Gates both integration branches:
 # feature PRs into `develop` and the periodic `develop` -> `master` release PR.
 
 on:
@@ -27,6 +27,11 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      # Fast, toolchain-free contract check: .env.example must stay in lockstep
+      # with .env.schema (and a real .env, if present, must satisfy it).
+      - name: Validate env schema
+        run: sh scripts/check-env.sh
 
       # pnpm before setup-node so the Node cache can key off the pnpm store.
       - name: Set up pnpm
