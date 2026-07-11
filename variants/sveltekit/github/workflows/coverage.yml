@@ -1,0 +1,70 @@
+name: Coverage
+
+# Measures line coverage on every change and enforces a soft floor. The floor is
+# read from the COVERAGE_MIN repository variable (Settings > Secrets and variables
+# > Actions > Variables) and defaults to 0, i.e. report-only: coverage is always
+# visible in the job summary, and a team opts into a hard gate by raising
+# COVERAGE_MIN - no code change needed. This respects the variant's
+# "meaningful coverage, not a global percentage" guidance in
+# docs/engineering/quality-and-testing.md.
+
+on:
+  pull_request:
+    branches: [develop, master]
+  push:
+    branches: [develop, master]
+
+concurrency:
+  group: coverage-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  coverage:
+    name: Line coverage
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Test with coverage
+        # Vitest writes coverage/coverage-summary.json; the next step reads the
+        # total line percentage from it. Skips cleanly when no coverage provider
+        # is installed yet (a fresh scaffold) so the job stays green until the
+        # team runs `pnpm add -D @vitest/coverage-v8`.
+        run: |
+          if [ ! -d node_modules/@vitest/coverage-v8 ] && [ ! -d node_modules/@vitest/coverage-istanbul ]; then
+            echo "No Vitest coverage provider - run 'pnpm add -D @vitest/coverage-v8' to enable coverage."
+            exit 0
+          fi
+          pnpm exec vitest run --coverage \
+            --coverage.reporter=text \
+            --coverage.reporter=json-summary
+
+      - name: Coverage floor + summary
+        if: always()
+        env:
+          MIN: ${{ vars.COVERAGE_MIN || '0' }}
+        run: |
+          summary=coverage/coverage-summary.json
+          [ -f "$summary" ] || exit 0
+          pct=$(node -p "Math.round((require('./coverage/coverage-summary.json').total.lines.pct || 0) * 100) / 100")
+          printf '### Coverage\n\nLine coverage **%s%%** (floor %s%%).\n' "$pct" "$MIN" >> "$GITHUB_STEP_SUMMARY"
+          # Soft gate: fail only when the team has opted into a non-zero floor.
+          awk -v p="$pct" -v m="$MIN" 'BEGIN { if (p + 0 < m + 0) { exit 1 } }' || {
+            echo "Line coverage $pct% is below the floor $MIN%"; exit 1;
+          }
