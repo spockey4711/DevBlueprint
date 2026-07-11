@@ -6,8 +6,11 @@
 # - tasks.json (P10-4): wires the quality gate (and its common steps) into the
 #   task menu, so a beginner runs the gate from the editor without memorising
 #   commands.
+# - .devcontainer/devcontainer.json (P11-2): opens the scaffolded project in a
+#   ready Codespaces / Dev Container environment with zero local install. Every
+#   variant ships one except ios-swift, which needs macOS + Xcode.
 #
-# Both files ride the generic extras/ copy path (see extras.bats for the
+# These files ride the generic extras/ copy path (see extras.bats for the
 # mechanism); this suite guards that every real variant carries them and that
 # they are valid, so a new variant cannot silently ship without them.
 
@@ -72,6 +75,45 @@ assert isinstance(recs, list) and recs, "recommendations must be a non-empty lis
 assert all(isinstance(r, str) and r for r in recs), "each recommendation is a marketplace id"
 PY
   done
+}
+
+@test "every Linux-capable variant ships extras/.devcontainer/devcontainer.json" {
+  for m in "$REPO_ROOT"/variants/*/manifest.env; do
+    v="$(basename "$(dirname "$m")")"
+    [ "$v" = "ios-swift" ] && continue
+    [ -f "$REPO_ROOT/variants/$v/extras/.devcontainer/devcontainer.json" ] \
+      || { echo "missing devcontainer.json for variant: $v"; false; }
+  done
+}
+
+@test "ios-swift ships no devcontainer (needs macOS + Xcode)" {
+  [ ! -e "$REPO_ROOT/variants/ios-swift/extras/.devcontainer" ]
+}
+
+@test "each devcontainer.json is valid and matches its extensions.json" {
+  require_python
+  for m in "$REPO_ROOT"/variants/*/manifest.env; do
+    v="$(basename "$(dirname "$m")")"
+    [ "$v" = "ios-swift" ] && continue
+    run python3 - "$REPO_ROOT/variants/$v" <<'PY'
+import json, sys, os
+vdir = sys.argv[1]
+d = json.load(open(os.path.join(vdir, "extras/.devcontainer/devcontainer.json")))
+assert d.get("name"), "name missing"
+assert d.get("image"), "image missing"
+assert d.get("postCreateCommand"), "postCreateCommand missing"
+dc = d["customizations"]["vscode"]["extensions"]
+rec = json.load(open(os.path.join(vdir, "extras/.vscode/extensions.json")))["recommendations"]
+assert set(dc) == set(rec), f"extensions {dc} != recommendations {rec}"
+PY
+    [ "$status" -eq 0 ] || { echo "invalid devcontainer.json for $v: $output"; false; }
+  done
+}
+
+@test "init lands .devcontainer/devcontainer.json in the scaffolded project" {
+  run db init --target "$TARGET" --name demo --variant generic
+  [ "$status" -eq 0 ]
+  [ -f "$TARGET/.devcontainer/devcontainer.json" ]
 }
 
 @test "init scaffolds .vscode/extensions.json for every variant" {
