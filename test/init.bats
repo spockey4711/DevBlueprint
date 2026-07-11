@@ -26,6 +26,8 @@ load helper
   [ -f "$TARGET/scripts/wt.conf" ]
   [ -f "$TARGET/.github/workflows/ci.yml" ]
   [ -f "$TARGET/.github/workflows/release.yml" ]
+  [ -f "$TARGET/.github/workflows/preview-deploy.yml" ]
+  [ -f "$TARGET/.gitlab-ci.yml" ]
   [ -f "$TARGET/.github/release-please-config.json" ]
   [ -f "$TARGET/.github/release-please-manifest.json" ]
   [ -f "$TARGET/.github/pull_request_template.md" ]
@@ -50,6 +52,27 @@ load helper
 
     run db doctor --target "$dest"
     [ "$status" -eq 0 ] || { echo "doctor failed for $name: $output"; false; }
+  done
+}
+
+@test "init scaffolds provider-agnostic CI (GitLab + preview deploy) for every variant" {
+  for variant in "$REPO_ROOT"/variants/*/; do
+    [ -f "$variant/manifest.env" ] || continue
+    name="$(basename "$variant")"
+    dest="$TEST_TMP/pa-$name"
+
+    run db init --target "$dest" --name "$name" --variant "$name"
+    [ "$status" -eq 0 ] || { echo "init failed for $name: $output"; false; }
+
+    # GitLab pipeline lands at the project root, its GitHub twin under workflows/.
+    [ -f "$dest/.gitlab-ci.yml" ] || { echo "no .gitlab-ci.yml for $name"; false; }
+    [ -f "$dest/.github/workflows/preview-deploy.yml" ] \
+      || { echo "no preview-deploy.yml for $name"; false; }
+
+    # The GitLab pipeline carries the three managed security scanners and a
+    # preview environment, mirroring security.yml + preview-deploy.yml.
+    grep -q "Security/SAST.gitlab-ci.yml" "$dest/.gitlab-ci.yml"
+    grep -q "deploy:preview" "$dest/.gitlab-ci.yml"
   done
 }
 
