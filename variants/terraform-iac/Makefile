@@ -2,9 +2,15 @@
 # calls the same tools. Everything runs through the terraform CLI and tflint on
 # the versions pinned in .tool-versions and .terraform.lock.hcl - local, CI and
 # teammates match.
-.PHONY: check fmt fmt-check init validate lint test plan scan clean
+.PHONY: check validate-env fmt fmt-check init validate lint test plan scan clean
 
-check: fmt-check validate lint test
+check: validate-env fmt-check validate lint test
+
+# Enforce the environment contract: .env.example must stay in lockstep with
+# .env.schema, and a real .env (if present) must satisfy every required key. This
+# is stack-agnostic and always on - fill in the schema, not this target.
+validate-env:
+	@sh scripts/check-env.sh
 
 # fmt-check verifies canonical formatting (terraform fmt); validate runs the
 # terraform type/consistency check; lint runs tflint (provider/naming/deprecation
