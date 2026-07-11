@@ -33,11 +33,16 @@ All notable changes are documented here, following
   parallel-first tasks each: at most one `(CLI)` task per phase, within-phase tasks touch
   disjoint files and do not build on each other (enabler exceptions like P8-1/P13-1 marked),
   so all four PRs of a wave can be opened at once. Cross-phase dependencies stay allowed.
+- Split `docs/project/backlog.md`: the completed P0-P7 phases moved to a new
+  `docs/project/backlog-archive.md`, leaving the active P8-P15 roadmap in the main backlog.
 - Reworked DevBlueprint from the `apkit` spec-scaffolding CLI into a documentation-first
   engineering-setup kit centered on the git workflow, quality gate and AI-assistant guidance.
 
 ### Added
 
+- `GETTING-STARTED.md`: a beginner-onboarding guide skeleton linked from the top of the README,
+  with an intro and section headings for prerequisites, choosing a folder, the first run and the
+  first task. The anchor the rest of the P8 onboarding docs fill in. Refs: P8-1.
 - Governance scaffolding: every project now ships `scripts/protect-branches.sh`, an opt-in
   helper that turns the documented git workflow into an enforced one by applying GitHub branch
   protection (required PRs, approving reviews, optional code-owner review, no direct/force pushes
