@@ -1,5 +1,7 @@
 # Getting started
 
+*Deutsch: [i18n/de/GETTING-STARTED.md](i18n/de/GETTING-STARTED.md)*
+
 New to the terminal, git, or programming in general? Start here. This guide takes you from
 nothing installed to your first green pull request, explaining each step in plain language and
 *why* it looks the way it does. No prior experience assumed.

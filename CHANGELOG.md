@@ -7,6 +7,12 @@ All notable changes are documented here, following
 
 ### Added
 
+- German (`de`) translation of `GETTING-STARTED.md` at `i18n/de/GETTING-STARTED.md`, the first
+  locale in the new `i18n/` layer. It mirrors the English beginner path one-to-one, keeping every
+  command, path, filename, code block and tool output verbatim and translating only the prose;
+  cross-file links resolve back to the canonical English files. The file carries the
+  canonical-source header, the English source links to it, and the `i18n/README.md` status table
+  is updated. Refs: P13-2.
 - German (`de`) translations of the FAQ (`i18n/de/docs/faq.md`) and cheat sheet
   (`i18n/de/docs/cheatsheet.md`), mirroring `docs/faq.md` and `docs/cheatsheet.md` under the
   `i18n/de/` subtree. Each carries the canonical-source header (English stays authoritative) and
