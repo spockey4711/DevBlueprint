@@ -99,7 +99,7 @@ Each task is a brand-new standalone file, so all four are independent with zero 
 
 #### P12 - Friendly failures & mentor (one CLI task + three parallel supports)
 
-- [ ] P12-1: (CLI) Beginner-friendly error messages - audit CLI output so every failure says
+- [x] P12-1: (CLI) Beginner-friendly error messages - audit CLI output so every failure says
   what to do next (missing path, directory already exists, git not initialised), not just what
   broke.
 - [x] P12-2: An agent "mentor" skill that narrates the workflow as you go ("you are on
