@@ -35,7 +35,7 @@ skip until you need it.
 
 ### A lint failure
 
-[Lint](glossary.md) checks style and likely mistakes. Its errors are the friendliest: they name
+[Lint](glossary.md#lint) checks style and likely mistakes. Its errors are the friendliest: they name
 a rule, a file, and a line, and often tell you the fix.
 
 ```
@@ -48,14 +48,14 @@ Read it as: in `src/app.ts`, line 42, column 7, the rule `prefer-const` wants `c
 
 ### A red CI log
 
-[CI](glossary.md) runs your checks on a server after you push. When it goes red, open the failed
+[CI](glossary.md#ci) runs your checks on a server after you push. When it goes red, open the failed
 job and scroll to the **first** step marked with a red X - the later steps failed only because an
 earlier one did. Inside that step, the real error reads just like it would on your own machine.
 Two shortcuts:
 
 - Search the log for the word `error` or `failed` and jump to the first hit.
 - The check that failed in CI is one you can usually reproduce locally by running
-  [`make check`](glossary.md) yourself - fix it there, where the loop is faster, then push again.
+  [`make check`](glossary.md#quality-gate) yourself - fix it there, where the loop is faster, then push again.
 
 ### A stack trace
 
@@ -84,6 +84,21 @@ If reading it carefully still leaves you stuck:
   know which change mattered. One change, one re-run.
 - **Ask for help with the exact message.** Paste the whole thing, say what command you ran, and
   say what you already tried - that is far easier to help with than "it broke".
+
+## DevBlueprint's own errors tell you the next step
+
+When the `devblueprint` command itself fails, it does more than say what broke - it prints a
+second indented `next:` line with what to do about it:
+
+```
+devblueprint: missing --target <dir>
+  next: name the folder to scaffold into, e.g. devblueprint init --target ./my-app --variant node-express
+```
+
+So when a DevBlueprint command stops, read both lines: the first is the problem, the `next:`
+line is your move. If you are ever unsure what a command expects, `devblueprint help` lists every
+command and its options, and `devblueprint doctor --env` checks that your machine has the tools
+the kit needs.
 
 ## The mindset
 
