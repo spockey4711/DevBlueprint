@@ -54,6 +54,16 @@ All notable changes are documented here, following
   workflow inlines the gate rather than calling `make check`), both running `scripts/check-env.sh`
   to keep `.env.example` in lockstep with the schema and validate required keys/patterns in any real
   `.env`; the `doctor --run-gate` gate runs it too. Refs: P7-3.
+- Ops artifacts for the `laravel` variant: a multi-stage `Dockerfile` (a `php:8.3-fpm` Composer
+  build stage running `composer install --no-dev --optimize-autoloader` -> a non-root php-fpm
+  runtime) + `.dockerignore` + `docker-compose.yml` (a php-fpm `app` service plus commented nginx
+  and db skeletons), `deploy/` skeletons for Fly/Render/Terraform, a Laravel-targeted deployment
+  runbook (`docs/ops/deployment.md`, covering `php artisan migrate`, `config:cache`/`route:cache`
+  and storage permissions), and a `.env.schema`/`.env.example` pair enforced in the gate. `make
+  check` gains a `validate-env` step (first) and CI a `Validate env schema` step, both running
+  `scripts/check-env.sh` to keep `.env.example` in lockstep with the schema and validate required
+  keys/patterns in any real `.env`. `APP_KEY` must be generated with `php artisan key:generate` and
+  kept in the platform's secret store, never committed. Refs: P7-3.
 - Ops artifacts for the `generic` variant: a `Dockerfile` + `.dockerignore` + `docker-compose.yml`,
   `deploy/` skeletons for Fly/Render/Terraform, and a `.env.schema` promoted from `.env.example` and
   enforced in the gate - `make check` runs `scripts/check-env.sh` (a new `validate-env` step) to keep
