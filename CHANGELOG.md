@@ -94,6 +94,14 @@ All notable changes are documented here, following
   Erlang/OTP + Elixir setup and PLT caching + the shared security/commit-checks/coverage baseline +
   dependabot, `.tool-versions`, gitignore, wt.conf, and the conventions/quality docs),
   auto-discovered by the CLI. Refs: P6-2g.
+- New `terraform-iac` variant: a Terraform Infrastructure-as-Code stack built with the terraform
+  CLI, `terraform fmt` (formatting), `terraform validate` (configuration + types), tflint (lint),
+  the native `terraform test` framework, and Trivy for IaC misconfiguration scanning. Self-contained
+  under `variants/terraform-iac/` (manifest, `setup.sh`, Makefile, CI with Terraform + tflint setup
+  + the shared security/commit-checks baseline extended with a Trivy `iac-scan` job + dependabot,
+  `.tool-versions`, gitignore, wt.conf, and the conventions/quality docs), auto-discovered by the
+  CLI. No `coverage.yml` (Terraform has no line-coverage metric; `terraform test` runs in `ci.yml`).
+  Refs: P6-2h.
 - New `sveltekit` variant: a TypeScript / SvelteKit web stack built with pnpm, Prettier
   (with `prettier-plugin-svelte`), ESLint + `svelte-check` (linting + type-checking), Vitest
   (unit/component), and Playwright (e2e). Self-contained under `variants/sveltekit/` (manifest,

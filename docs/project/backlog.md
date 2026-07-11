@@ -276,7 +276,7 @@ unchanged - only their ordering into waves. The eight P6-2 variants are each the
   (one variant subtree per task).
 - [x] P6-2g: New variant `elixir-phoenix`, self-contained mirroring P2-4. **Owns:**
   `variants/elixir-phoenix/`. (dep: P2-1)
-- [ ] P6-2h: New variant `terraform-iac`, self-contained mirroring P2-4. **Owns:**
+- [x] P6-2h: New variant `terraform-iac`, self-contained mirroring P2-4. **Owns:**
   `variants/terraform-iac/`. (dep: P2-1)
 
 ### Wave 5 - governance (isolated)

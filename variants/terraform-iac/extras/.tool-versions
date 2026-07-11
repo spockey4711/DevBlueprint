@@ -1,0 +1,7 @@
+# Toolchain pin for asdf / mise. Keeps local, CI and teammates on one Terraform,
+# tflint and Trivy. Match this to the versions installed in CI (hashicorp/setup-
+# terraform, terraform-linter/setup-tflint) and the `required_version` constraint
+# in terraform { ... }. Provider versions are pinned separately in .terraform.lock.hcl.
+terraform 1.10.5
+tflint 0.55.1
+trivy 0.58.1
