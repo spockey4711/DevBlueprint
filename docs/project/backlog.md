@@ -260,7 +260,7 @@ unchanged - only their ordering into waves. The eight P6-2 variants are each the
 - [ ] P7-2: Provider-agnostic + richer CI - GitLab CI templates alongside GitHub Actions, plus
   preview-deploy and dependency-review workflows. **Owns:** `variants/*/gitlab/`,
   `variants/*/github/` (one variant subtree per task).
-- [ ] P6-2e: New variant `laravel`, self-contained mirroring P2-4. **Owns:** `variants/laravel/`.
+- [x] P6-2e: New variant `laravel`, self-contained mirroring P2-4. **Owns:** `variants/laravel/`.
   (dep: P2-1)
 - [ ] P6-2f: New variant `sveltekit`, self-contained mirroring P2-4. **Owns:**
   `variants/sveltekit/`. (dep: P2-1)
