@@ -1,0 +1,101 @@
+# GitLab CI/CD - the provider-agnostic twin of .github/workflows/. It mirrors the
+# same gates as the GitHub Actions pipeline so a project can live on either forge:
+#   - quality:  the quality gate from ci.yml (terraform fmt / validate / tflint / test)
+#   - security: GitLab's managed SAST, secret detection and dependency scanning,
+#               the equivalent of security.yml (semgrep / gitleaks / dependency-review)
+#   - deploy:   a provider-neutral preview environment, the twin of preview-deploy.yml
+# Delete this file if the project is hosted on GitHub only.
+
+stages:
+  - quality
+  - security
+  - deploy
+
+include:
+  # Security baseline: GitLab's managed scanners. They inject their own jobs
+  # (sast, secret_detection, dependency_scanning); the overrides further down only
+  # move them into the `security` stage. Requires GitLab 15.x+ for MR pipelines;
+  # on older instances check each scanner's default rules.
+  - template: Security/SAST.gitlab-ci.yml
+  - template: Security/Secret-Detection.gitlab-ci.yml
+  - template: Security/Dependency-Scanning.gitlab-ci.yml
+
+# Create one pipeline per change and never a duplicate: run for merge requests and
+# for pushes to the protected integration branches, but skip the branch pipeline
+# when a branch already has an open MR. The same triggers as the GitHub workflows.
+workflow:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS
+      when: never
+    - if: $CI_COMMIT_BRANCH == "develop" || $CI_COMMIT_BRANCH == "master"
+
+# The quality gate - the GitLab twin of ci.yml. Runs terraform fmt/validate/test
+# and tflint on the versions pinned in .tool-versions and .terraform.lock.hcl.
+quality:
+  stage: quality
+  # Pin terraform to match ci.yml and the required_version constraint. The empty
+  # entrypoint overrides the image's default (terraform) so the shell runs script.
+  image:
+    name: hashicorp/terraform:1.10.5
+    entrypoint: [""]
+  before_script:
+    # tflint is not in the terraform image; install the pinned release.
+    - apk add --no-cache curl
+    - curl -sSL https://raw.githubusercontent.com/terraform-linters/tflint/v0.55.1/install_linux.sh | bash
+  script:
+    - terraform fmt -check -recursive
+    # Init without a backend so validate/test run offline, without remote-state
+    # credentials. Providers/modules resolve from the committed lock file.
+    - terraform init -backend=false -input=false
+    - terraform validate
+    - tflint --init
+    - tflint --recursive
+    - terraform test
+
+# Pin the managed scanners to the security stage so the pipeline reads
+# quality -> security -> deploy. The scanners keep their own rules from the
+# included templates.
+sast:
+  stage: security
+secret_detection:
+  stage: security
+dependency_scanning:
+  stage: security
+
+# Preview deploy - a provider-neutral skeleton (the twin of preview-deploy.yml).
+# On every merge request GitLab tracks an ephemeral environment and shows its URL
+# on the MR; the manual stop job tears it down. Wire the deploy step to your host
+# (Terraform Cloud, a plan/apply to a review workspace, ...); the environment
+# plumbing is done.
+deploy:preview:
+  stage: deploy
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+  environment:
+    name: review/$CI_COMMIT_REF_SLUG
+    url: https://$CI_ENVIRONMENT_SLUG.preview.example.com
+    on_stop: deploy:preview:stop
+  script:
+    # TODO: apply an ephemeral preview environment for the merge request, then
+    # expose its URL. e.g. terraform apply -auto-approve -var "env=$CI_ENVIRONMENT_SLUG"
+    - echo "TODO: deploy a preview for MR !${CI_MERGE_REQUEST_IID}"
+
+# Manual teardown of the preview environment. GitLab runs it when the environment
+# is stopped (MR merged or closed, or the stop button). GIT_STRATEGY:none because
+# the source branch may be gone by then.
+deploy:preview:stop:
+  stage: deploy
+  needs: ["deploy:preview"]
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+      when: manual
+  allow_failure: true
+  variables:
+    GIT_STRATEGY: none
+  environment:
+    name: review/$CI_COMMIT_REF_SLUG
+    action: stop
+  script:
+    # TODO: terraform destroy the preview workspace for the merge request.
+    - echo "TODO: tear down the preview for MR !${CI_MERGE_REQUEST_IID}"
