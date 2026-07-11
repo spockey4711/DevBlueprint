@@ -285,3 +285,14 @@ unchanged - only their ordering into waves. The eight P6-2 variants are each the
   branch-protection setup script (`gh api`), so the documented workflow is also technically
   enforced. **Owns:** `core/templates/CODEOWNERS.tmpl`, `scripts/protect-branches.sh`.
   Conflicts with nothing above, so it can ride along with any earlier wave's PRs.
+- [ ] P7-6: Backfill the security + release CI baseline into the variants added after the
+  P6-4/P7-1 sweeps. Those sweeps only touched the variants that existed at the time, so the
+  newer ones ship an incomplete `github/` tree. Add `release.yml` + `release-please-config.json`
+  + `release-please-manifest.json` to `elixir-phoenix`, `laravel`, `rails` and `sveltekit`
+  (none currently have release automation, unlike every older variant incl. `generic`), and
+  add `codeql.yml` to the newer variants whose language has a CodeQL target: `dotnet` (C#),
+  `laravel` (PHP), `rails` (Ruby), `sveltekit` (JS/TS). Leave `elixir-phoenix`, `flutter`,
+  `rust` and `generic` without CodeQL (no supported/needed target, per the P6-4 note). Pick each
+  release strategy the way P7-1 did (native updater where release-please has one, else `simple`).
+  Fan out per variant. **Owns:** `variants/*/github/` (one variant subtree per task). Like
+  P6-4/P7-1/P7-2, never share a wave with another `variants/*/github/` fan-out.
