@@ -40,6 +40,11 @@ All notable changes are documented here, following
 
 ### Added
 
+- `docs/cheatsheet.md`: a one-page everyday-commands reference a beginner can keep open beside
+  them - the normal loop top to bottom (`git fetch`, `wt.sh new`, small `git add`/`commit`
+  steps, `make check`, `git push`, `gh pr create`, `wt.sh gc`) plus quick-reference tables for
+  the `scripts/wt.sh`, daily git and `make check` commands and the commit-message format, with
+  bold terms linked to the glossary. Refs: P9-3.
 - `docs/reading-errors.md`: a plain-language guide to reading an unexpected error - the read /
   look / change-one-thing / re-run loop, where the useful part of a message is, and how to read a
   lint failure, a red CI log and a stack trace, with links to the glossary. Refs: P9-4.
