@@ -10,3 +10,11 @@
 - Tests run with `-race`; write table-driven tests next to the code (`foo_test.go`). Keep the
   `context.Context` first in signatures and honour cancellation on every blocking call.
 - Read config from the environment (12-factor); no secrets in code, logs or committed files.
+- Ops artifacts ship as fillable skeletons: a multi-stage `Dockerfile` (static `CGO_ENABLED=0`
+  binary -> distroless non-root) + `.dockerignore` + `docker-compose.yml` for containers, and
+  `deploy/` for a hosted target (`fly.toml`, `render.yaml`, `terraform/`). Keep the one target you
+  deploy to and delete the rest.
+- The environment is a validated contract: `.env.schema` declares each variable (required/optional,
+  optional `pattern=`), and `make check` (plus CI) runs `scripts/check-env.sh` to keep `.env.example`
+  in lockstep with it and enforce required keys in any real `.env`. Declare new variables in both the
+  schema and `.env.example`, or the gate fails.
