@@ -76,7 +76,7 @@ Each task is a brand-new standalone file, so all four are independent with zero 
 - [ ] P10-2: Beginner mode for the `devblueprint-setup` interview skill - assume zero
   knowledge, gloss every term in one line, and actively help at the path step. Agent files
   only. (pairs with P9-1 for shared glossary wording)
-- [ ] P10-3: Ship `.vscode/extensions.json` (recommended extensions) per variant, so opening
+- [x] P10-3: Ship `.vscode/extensions.json` (recommended extensions) per variant, so opening
   the project in VS Code offers the right tooling in one click. (per-variant fan-out)
 - [ ] P10-4: Ship `.vscode/tasks.json` per variant wiring `make check` (and common gate steps)
   to a menu/button, so a beginner runs the gate without memorising commands. Distinct file

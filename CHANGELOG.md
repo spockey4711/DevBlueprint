@@ -7,6 +7,14 @@ All notable changes are documented here, following
 
 ### Added
 
+- Every variant now ships a `.vscode/extensions.json` with recommended extensions for its stack
+  (via the variant's `extras/` tree), so opening a scaffolded project in VS Code offers the right
+  tooling - the language server, formatter and linter that back the quality gate - in one click.
+  The lists are tailored per variant (e.g. `charliermarsh.ruff` + `ms-python.python` for the
+  Python variants, `dbaeumer.vscode-eslint` + `esbenp.prettier-vscode` for the TypeScript ones,
+  `rust-lang.rust-analyzer` for Rust), with `EditorConfig.EditorConfig` and
+  `github.vscode-github-actions` as the shared baseline. A new `test/vscode.bats` guards that every
+  variant carries a valid, non-empty list and that `init` scaffolds it. Refs: P10-3.
 - The static config builder (`web/config-builder/`) now covers everything the CLI accepts, not
   just a subset. It gained the missing intake keys (`flavors`, `agents`, `extends`), refreshed the
   variant dropdown to all 17 stacks, and added a **Target directory** field plus a second output

@@ -55,6 +55,7 @@ CHANGELOG.md                       fresh, Keep-a-Changelog format
 .gitignore                         stack-appropriate
 .editorconfig                      stack-agnostic editor baseline (charset, LF, indent)
 .gitattributes                     stack-agnostic line-ending normalization
+.vscode/extensions.json            recommended VS Code extensions for the stack
 .github/workflows/ci.yml           the quality gate in CI
 .github/pull_request_template.md   the PR checklist, prefilled on every PR
 .github/ISSUE_TEMPLATE/            bug-report + feature-request forms (and config)
