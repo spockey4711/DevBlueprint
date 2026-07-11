@@ -1,0 +1,26 @@
+# Render Blueprint (skeleton) - https://render.com/docs/blueprint-spec
+# Commit this, connect the repo in Render, and it provisions the service from the
+# repo's Dockerfile. Set real secrets in the Render dashboard (or keep `sync: false`
+# below so Render prompts for them) - never commit them here. See docs/ops/deployment.md.
+services:
+  - type: web
+    name: <your-app-name>
+    runtime: docker            # or the native `ruby` runtime if you prefer no Dockerfile
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: <health-check-path>   # e.g. /up (Rails 7.1+ ships this)
+    autoDeploy: true
+    # Run migrations as a deliberate release step, not on boot.
+    preDeployCommand: bin/rails db:migrate
+    envVars:
+      - key: RAILS_ENV
+        value: production
+      - key: RAILS_LOG_TO_STDOUT
+        value: "true"
+      - key: RAILS_SERVE_STATIC_FILES
+        value: "true"
+      - key: SECRET_KEY_BASE   # secret - set it in the dashboard, not here
+        sync: false
+      - key: RAILS_MASTER_KEY  # secret - set it in the dashboard, not here
+        sync: false
+      - key: DATABASE_URL      # secret/managed - set it in the dashboard, not here
+        sync: false
