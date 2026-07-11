@@ -54,6 +54,15 @@ All notable changes are documented here, following
   workflow inlines the gate rather than calling `make check`), both running `scripts/check-env.sh`
   to keep `.env.example` in lockstep with the schema and validate required keys/patterns in any real
   `.env`; the `doctor --run-gate` gate runs it too. Refs: P7-3.
+- Ops artifacts for the `rust` variant: a multi-stage `Dockerfile` (`cargo build --release` binary,
+  dependencies compiled first for layer reuse -> `distroless/cc-debian12:nonroot`, with a musl/
+  `scratch` static option noted in a comment) + `.dockerignore` + `docker-compose.yml`, `deploy/`
+  skeletons for Fly/Render/Terraform, and a `.env.schema` (with `APP_ENV`/`PORT`/`DATABASE_URL`/
+  `RUST_LOG`) paired with a key-for-key `.env.example`. `make check` gains a `validate-env` step (run
+  first) and CI a `Validate env schema` step, and the manifest `QUALITY_GATE` is prefixed with
+  `scripts/check-env.sh`, all running the same check to keep `.env.example` in lockstep with the
+  schema and validate required keys/patterns in any real `.env`. Ships a Rust-targeted deployment
+  runbook under `docs/ops/deployment.md`. Refs: P7-3.
 - Ops artifacts for the `generic` variant: a `Dockerfile` + `.dockerignore` + `docker-compose.yml`,
   `deploy/` skeletons for Fly/Render/Terraform, and a `.env.schema` promoted from `.env.example` and
   enforced in the gate - `make check` runs `scripts/check-env.sh` (a new `validate-env` step) to keep
