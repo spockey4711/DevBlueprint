@@ -201,14 +201,14 @@ CLI tasks P5-1, P5-3, P5-5 each take their own wave.
 - [ ] P5-1: (CLI) `devblueprint diff --target` - report where a project has drifted from the
   current kit, using the `.devblueprint` version stamp as the base. The read-only precursor to
   a smarter `update`. **Owns:** `bin/devblueprint` (new `cmd_diff`), `test/`.
-- [ ] P5-2: Multi-agent instruction templates. Author `AGENTS.md`, `.cursor/rules/`, and
+- [x] P5-2: Multi-agent instruction templates. Author `AGENTS.md`, `.cursor/rules/`, and
   `.github/copilot-instructions.md` templates from the same canonical workflow guidance that
   drives `CLAUDE.md`, so the process is not Claude-only. Templates only, no CLI wiring yet.
   **Owns:** `core/templates/agents/`.
 - [ ] P5-3: (CLI) Wire `init --agents claude,cursor,codex` to emit the P5-2 templates and keep
   them in sync on `update`. **Owns:** `bin/devblueprint` (`cmd_init`, `cmd_update`), `test/`.
   (dep: P5-2; separate wave from P5-1)
-- [ ] P5-4: Static config builder - a single backend-less HTML page that produces a
+- [x] P5-4: Static config builder - a single backend-less HTML page that produces a
   `.devblueprint-intake.yml` from form input, for users who do not drive setup through an
   agent. Respects the no-runtime principle (nothing hosted). **Owns:** `web/config-builder/`.
   (dep: P3-1 schema)

@@ -28,6 +28,21 @@ All notable changes are documented here, following
   (`generic`, `rust`, `backend-go`, `node-express`) run the full gate via `doctor --run-gate`;
   the rest, which need you to create the real app/package first, get a scaffold plus an
   idempotent `setup.sh` check via `doctor --strict`. Refs: P4-3.
+- Static intake config builder: a single, backend-less HTML page
+  (`web/config-builder/index.html`) that turns a short form into a
+  `.devblueprint-intake.yml`, for users who set the kit up by hand instead of through an
+  agent. It runs entirely in the browser - inline CSS/JS, no build step, no dependencies,
+  nothing hosted or sent anywhere - honoring the kit's no-runtime principle. The output is
+  the same flat `key: value` format the CLI reads, with a live preview plus copy/download.
+  The variant dropdown mirrors `devblueprint list` (inlined, since a static page cannot
+  query the CLI). README gains a pointer from the intake usage section. Refs: P5-4.
+- Multi-agent instruction templates under `core/templates/agents/`: `AGENTS.md.tmpl` (Codex and
+  the tool-neutral agentsmd convention), `cursor.mdc.tmpl` (a Cursor project rule with
+  `alwaysApply` frontmatter) and `copilot-instructions.md.tmpl` (GitHub Copilot repository
+  instructions). All three carry the same canonical workflow guidance as `CLAUDE.md.tmpl` and
+  reuse its exact `{{TOKEN}}` set and `{{#TWO_BRANCH}}` / `{{#SINGLE_BRANCH}}` blocks, so the
+  process is not Claude-only. Templates only; a `README.md` documents the source-to-target
+  mapping. Wiring them into `init`/`update` is P5-3. Refs: P5-2.
 - Installability: DevBlueprint now runs without a clone via three channels. A root `package.json`
   exposes `npx devblueprint` through a Node launcher (`packaging/npm/launch.cjs`); a Homebrew
   formula (`packaging/homebrew/devblueprint.rb`) installs the kit into `libexec`; and a

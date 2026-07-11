@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>DevBlueprint intake builder</title>
+  <meta name="description"
+    content="Build a .devblueprint-intake.yml from a form - no backend, nothing hosted." />
+  <style>
+    :root {
+      --bg: #0f1115;
+      --panel: #171a21;
+      --panel-2: #1e222b;
+      --border: #2a2f3a;
+      --text: #e6e9ef;
+      --muted: #98a0b0;
+      --accent: #6ea8fe;
+      --accent-strong: #4b8bff;
+      --danger: #ff8f8f;
+      --code: #b8f0c8;
+      --radius: 10px;
+      --mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+      --sans: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: var(--sans);
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+    }
+    a { color: var(--accent); }
+    header.page {
+      max-width: 1040px;
+      margin: 0 auto;
+      padding: 2.2rem 1.25rem 0.5rem;
+    }
+    header.page h1 {
+      margin: 0 0 0.35rem;
+      font-size: 1.5rem;
+      letter-spacing: -0.01em;
+    }
+    header.page p {
+      margin: 0;
+      color: var(--muted);
+      max-width: 62ch;
+    }
+    main {
+      max-width: 1040px;
+      margin: 0 auto;
+      padding: 1.25rem;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.25rem;
+      align-items: start;
+    }
+    @media (max-width: 780px) {
+      main { grid-template-columns: 1fr; }
+    }
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.25rem;
+    }
+    .card h2 {
+      margin: 0 0 1rem;
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+    }
+    .field { margin-bottom: 1.15rem; }
+    .field:last-child { margin-bottom: 0; }
+    label.lbl {
+      display: block;
+      font-weight: 600;
+      margin-bottom: 0.3rem;
+      font-size: 0.92rem;
+    }
+    label.lbl .req { color: var(--accent); margin-left: 0.15rem; }
+    .hint {
+      margin: 0.3rem 0 0;
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+    input[type="text"], select {
+      width: 100%;
+      padding: 0.55rem 0.65rem;
+      background: var(--panel-2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-family: var(--sans);
+      font-size: 0.95rem;
+    }
+    input[type="text"]:focus, select:focus {
+      outline: none;
+      border-color: var(--accent-strong);
+      box-shadow: 0 0 0 2px rgba(75, 139, 255, 0.25);
+    }
+    input.invalid { border-color: var(--danger); }
+    .check {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.6rem;
+    }
+    .check input { margin-top: 0.2rem; width: 1.05rem; height: 1.05rem; accent-color: var(--accent-strong); }
+    .check .lbl { margin-bottom: 0; }
+    fieldset {
+      border: none;
+      margin: 0;
+      padding: 0;
+    }
+    fieldset[disabled] { opacity: 0.5; }
+    .err {
+      color: var(--danger);
+      font-size: 0.8rem;
+      margin: 0.3rem 0 0;
+      min-height: 0;
+    }
+    .preview-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
+      margin-bottom: 0.75rem;
+    }
+    .preview-head h2 { margin: 0; }
+    .filename {
+      font-family: var(--mono);
+      font-size: 0.78rem;
+      color: var(--muted);
+    }
+    pre.out {
+      margin: 0;
+      padding: 0.9rem;
+      background: #0b0d11;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: auto;
+      max-height: 60vh;
+      font-family: var(--mono);
+      font-size: 0.82rem;
+      color: var(--code);
+      white-space: pre;
+      tab-size: 2;
+    }
+    .actions {
+      display: flex;
+      gap: 0.6rem;
+      margin-top: 0.9rem;
+      flex-wrap: wrap;
+    }
+    button {
+      font-family: var(--sans);
+      font-size: 0.9rem;
+      font-weight: 600;
+      padding: 0.55rem 0.95rem;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--panel-2);
+      color: var(--text);
+      cursor: pointer;
+    }
+    button.primary {
+      background: var(--accent-strong);
+      border-color: var(--accent-strong);
+      color: #fff;
+    }
+    button:hover { filter: brightness(1.1); }
+    button:disabled { opacity: 0.45; cursor: not-allowed; filter: none; }
+    .copied { color: var(--code); font-size: 0.8rem; align-self: center; }
+    footer.page {
+      max-width: 1040px;
+      margin: 0 auto;
+      padding: 0.5rem 1.25rem 2.5rem;
+      color: var(--muted);
+      font-size: 0.82rem;
+    }
+    code { font-family: var(--mono); background: var(--panel-2); padding: 0.05rem 0.3rem; border-radius: 4px; }
+  </style>
+</head>
+<body>
+  <header class="page">
+    <h1>DevBlueprint intake builder</h1>
+    <p>
+      Fill in the form to generate a <code>.devblueprint-intake.yml</code>. Save it next
+      to your project and feed it to the CLI - no account, no server, nothing is sent
+      anywhere. This page runs entirely in your browser.
+    </p>
+  </header>
+
+  <main>
+    <form id="builder" class="card" autocomplete="off" novalidate>
+      <h2>Project answers</h2>
+
+      <div class="field">
+        <label class="lbl" for="name">Project name</label>
+        <input type="text" id="name" placeholder="my-project" />
+        <p class="hint">Human-facing name; fills <code>{{PROJECT_NAME}}</code>. Optional -
+          defaults to the target directory's basename.</p>
+      </div>
+
+      <div class="field">
+        <label class="lbl" for="variant">Stack variant<span class="req">*</span></label>
+        <select id="variant" required>
+          <option value="" selected>Choose a variant...</option>
+        </select>
+        <p class="hint">Required. The stack DevBlueprint scaffolds. Matches a
+          <code>devblueprint list</code> slug.</p>
+        <p class="err" id="variant-err"></p>
+      </div>
+
+      <div class="field">
+        <label class="lbl" for="main">Main branch</label>
+        <input type="text" id="main" placeholder="master" />
+        <p class="hint">Always-deployable branch. Default: <code>master</code>.</p>
+        <p class="err" id="main-err"></p>
+      </div>
+
+      <div class="field">
+        <label class="lbl" for="base">Base branch</label>
+        <input type="text" id="base" placeholder="develop" />
+        <p class="hint">Where feature work integrates. Default: <code>develop</code>.
+          Set it equal to the main branch to select the single-branch (trunk) flow.</p>
+        <p class="err" id="base-err"></p>
+      </div>
+
+      <div class="field">
+        <div class="check">
+          <input type="checkbox" id="community" />
+          <label class="lbl" for="community">Community-health files</label>
+        </div>
+        <p class="hint">Opt into <code>SECURITY.md</code> + <code>CODE_OF_CONDUCT.md</code>.
+          Default: off.</p>
+      </div>
+
+      <div class="field">
+        <fieldset id="contact-wrap" disabled>
+          <label class="lbl" for="contact">Security contact</label>
+          <input type="text" id="contact" placeholder="security@example.com" />
+          <p class="hint">Reporting address stamped into the community-health files. Only
+            meaningful when the files are enabled.</p>
+        </fieldset>
+      </div>
+
+      <div class="field">
+        <label class="lbl" for="deploy">Deploy target</label>
+        <input type="text" id="deploy" list="deploy-list" placeholder="(unset)" />
+        <datalist id="deploy-list">
+          <option value="vercel"></option>
+          <option value="fly"></option>
+          <option value="docker"></option>
+          <option value="none"></option>
+        </datalist>
+        <p class="hint">Intended deploy target. Recorded and echoed; the runbook is
+          generated by a later wave. Optional - leave blank to omit the key.</p>
+      </div>
+    </form>
+
+    <section class="card" aria-live="polite">
+      <div class="preview-head">
+        <h2>Preview</h2>
+        <span class="filename">.devblueprint-intake.yml</span>
+      </div>
+      <pre class="out" id="output"></pre>
+      <div class="actions">
+        <button type="button" class="primary" id="download">Download file</button>
+        <button type="button" id="copy">Copy</button>
+        <span class="copied" id="copied" hidden>Copied</span>
+      </div>
+    </section>
+  </main>
+
+  <footer class="page">
+    Schema reference:
+    <a href="https://github.com/spockey4711/DevBlueprint/blob/master/docs/agent/intake-schema.md"
+      target="_blank" rel="noopener">docs/agent/intake-schema.md</a>.
+    Apply it with
+    <code>devblueprint init --target &lt;dir&gt; --from .devblueprint-intake.yml</code>.
+  </footer>
+
+  <script>
+    "use strict";
+
+    // Variant slugs and titles, mirroring `devblueprint list`. This static page has
+    // no CLI to query, so the set is inlined; keep it in sync with variants/ when the
+    // kit gains or renames a variant.
+    var VARIANTS = [
+      ["android-kotlin", "Android app (Kotlin + Gradle)"],
+      ["backend-go", "Backend service (Go)"],
+      ["backend-python", "Backend / API (Python + uv)"],
+      ["data-python", "Data science (Python + uv)"],
+      ["generic", "Generic (language-agnostic)"],
+      ["ios-swift", "iOS app (Swift + Xcode)"],
+      ["node-express", "Backend API (Node + Express + TypeScript)"],
+      ["rust", "Rust (cargo)"],
+      ["web-nextjs", "Web app (Next.js + pnpm)"]
+    ];
+
+    var $ = function (id) { return document.getElementById(id); };
+    var els = {
+      name: $("name"),
+      variant: $("variant"),
+      main: $("main"),
+      base: $("base"),
+      community: $("community"),
+      contactWrap: $("contact-wrap"),
+      contact: $("contact"),
+      deploy: $("deploy"),
+      output: $("output"),
+      download: $("download"),
+      copy: $("copy"),
+      copied: $("copied")
+    };
+
+    // Populate the variant dropdown from the inlined list.
+    VARIANTS.forEach(function (v) {
+      var opt = document.createElement("option");
+      opt.value = v[0];
+      opt.textContent = v[0] + "  -  " + v[1];
+      els.variant.appendChild(opt);
+    });
+
+    // A branch name is invalid if empty-after-trim (when typed) or contains
+    // whitespace. Empty is allowed (falls back to the default); we only flag a
+    // value that git could not use.
+    function branchError(value) {
+      if (value === "") return "";
+      if (/\s/.test(value)) return "Branch names cannot contain spaces.";
+      return "";
+    }
+
+    // The intake format quotes a value only to preserve leading/trailing spaces.
+    function emit(key, value) {
+      var trimmed = value.trim();
+      if (trimmed !== value) {
+        // Preserve exactly what the user typed, double-quoted.
+        return key + ': "' + value.replace(/"/g, '\\"') + '"';
+      }
+      return key + ": " + value;
+    }
+
+    function build() {
+      var lines = [];
+      lines.push("# DevBlueprint intake file (.devblueprint-intake.yml)");
+      lines.push("# Generated by the static config builder. A flat key: value map -");
+      lines.push("# not general YAML. Every key is optional; an omitted key takes init's");
+      lines.push("# default. Full reference: docs/agent/intake-schema.md.");
+      lines.push("");
+
+      var name = els.name.value.trim();
+      var variant = els.variant.value;
+      var main = els.main.value.trim();
+      var base = els.base.value.trim();
+      var community = els.community.checked;
+      var contact = els.contact.value.trim();
+      var deploy = els.deploy.value.trim();
+
+      if (name) lines.push(emit("name", name));
+      // variant is required; always emit it (empty flags an incomplete file).
+      lines.push(emit("variant", variant));
+      if (main) lines.push(emit("main", main));
+      if (base) lines.push(emit("base", base));
+      lines.push(emit("community", community ? "true" : "false"));
+      if (community && contact) lines.push(emit("contact", contact));
+      if (deploy) lines.push(emit("deploy", deploy));
+
+      return lines.join("\n") + "\n";
+    }
+
+    function setFieldError(inputEl, errEl, message) {
+      errEl.textContent = message;
+      if (message) {
+        inputEl.classList.add("invalid");
+      } else {
+        inputEl.classList.remove("invalid");
+      }
+      return message === "";
+    }
+
+    function render() {
+      // Contact is only editable when community files are enabled.
+      els.contactWrap.disabled = !els.community.checked;
+
+      var ok = true;
+      ok = setFieldError(
+        els.variant, $("variant-err"),
+        els.variant.value ? "" : "Pick a variant - init has no default."
+      ) && ok;
+      ok = setFieldError(els.main, $("main-err"), branchError(els.main.value.trim())) && ok;
+      ok = setFieldError(els.base, $("base-err"), branchError(els.base.value.trim())) && ok;
+
+      els.output.textContent = build();
+
+      // Download is blocked while the file is incomplete/invalid; copy stays live
+      // so a partial draft can still be grabbed.
+      els.download.disabled = !ok;
+    }
+
+    function download() {
+      var blob = new Blob([build()], { type: "text/yaml;charset=utf-8" });
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement("a");
+      a.href = url;
+      a.download = ".devblueprint-intake.yml";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+    function flashCopied() {
+      els.copied.hidden = false;
+      window.setTimeout(function () { els.copied.hidden = true; }, 1500);
+    }
+
+    function copy() {
+      var text = build();
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(flashCopied, fallbackCopy);
+      } else {
+        fallbackCopy();
+      }
+      function fallbackCopy() {
+        var ta = document.createElement("textarea");
+        ta.value = text;
+        ta.style.position = "fixed";
+        ta.style.opacity = "0";
+        document.body.appendChild(ta);
+        ta.select();
+        try { document.execCommand("copy"); flashCopied(); } catch (e) { /* ignore */ }
+        document.body.removeChild(ta);
+      }
+    }
+
+    els.download.addEventListener("click", download);
+    els.copy.addEventListener("click", copy);
+    document.getElementById("builder").addEventListener("input", render);
+    document.getElementById("builder").addEventListener("change", render);
+
+    render();
+  </script>
+</body>
+</html>

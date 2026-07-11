@@ -122,6 +122,11 @@ Options: `--target <dir>` `--name <name>` `--variant <variant>` `--main <branch>
 single-branch trunk workflow, and `--community` to add optional `SECURITY.md` and
 `CODE_OF_CONDUCT.md` (with `--contact` filling the reporting address in both).
 
+Prefer a form to hand-writing the intake file? Open
+[`web/config-builder/index.html`](web/config-builder/index.html) - a self-contained,
+backend-less page that generates a `.devblueprint-intake.yml` in the browser. Nothing is
+hosted or sent anywhere.
+
 ## Variants
 
 | Variant          | Stack                                   | Quality gate |
