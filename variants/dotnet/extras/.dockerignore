@@ -1,0 +1,41 @@
+# Keep the Docker build context small and secret-free. A leaner context uploads
+# and builds faster and, crucially, keeps local secrets and VCS history out of the
+# image. The build stage regenerates anything below from the project files + the
+# sources.
+
+# Version control and CI
+.git
+.gitignore
+.github
+
+# Local environment and secrets - never ship these into an image (.env.example
+# is the one tracked template, and even it is not needed inside the image).
+.env
+.env.*
+!.env.example
+appsettings.Local.json
+
+# Build output - recompiled inside the build stage.
+bin/
+obj/
+out/
+publish/
+artifacts/
+
+# Test and coverage artifacts
+[Tt]est[Rr]esult*/
+coverage/
+*.trx
+*.coverage
+*.coveragexml
+
+# NuGet local caches / packages - the build stage runs `dotnet restore` instead.
+packages/
+.nuget/
+
+# Docs and editor / OS cruft
+docs
+.vs
+.idea
+.vscode
+.DS_Store
