@@ -1,0 +1,17 @@
+{
+  "name": "Data science (Python + uv) - DevBlueprint",
+  "image": "mcr.microsoft.com/devcontainers/python:3.12",
+  "forwardPorts": [8888],
+  "postCreateCommand": "pipx install uv && bash setup.sh",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "ms-toolsai.jupyter",
+        "charliermarsh.ruff",
+        "ms-python.mypy-type-checker",
+        "EditorConfig.EditorConfig"
+      ]
+    }
+  }
+}
