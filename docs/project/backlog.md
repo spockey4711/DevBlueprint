@@ -118,7 +118,7 @@ Each task is a brand-new standalone file, so all four are independent with zero 
   (enabler - do first)
 - [ ] P13-2: German translation of `GETTING-STARTED.md` as the first locale, since raw
   beginners benefit most from their native language. (builds on P13-1, P8)
-- [ ] P13-3: German translation of the glossary (`docs/glossary.md`). Distinct source file
+- [x] P13-3: German translation of the glossary (`docs/glossary.md`). Distinct source file
   from P13-2. (builds on P13-1, P9-1)
 - [ ] P13-4: German translation of the FAQ and cheat-sheet (`docs/faq.md`,
   `docs/cheatsheet.md`). Distinct source files from P13-2/P13-3. (builds on P13-1, P9-2/P9-3)
