@@ -232,7 +232,7 @@ unchanged - only their ordering into waves. The eight P6-2 variants are each the
   dependency-review and CodeQL workflows, commitlint + PR-title check, and coverage
   thresholds - added to each variant's CI. Fan out per variant. **Owns:** `variants/*/github/`
   (one variant subtree per task).
-- [ ] P6-2a: New variant `flutter`, self-contained mirroring P2-4. **Owns:** `variants/flutter/`.
+- [x] P6-2a: New variant `flutter`, self-contained mirroring P2-4. **Owns:** `variants/flutter/`.
   (dep: P2-1)
 - [ ] P6-2b: New variant `spring-java`, self-contained mirroring P2-4. **Owns:**
   `variants/spring-java/`. (dep: P2-1)
