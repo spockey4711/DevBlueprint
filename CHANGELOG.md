@@ -40,6 +40,9 @@ All notable changes are documented here, following
 
 ### Added
 
+- `docs/reading-errors.md`: a plain-language guide to reading an unexpected error - the read /
+  look / change-one-thing / re-run loop, where the useful part of a message is, and how to read a
+  lint failure, a red CI log and a stack trace, with links to the glossary. Refs: P9-4.
 - `GETTING-STARTED.md`: filled the "Your first run" and "Your first task" sections with a
   complete worked tutorial - one narrated run from `devblueprint init` through `setup.sh`, git
   setup, `doctor`, creating the GitHub remote, then the everyday loop (worktree, edit, `make
