@@ -157,17 +157,20 @@ check_variant() {
   local v="$1"
   [ -f "$VARIANTS_DIR/$v/manifest.env" ] || die "unknown variant '$v' (see: scaffold-check.sh --list)"
 
-  # The dir basename becomes the scaffolded project's package name (setup.sh
-  # derives it from $PWD), so keep it a valid identifier - a '.' separator would
-  # produce an invalid Cargo/npm package name. Hyphens are safe everywhere.
-  local work rc=0
-  work="$(mktemp -d "${TMPDIR:-/tmp}/scaffold-${v}-XXXXXX")"
+  # The scaffold dir's basename becomes the project's package name (setup.sh
+  # derives it from $PWD), so it must be a clean, lowercase identifier: mktemp's
+  # random suffix mixes in '.' / uppercase, which break a Cargo package name (a
+  # non-snake-case crate is a clippy error under -D warnings). Keep the random
+  # uniqueness in a parent dir and scaffold into a fixed "selfci-<variant>" child.
+  local tmproot rc=0 work
+  tmproot="$(mktemp -d "${TMPDIR:-/tmp}/scaffold-${v}-XXXXXX")"
+  work="$tmproot/selfci-$v"
   run_variant "$v" "$work" || rc=$?
 
   if [ "${SCAFFOLD_CHECK_KEEP:-0}" = "1" ]; then
-    echo "  (kept throwaway dir: $work)"
+    echo "  (kept throwaway dir: $tmproot)"
   else
-    rm -rf "$work"
+    rm -rf "$tmproot"
   fi
   return "$rc"
 }
