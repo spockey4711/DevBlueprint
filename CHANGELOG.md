@@ -5,6 +5,16 @@ All notable changes are documented here, following
 
 ## [Unreleased]
 
+### Added
+
+- The static config builder (`web/config-builder/`) now covers everything the CLI accepts, not
+  just a subset. It gained the missing intake keys (`flavors`, `agents`, `extends`), refreshed the
+  variant dropdown to all 17 stacks, and added a **Target directory** field plus a second output
+  pane that renders the ready-to-run `devblueprint plan`/`init` command with `--target` (and, in
+  the new **Monorepo** layout, one `--package name:variant` flag per package) filled in. `--target`
+  and `--package` stay command-line only - the file still holds only *what*, the command carries
+  *where*.
+
 ### Fixed
 
 - The `elixir-phoenix`, `laravel`, `rails` and `sveltekit` variants shipped with an incomplete
