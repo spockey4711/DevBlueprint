@@ -40,6 +40,11 @@ All notable changes are documented here, following
 
 ### Added
 
+- `docs/cheatsheet.md`: a one-page everyday-commands reference a beginner can keep open beside
+  them - the normal loop top to bottom (`git fetch`, `wt.sh new`, small `git add`/`commit`
+  steps, `make check`, `git push`, `gh pr create`, `wt.sh gc`) plus quick-reference tables for
+  the `scripts/wt.sh`, daily git and `make check` commands and the commit-message format, with
+  bold terms linked to the glossary. Refs: P9-3.
 - `docs/glossary.md`: a plain-language glossary defining the everyday terms a beginner meets in
   these docs (terminal, path, repo, branch, commit, PR, worktree, CI, lint, variant, quality
   gate), one sentence each. Refs: P9-1.

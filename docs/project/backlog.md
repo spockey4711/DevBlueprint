@@ -60,7 +60,7 @@ Each task is a brand-new standalone file, so all four are independent with zero 
   commit, PR, worktree, CI, lint, variant, quality gate; one sentence each.
 - [ ] P9-2: `docs/faq.md` - the common "why did this happen / what now" questions a beginner
   hits (directory already exists, not a git repo, gate is red, wrong branch), one answer each.
-- [ ] P9-3: `docs/cheatsheet.md` - a one-page everyday-commands reference (the wt.sh, git,
+- [x] P9-3: `docs/cheatsheet.md` - a one-page everyday-commands reference (the wt.sh, git,
   and `make check` calls used in the normal loop) that a beginner can keep open beside them.
 - [ ] P9-4: `docs/reading-errors.md` - how to read an error you did not expect: a lint
   failure, a red CI log, a stack trace - what to look for and where, in plain language.
