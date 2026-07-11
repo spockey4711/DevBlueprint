@@ -17,7 +17,7 @@ file was already there and was left untouched; everything else was still written
 **What to do.** Pick one:
 
 - If those files are the ones you want, you are done - the skips are expected.
-- If you meant to start fresh in an empty folder, choose a new, empty path (see
+- If you meant to start fresh in an empty folder, choose a new, empty [path](glossary.md#path) (see
   [Choosing a folder](../GETTING-STARTED.md#choosing-a-folder-for-your-project)) and run again.
 - If you really do want to replace what is there, re-run with `--force` - but only once you are
   sure nothing in that folder matters.
@@ -28,7 +28,7 @@ file was already there and was left untouched; everything else was still written
 `not a git repository - run git init`. Plain `git status` says
 `fatal: not a git repository (or any of the parent directories)`.
 
-**Why.** Git only tracks folders that have been turned into a **repo** (a folder with a hidden
+**Why.** Git only tracks folders that have been turned into a **[repo](glossary.md#repo)** (a folder with a hidden
 `.git` history inside it). The folder you are standing in was never initialized, or you are one
 level above the project and need to step into it.
 
@@ -42,12 +42,12 @@ level above the project and need to step into it.
 ## "The quality gate is red" (`make check` failed)
 
 **What you see.** `make check` stops with an error, or `doctor --run-gate` reports
-`quality gate failed`. The output scrolls past with a lint complaint, a failing test, or a type
+`quality gate failed`. The output scrolls past with a [lint](glossary.md#lint) complaint, a failing test, or a type
 error.
 
-**Why.** The [quality gate](glossary.md) bundles the project's lint, typecheck, test and build
+**Why.** The [quality gate](glossary.md#quality-gate) bundles the project's lint, typecheck, test and build
 steps into one command, and it is *supposed* to fail when any of them find a problem - that is
-its whole job. A red gate is the check working, catching something before it reaches CI.
+its whole job. A red gate is the check working, catching something before it reaches [CI](glossary.md#ci).
 
 **What to do.** Do not push yet - fix it locally first.
 
@@ -60,10 +60,10 @@ its whole job. A red gate is the check working, catching something before it rea
 ## "I'm on the wrong branch" (or committed to `develop`/`master`)
 
 **What you see.** `git status` shows `On branch develop` (or `master`) when you expected a
-feature branch, or you realize a commit landed somewhere it should not have.
+feature [branch](glossary.md#branch), or you realize a [commit](glossary.md#commit) landed somewhere it should not have.
 
 **Why.** In this repo you never work directly on the long-lived branches: `master` stays
-deployable and `develop` is the shared integration branch. Every task gets its **own** worktree
+deployable and `develop` is the shared integration branch. Every task gets its **own** [worktree](glossary.md#worktree)
 and branch, created with `scripts/wt.sh new <type>/<slug>`, so parallel work never collides.
 Landing on `develop` usually means the worktree step was skipped.
 

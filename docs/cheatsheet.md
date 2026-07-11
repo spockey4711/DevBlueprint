@@ -46,7 +46,7 @@ One folder per branch, so parallel tasks never collide. See the
 
 | Command | What it does |
 | --- | --- |
-| `./scripts/wt.sh new <type>/<slug>` | Create a **worktree** + **branch** off `develop`; prints the path to `cd` into. |
+| `./scripts/wt.sh new <type>/<slug>` | Create a **[worktree](glossary.md#worktree)** + **[branch](glossary.md#branch)** off `develop`; prints the path to `cd` into. |
 | `./scripts/wt.sh ls` | List your worktrees, each marked `merged` / `unmerged` / `dirty`. |
 | `./scripts/wt.sh gc` | Remove every worktree whose branch is already merged; keeps unfinished ones. |
 | `./scripts/wt.sh rm <branch>` | Remove one worktree by hand (`--force` if it has uncommitted work). |
@@ -58,7 +58,7 @@ One folder per branch, so parallel tasks never collide. See the
 | `git fetch` | Download the latest state from the remote without changing your files. |
 | `git status` | Show what you have changed and which files are staged. |
 | `git diff` | Show the exact line-by-line changes you have not committed yet. |
-| `git add -A` | Stage all your changes for the next **commit**. |
+| `git add -A` | Stage all your changes for the next **[commit](glossary.md#commit)**. |
 | `git commit -m "<msg>"` | Save a snapshot with a message (see the format below). |
 | `git push -u origin <branch>` | Send your branch and its commits up to the remote. |
 | `git log --oneline` | Show recent commits, one line each. |
@@ -79,13 +79,13 @@ docs(cheatsheet): add one-page everyday-commands reference
 fix(api): return typed unavailable state instead of throwing
 ```
 
-## The quality gate (`make check`)
+## The [quality gate](glossary.md#quality-gate) (`make check`)
 
 Run it before every push; it must be green. It bundles the project's checks:
 
 | Command | What it does |
 | --- | --- |
-| `make check` | Run the whole gate (lint + typecheck + test + build, whichever apply). |
+| `make check` | Run the whole gate ([lint](glossary.md#lint) + typecheck + test + build, whichever apply). |
 | `make lint` | Style and likely-mistake checks only. |
 | `make test` | The test suite only. |
 

@@ -101,6 +101,11 @@ All notable changes are documented here, following
 
 ### Changed
 
+- Cross-linked the glossary and the reference-layer docs: every term in `docs/glossary.md` now
+  carries a stable anchor, and the first mention of each term in `docs/faq.md`,
+  `docs/cheatsheet.md`, `docs/reading-errors.md`, `docs/codespaces.md` and the `docs/concepts/`
+  notes links straight to its glossary entry (existing whole-file glossary links were upgraded to
+  the specific anchor), so no term is left unexplained. Refs: P12-3.
 - Beginner-friendly CLI failures: `devblueprint` now tells you what to do next, not just what
   broke. Errors that used to be a bare one-liner (`missing --target`, `target does not exist`,
   `unknown option`, an intake/config/baseline file that is not found, a target that is not a

@@ -23,7 +23,7 @@ editor extensions to install, and a command to run on first start. Any tool that
 - GitHub Codespaces or VS Code - reads that file and builds you an identical environment every
 time.
 
-Because the recipe is committed to the repo, everyone who opens the project gets the *same*
+Because the recipe is committed to the [repo](glossary.md#repo), everyone who opens the project gets the *same*
 setup. "Works on my machine" stops being a problem.
 
 ## Two ways to open it
@@ -40,8 +40,8 @@ GitHub account.
 3. Open the **Codespaces** tab and click **Create codespace on develop**.
 4. Wait for it to build. On first start it installs the extensions and runs `setup.sh` to wire
    the toolchain and dependencies - a few minutes, once.
-5. A full VS Code opens in your browser, already set up. Open a terminal and run the quality
-   gate: `make check` (or pick it from **Terminal > Run Task**, wired by the project's
+5. A full VS Code opens in your browser, already set up. Open a [terminal](glossary.md#terminal) and run the [quality
+   gate](glossary.md#quality-gate): `make check` (or pick it from **Terminal > Run Task**, wired by the project's
    `.vscode/tasks.json`).
 
 > **Cost:** GitHub gives every personal account a monthly amount of free Codespaces usage, which
@@ -66,14 +66,14 @@ reopens inside it - same result as Codespaces, running locally.
 Every DevBlueprint Dev Container:
 
 - **starts from the right image** for the stack (for example the official Node, Python, Go or
-  .NET image, pinned to the version the variant targets),
+  .NET image, pinned to the version the [variant](glossary.md#variant) targets),
 - **installs the recommended VS Code extensions** for the stack automatically - the same list
   as the project's `.vscode/extensions.json`, so linting and language support work on the first
   keystroke, and
 - **runs `setup.sh` on create**, which wires the configs and installs the project's
   dependencies, so the quality gate is ready to run.
 
-You still work exactly as the rest of the docs describe - worktrees, small commits, `make check`
+You still work exactly as the rest of the docs describe - [worktrees](glossary.md#worktree), small [commits](glossary.md#commit), `make check`
 before you push. The container just removes the "install everything first" step.
 
 ## Which projects ship one

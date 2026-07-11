@@ -105,7 +105,7 @@ Each task is a brand-new standalone file, so all four are independent with zero 
 - [x] P12-2: An agent "mentor" skill that narrates the workflow as you go ("you are on
   develop; let us make a worktree, because ..."), so the process teaches itself. Agent files
   only. (builds on P11-3/P11-4 for the explanations)
-- [ ] P12-3: Cross-link the glossary and reference layer - first mention of each term in the
+- [x] P12-3: Cross-link the glossary and reference layer - first mention of each term in the
   existing docs links to its `docs/glossary.md` entry, so no term is ever left unexplained.
   (builds on P9)
 - [x] P12-4: `docs/concepts/README.md` - a short index that ties the "why we work this way"

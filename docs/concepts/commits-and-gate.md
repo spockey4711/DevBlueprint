@@ -29,7 +29,7 @@ telling the codebase what to do. The full grammar is in
 
 ### Why it exists
 
-A [commit](../glossary.md)
+A [commit](../glossary.md#commit)
 is a snapshot of your work plus a message. The snapshot is for the computer; the message is for
 a human - usually you, months later, trying to understand why a line of code is the way it is.
 An unstructured message ("stuff", "fixes", "wip") throws that away. A structured one keeps it.
@@ -71,7 +71,7 @@ One command that must pass before you push:
 make check   # bundles this project's lint, typecheck, test, and build
 ```
 
-It runs the project's [lint](../glossary.md),
+It runs the project's [lint](../glossary.md#lint),
 type-check, tests, and build in sequence and fails if any step fails. The concrete commands come
 from the variant you scaffolded; see
 [quality & testing](../engineering/quality-and-testing.md).
@@ -92,11 +92,11 @@ buys you:
   left it broken.
 - **Fast feedback, close to the cause.** A test failing on *your* machine, thirty seconds after
   *your* change, is a two-minute fix - you still have all the context. The same failure found a
-  week later, by someone else, in [CI](../glossary.md)
+  week later, by someone else, in [CI](../glossary.md#ci)
   or production, is an afternoon of archaeology. The gate pulls the discovery as early as it can
   go.
 - **The same bar for everyone.** CI runs the *identical* `make check` on every
-  [PR](../glossary.md).
+  [PR](../glossary.md#pr).
   "Works on my machine" stops being an argument, because the machine that decides is the same one
   for everybody. Running it locally first just means you find out before the PR does.
 - **Freedom to change things.** A trustworthy gate is what makes refactoring safe. You can

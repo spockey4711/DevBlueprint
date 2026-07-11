@@ -11,7 +11,7 @@ understand the problem it solves, because the same instinct shows up all over go
 
 ## The problem it solves
 
-A [branch](../glossary.md) is a parallel line of work. The obvious way to use branches is to
+A [branch](../glossary.md#branch) is a parallel line of work. The obvious way to use branches is to
 stay in one folder and switch between them: `git checkout feature-a`, work, `git checkout
 feature-b`, work. It feels natural, and for a while it is fine. Then it bites you:
 
@@ -21,7 +21,7 @@ feature-b`, work. It feels natural, and for a while it is fine. Then it bites yo
 - **You cannot switch with unfinished work in the way.** Half-done changes block the checkout,
   so you `git stash`, switch, come back, `stash pop`, and hope you remember which stash was
   which. Stashes are where good work goes to be forgotten.
-- **You can only be in one place at once.** Reviewing a colleague's [PR](../glossary.md) while
+- **You can only be in one place at once.** Reviewing a colleague's [PR](../glossary.md#pr) while
   your own change builds means abandoning your change, checking out theirs, then clawing your way
   back. Two AI-assistant sessions working in the same folder is worse: each one silently pulls
   the branch out from under the other.
@@ -32,7 +32,7 @@ and over.
 
 ## The fix: give each branch its own room
 
-A [worktree](../glossary.md) is git's built-in answer. One repository, its full history stored
+A [worktree](../glossary.md#worktree) is git's built-in answer. One [repository](../glossary.md#repo), its full history stored
 once, but *many* working directories - each checked out to its own branch. Instead of one desk
 you keep clearing and resetting, every task gets its own desk with its own papers laid out.
 
