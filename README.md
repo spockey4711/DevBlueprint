@@ -90,6 +90,10 @@ bin/devblueprint init --target ~/Projects/shop --package api:backend-python --pa
 bin/devblueprint plan --target ~/Projects/myapp --from .devblueprint-intake.yml
 bin/devblueprint init --target ~/Projects/myapp --from .devblueprint-intake.yml
 
+# Before anything else: check your machine has the prerequisites (git, Node, a shell).
+# Needs no project - prints a per-OS copy-paste install command for whatever is missing.
+bin/devblueprint doctor --env
+
 # Verify the foundation files landed (reports the kit version it was scaffolded from)
 bin/devblueprint doctor --target ~/Projects/myapp
 

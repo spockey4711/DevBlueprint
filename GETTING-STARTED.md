@@ -154,8 +154,16 @@ arm64
 > If `code` reports `command not found` on macOS, open VS Code once, press
 > Cmd+Shift+P, run *Shell Command: Install 'code' command in PATH*, then reopen the terminal.
 
-With all four checks passing, you have everything you need. Next, decide
-[where the project should live](#choosing-a-folder-for-your-project).
+With all four checks passing, you have everything you need. Once you have DevBlueprint itself,
+you can confirm the essentials in one step instead of checking each command by hand:
+
+```bash
+bin/devblueprint doctor --env
+```
+
+It checks that git, Node and a working shell are present and, if any is missing, prints the exact
+copy-paste command to install it on your system. When it says *all prerequisites present*, you are
+ready. Next, decide [where the project should live](#choosing-a-folder-for-your-project).
 
 ## Choosing a folder for your project
 

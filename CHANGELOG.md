@@ -7,6 +7,14 @@ All notable changes are documented here, following
 
 ### Added
 
+- New `devblueprint doctor --env`: a host prerequisite check that needs no project (no `--target`).
+  It verifies git, Node and a working shell are present and, for anything missing, prints a
+  copy-paste install command for the detected OS (macOS via Homebrew, Windows via winget, Linux
+  via apt/NodeSource - matching the steps in `GETTING-STARTED.md`), then exits non-zero. Intended
+  as the first command a beginner runs, before a project even exists. `--json` mirrors the project
+  doctor's machine-readable shape (`{ok, os, failures, checks[]}`), with each check carrying an
+  optional `fix`. A new `test/doctor-env.bats` covers the pass path, each missing-tool path (via a
+  stubbed PATH), the JSON shape and option handling. Refs: P11-1.
 - Every variant now ships a `.vscode/tasks.json`, so a scaffolded project wires its quality gate
   into VS Code's task menu out of the box: `Cmd/Ctrl+Shift+B` runs the full gate (the default
   build task), and **Run Task...** exposes the individual steps (lint, type-check, tests, build)

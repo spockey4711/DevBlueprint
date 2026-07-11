@@ -84,7 +84,7 @@ Each task is a brand-new standalone file, so all four are independent with zero 
 
 #### P11 - Environment check & zero-install (one CLI task + three parallel supports)
 
-- [ ] P11-1: (CLI) `devblueprint doctor --env` prerequisite check - verifies git / Node / a
+- [x] P11-1: (CLI) `devblueprint doctor --env` prerequisite check - verifies git / Node / a
   working shell are present and prints per-OS copy-paste fixes when they are not. The first
   command a beginner runs.
 - [ ] P11-2: Promote a devcontainer / Codespaces "click here, get a ready environment" path as
