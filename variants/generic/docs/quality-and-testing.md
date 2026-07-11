@@ -26,6 +26,16 @@ Test what has logic or can silently break; do not chase coverage on trivial glue
 
 Target: meaningful coverage of the logic layer, not a global percentage.
 
+## Security and commit gates
+
+Every PR also runs the security-gate baseline in `.github/workflows/` (shared
+across variants), complementing the quality gate above:
+
+- **`security.yml`** - gitleaks secret scanning, semgrep SAST, and (on PRs)
+  `dependency-review` against the GitHub Advisory Database.
+- **`commit-checks.yml`** - commitlint on every commit plus a Conventional-Commits
+  check on the PR title (the squash-merge subject).
+
 ## Definition of done
 
 1. It works and matches the spec.
