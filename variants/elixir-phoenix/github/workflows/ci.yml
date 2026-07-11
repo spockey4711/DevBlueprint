@@ -30,6 +30,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Validate env schema
+        run: sh scripts/check-env.sh
+
       - name: Set up BEAM (Erlang + Elixir)
         uses: erlef/setup-beam@v1
         with:
