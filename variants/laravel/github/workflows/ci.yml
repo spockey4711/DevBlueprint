@@ -1,8 +1,9 @@
 name: CI
 
-# The quality gate for every change: Laravel Pint (formatting + code style),
-# PHPStan/Larastan (static analysis), and the Pest tests - all on the Composer
-# dependencies pinned in composer.lock. Must be green before a PR can merge.
+# The quality gate for every change: the env-schema contract, Laravel Pint
+# (formatting + code style), PHPStan/Larastan (static analysis), and the Pest
+# tests - all on the Composer dependencies pinned in composer.lock. Must be green
+# before a PR can merge.
 # Gates both integration branches: feature PRs into `develop` and the periodic
 # `develop` -> `master` release PR.
 
@@ -26,6 +27,11 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      # Fast, toolchain-free contract check: .env.example must stay in lockstep
+      # with .env.schema (and a real .env, if present, must satisfy it).
+      - name: Validate env schema
+        run: sh scripts/check-env.sh
 
       - name: Set up PHP
         uses: shivammathur/setup-php@v2

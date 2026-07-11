@@ -23,6 +23,12 @@ Or, with the shipped Makefile: `make check`.
   `security.yml`, `commit-checks.yml` and `coverage.yml` baseline.
 - `.github/dependabot.yml` (composer + github-actions updates) and `.tool-versions` (PHP pin).
 - `.gitignore` for vendor, build assets and Laravel runtime state.
+- `docs/ops/deployment.md` (deploy runbook: managed/Docker/VPS + DB, env, cache and storage
+  checklists) and `.env.example` (committed template; real `.env*` stay ignored).
+- Ops artifacts: `Dockerfile` (php-fpm build with Composer -> non-root runtime) + `.dockerignore` +
+  `docker-compose.yml` (php-fpm service plus commented nginx and db skeletons), `deploy/` (Fly/
+  Render/Terraform skeletons), and `.env.schema` + `scripts/check-env.sh` (the env contract
+  `make check` and CI enforce). All skeletons - fill the `<...>` placeholders.
 - `app`, `tests` scaffold.
 
 ## After init (wire the toolchain)

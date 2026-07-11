@@ -1,0 +1,39 @@
+# Keep the Docker build context small and secret-free. A leaner context uploads
+# and builds faster and, crucially, keeps local secrets and VCS history out of the
+# image. The build stage regenerates vendor/ from composer.json + composer.lock.
+
+# Version control and CI
+.git
+.gitignore
+.github
+
+# Local environment and secrets - never ship these into an image (.env.example
+# is the one tracked template, and even it is not needed inside the image).
+.env
+.env.*
+!.env.example
+
+# Dependencies and build output - reinstalled inside the build stage.
+/vendor/
+/node_modules/
+/public/build/
+/public/hot
+
+# Laravel runtime state - regenerated at run time, must not leak into the image.
+/storage/*.key
+/storage/framework/cache/*
+/storage/framework/sessions/*
+/storage/framework/views/*
+/storage/logs/*
+/bootstrap/cache/*
+
+# Test and coverage artifacts
+/.phpunit.cache
+/.pint.cache
+coverage.*
+
+# Docs and editor / OS cruft
+docs
+.DS_Store
+.idea
+.vscode
