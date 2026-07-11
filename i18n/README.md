@@ -76,7 +76,7 @@ For German:
 | --- | --- |
 | `GETTING-STARTED.md` | - |
 | `docs/glossary.md` | [done](de/docs/glossary.md) |
-| `docs/faq.md` | - |
-| `docs/cheatsheet.md` | - |
+| `docs/faq.md` | done |
+| `docs/cheatsheet.md` | done |
 
 Mark a cell done when its translation lands. Add a column when a new locale starts.
