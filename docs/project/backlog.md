@@ -267,7 +267,7 @@ unchanged - only their ordering into waves. The eight P6-2 variants are each the
 
 ### Wave 4 - org baseline + ops artifacts + last variants
 
-- [ ] P7-4: (CLI) Org baseline / config inheritance - a company default that projects extend
+- [x] P7-4: (CLI) Org baseline / config inheritance - a company default that projects extend
   (`extends: org-baseline`), turning the kit from a solo tool into a team standardizer.
   **Owns:** `bin/devblueprint` (config resolution), `test/`.
 - [ ] P7-3: Ops artifacts beyond the runbook (builds on P3-4/P3-6): optional `Dockerfile`,
