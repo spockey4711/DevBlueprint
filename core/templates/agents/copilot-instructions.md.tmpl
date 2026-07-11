@@ -1,0 +1,59 @@
+# {{PROJECT_NAME}} - Copilot instructions
+
+Repository-wide instructions for GitHub Copilot. Keep changes small and reviewable. The full
+guidance lives in [`docs/`](../docs/); the same rules drive [`CLAUDE.md`](../CLAUDE.md) and
+[`AGENTS.md`](../AGENTS.md).
+
+## Always
+
+- Commit after every small fix or task: one logical change per commit, following
+  [Conventional Commits](../CONTRIBUTING.md) with an imperative summary. Small commits beat big
+  ones.
+{{#TWO_BRANCH}}
+- Two long-lived branches: feature work integrates on `{{BASE_BRANCH}}`; `{{BASE_BRANCH}}` is
+  promoted to the always-deployable `{{MAIN_BRANCH}}` via a periodic release PR. Never merge a
+  feature branch straight into `{{MAIN_BRANCH}}`.
+- One directory per branch: never commit directly to `{{BASE_BRANCH}}` or `{{MAIN_BRANCH}}`.
+  Create each task's branch as its own worktree with `{{WT_CMD}} new <type>/<slug>`, which
+  branches off `{{BASE_BRANCH}}`. Clean up merged worktrees with `{{WT_CMD}} gc`.
+- Task lifecycle for "do task X from the backlog": fetch, create the worktree (off
+  `{{BASE_BRANCH}}`), work in small commits, run the quality gate, push, open a PR into
+  `{{BASE_BRANCH}}` (referencing the task), then hand it off for review. Never self-merge.
+{{/TWO_BRANCH}}
+{{#SINGLE_BRANCH}}
+- One long-lived branch (trunk): feature work integrates directly on the always-deployable
+  `{{MAIN_BRANCH}}`. There is no separate integration branch and no release PR; a feature branch
+  merges into `{{MAIN_BRANCH}}` once it is green.
+- One directory per branch: never commit directly to `{{MAIN_BRANCH}}`. Create each task's
+  branch as its own worktree with `{{WT_CMD}} new <type>/<slug>`, which branches off
+  `{{MAIN_BRANCH}}`. Clean up merged worktrees with `{{WT_CMD}} gc`.
+- Task lifecycle for "do task X from the backlog": fetch, create the worktree (off
+  `{{MAIN_BRANCH}}`), work in small commits, run the quality gate, push, open a PR into
+  `{{MAIN_BRANCH}}` (referencing the task), then hand it off for review. Never self-merge.
+{{/SINGLE_BRANCH}}
+- Run `git fetch` at the start of a session and before creating a new branch.
+- Write English in code, comments, docs, and commits. {{COPY_LANGUAGE_NOTE}}
+- No emojis and no fancy dashes anywhere; use the regular hyphen `-` only.
+- Update docs and `CHANGELOG.md` in the same PR as the code they describe.
+
+## Before pushing
+
+Run the quality gate and keep it green:
+
+```bash
+{{QUALITY_GATE}}
+```
+
+## Engineering standards
+
+Treat this like production code at a serious software company. See
+[`docs/engineering/engineering-standards.md`](../docs/engineering/engineering-standards.md).
+
+- Read before you write; match the surrounding style.
+- Small, reversible steps; keep the tree green at every step.
+- Make it work, then right, then fast. Prefer boring, obvious solutions.
+- Strict types, deliberate error handling, zero warnings in CI.
+- Never trust input; never leak secrets. OWASP mindset.
+- Every change goes through a PR - self-review the full diff first.
+
+{{VARIANT_NOTES}}

@@ -201,7 +201,7 @@ CLI tasks P5-1, P5-3, P5-5 each take their own wave.
 - [ ] P5-1: (CLI) `devblueprint diff --target` - report where a project has drifted from the
   current kit, using the `.devblueprint` version stamp as the base. The read-only precursor to
   a smarter `update`. **Owns:** `bin/devblueprint` (new `cmd_diff`), `test/`.
-- [ ] P5-2: Multi-agent instruction templates. Author `AGENTS.md`, `.cursor/rules/`, and
+- [x] P5-2: Multi-agent instruction templates. Author `AGENTS.md`, `.cursor/rules/`, and
   `.github/copilot-instructions.md` templates from the same canonical workflow guidance that
   drives `CLAUDE.md`, so the process is not Claude-only. Templates only, no CLI wiring yet.
   **Owns:** `core/templates/agents/`.

@@ -1,0 +1,66 @@
+---
+description: {{PROJECT_NAME}} workflow and engineering standards - always apply
+globs:
+alwaysApply: true
+---
+
+# {{PROJECT_NAME}} - working rules
+
+Guidance for Cursor (and any agent) working in this repo. Keep it short; the detail lives in
+[`docs/`](../../docs/). Start there before non-trivial work. The same guidance drives
+[`CLAUDE.md`](../../CLAUDE.md) and [`AGENTS.md`](../../AGENTS.md).
+
+## Always
+
+- **Commit after every small fix or task.** One logical change per commit,
+  [Conventional Commits](../../CONTRIBUTING.md), imperative summary. Small commits beat big ones.
+{{#TWO_BRANCH}}
+- **Two long-lived branches.** Feature work integrates on `{{BASE_BRANCH}}`; `{{BASE_BRANCH}}`
+  is promoted to the always-deployable `{{MAIN_BRANCH}}` via a periodic release PR. Never merge
+  a feature branch straight into `{{MAIN_BRANCH}}`.
+- **One directory per branch (worktrees).** Never commit directly to `{{BASE_BRANCH}}` or
+  `{{MAIN_BRANCH}}`. Create each task's branch as its own worktree with
+  `{{WT_CMD}} new <type>/<slug>` (e.g. `{{WT_CMD}} new fix/scroll-jitter`), which branches off
+  `{{BASE_BRANCH}}`, and do all work inside the printed worktree path. Clean up merged worktrees
+  with `{{WT_CMD}} gc`.
+- **Follow the task lifecycle.** "Do task X from the backlog" means: fetch, create the worktree
+  (off `{{BASE_BRANCH}}`), work in small commits, run the quality gate, push, open a PR into
+  `{{BASE_BRANCH}}` (referencing the task), then hand it off for review. Never self-merge.
+{{/TWO_BRANCH}}
+{{#SINGLE_BRANCH}}
+- **One long-lived branch (trunk).** Feature work integrates directly on the always-deployable
+  `{{MAIN_BRANCH}}`. There is no separate integration branch and no release PR; a feature branch
+  merges into `{{MAIN_BRANCH}}` once it is green.
+- **One directory per branch (worktrees).** Never commit directly to `{{MAIN_BRANCH}}`. Create
+  each task's branch as its own worktree with `{{WT_CMD}} new <type>/<slug>`
+  (e.g. `{{WT_CMD}} new fix/scroll-jitter`), which branches off `{{MAIN_BRANCH}}`, and do all
+  work inside the printed worktree path. Clean up merged worktrees with `{{WT_CMD}} gc`.
+- **Follow the task lifecycle.** "Do task X from the backlog" means: fetch, create the worktree
+  (off `{{MAIN_BRANCH}}`), work in small commits, run the quality gate, push, open a PR into
+  `{{MAIN_BRANCH}}` (referencing the task), then hand it off for review. Never self-merge.
+{{/SINGLE_BRANCH}}
+- **Fetch before starting work.** `git fetch` at the start of a session and before creating a
+  new branch.
+- **English** in code, comments, docs, commits. {{COPY_LANGUAGE_NOTE}}
+- **No emojis, no fancy dashes** anywhere. Regular hyphen `-` only.
+- **Docs + `CHANGELOG.md` change in the same PR** as the code they describe.
+
+## Before pushing
+
+```bash
+{{QUALITY_GATE}}
+```
+
+## Engineering standards
+
+Treat this like production code at a serious software company. See
+[`docs/engineering/engineering-standards.md`](../../docs/engineering/engineering-standards.md).
+
+- Read before you write; match the surrounding style.
+- Small, reversible steps; keep the tree green at every step.
+- Make it work, then right, then fast. Prefer boring, obvious solutions.
+- Strict types, deliberate error handling, zero warnings in CI.
+- Never trust input; never leak secrets. OWASP mindset.
+- Every change goes through a PR - self-review the full diff first.
+
+{{VARIANT_NOTES}}
