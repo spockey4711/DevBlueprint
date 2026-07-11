@@ -41,6 +41,12 @@ All notable changes are documented here, following
   Self-contained under `variants/dotnet/` (manifest, `setup.sh`, Makefile, CI + dependabot,
   `.tool-versions`, gitignore, wt.conf, and the conventions/quality docs), auto-discovered by
   the CLI. Refs: P6-2c.
+- New `laravel` variant: a PHP 8.4 / Laravel web stack built with Composer, Laravel Pint
+  (formatting + code style), PHPStan/Larastan (static analysis), and Pest. Self-contained under
+  `variants/laravel/` (manifest, `setup.sh`, Makefile, CI + the shared security/commit-checks/
+  coverage baseline + dependabot, `.tool-versions`, gitignore, wt.conf, and the conventions/quality
+  docs), auto-discovered by the CLI. No `codeql.yml` (CodeQL has no PHP target); semgrep in
+  `security.yml` covers PHP SAST. Refs: P6-2e.
 - New `flutter` variant: a Flutter/Dart app stack (`dart format`, `flutter analyze` with
   `very_good_analysis` + strict analyzer modes, `flutter test`) with a `lib/`+`lib/src/`+`test/`
   +`integration_test/` scaffold, `Makefile` gate, CI (subosito/flutter-action), and `extras/`
