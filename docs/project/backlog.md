@@ -212,7 +212,7 @@ CLI tasks P5-1, P5-3, P5-5 each take their own wave.
   `.devblueprint-intake.yml` from form input, for users who do not drive setup through an
   agent. Respects the no-runtime principle (nothing hosted). **Owns:** `web/config-builder/`.
   (dep: P3-1 schema)
-- [ ] P5-5: (CLI) Three-way merge for `update` - preserve local edits to managed files instead
+- [x] P5-5: (CLI) Three-way merge for `update` - preserve local edits to managed files instead
   of overwriting, using the stamped version as the merge base; fall back to reporting a
   conflict. Makes long-lived projects safe to update. **Owns:** `bin/devblueprint`
   (`cmd_update`), `test/`. (own wave; builds on P5-1's diff logic)

@@ -30,7 +30,11 @@
 # in the .devblueprint stamp so `update` re-renders them in step. `update` re-syncs
 # only the core-owned files (the agnostic engineering docs, wt.sh, the GitHub
 # PR/issue templates, and any selected agent files) into an existing project, so old
-# projects can pick up core changes without touching their CLAUDE.md or code.
+# projects can pick up core changes without touching their CLAUDE.md or code. It
+# preserves local edits to those managed files with a three-way merge - base (the
+# .devblueprint-base/ cache of the last synced kit copy) vs. ours (the project's
+# file) vs. theirs (the current kit) - instead of overwriting, and reports a
+# conflict (leaving both sides marked) when the two sides cannot be reconciled.
 # `diff` is the read-only precursor to `update`: it reports which core-owned files in
 # a project have drifted from the current kit (in sync, drifted, or missing), using
 # the .devblueprint stamp as the base, without writing anything. `detect` inspects an
@@ -54,6 +58,13 @@ REPO="spockey4711/DevBlueprint"
 # version), so a bare `upgrade` re-follows the recorded channel and a pinned kit
 # stays frozen. Lives next to VERSION; never shipped in a release tarball.
 CHANNEL_FILE="$ROOT/.channel"
+# Directory inside a scaffolded project where `update` caches the pristine kit
+# copy of every managed file as of the last sync. It is the merge base for
+# `update`'s three-way merge (base = this cache, ours = the project's file,
+# theirs = the current kit), so local edits survive an update instead of being
+# overwritten. Committed with the project so a teammate who pulls shares the same
+# base.
+DB_BASE_DIR=".devblueprint-base"
 
 die() { echo "devblueprint: $*" >&2; exit 1; }
 info() { printf '  %s\n' "$*"; }
@@ -273,6 +284,134 @@ sync_file() {
   mkdir -p "$(dirname "$dest")"
   cp "$src" "$dest"
   info "${verb}d $rel"
+}
+
+# record_base <src> <rel> : snapshot <src> as the merge base for the managed file
+# <rel>, under the project's .devblueprint-base/ cache, so the next `update` can
+# tell the user's local edits apart from upstream kit changes. Reads TARGET; a
+# no-op in dry-run (nothing is written to disk during a preview).
+record_base() {
+  local src="$1" base="$TARGET/$DB_BASE_DIR/$2"
+  [ "${DRY_RUN:-0}" -eq 1 ] && return 0
+  mkdir -p "$(dirname "$base")"
+  cp "$src" "$base"
+}
+
+# merge_file <src> <rel> : reconcile one managed file during `update`, preserving
+# local edits with a three-way merge instead of overwriting. <src> is the current
+# kit's copy (theirs) and <rel> the path relative to the target (ours is
+# $TARGET/<rel>). The merge base is the kit copy cached in .devblueprint-base/ at
+# the last sync - or, when that cache is absent but the project's stamp still
+# matches the current kit, the current kit itself (the kit has not moved, so any
+# drift is provably a local edit). With a base in hand the outcomes are: create a
+# missing file, leave an in-sync one, fast-forward an unedited file to the kit,
+# keep local edits when the kit has nothing new, three-way merge when both sides
+# changed, and - when a merge cannot be reconciled or no base is recoverable -
+# never clobber: keep the local file and flag it. Reads TARGET/DRY_RUN/STAMPED/
+# CURRENT and bumps CHANGED/MERGED/CONFLICTS/PRESERVED via bash's dynamic scoping
+# (the same pattern sync_file and diff_file use). A missing <src> is a no-op.
+merge_file() {
+  local src="$1" rel="$2" dest="$TARGET/$2" base="$TARGET/$DB_BASE_DIR/$2"
+  [ -f "$src" ] || return 0
+
+  # New file: nothing to preserve, so just create it and seed the base.
+  if [ ! -e "$dest" ]; then
+    CHANGED=$((CHANGED + 1))
+    if [ "$DRY_RUN" -eq 1 ]; then info "would create $rel"; return 0; fi
+    mkdir -p "$(dirname "$dest")"
+    cp "$src" "$dest"
+    record_base "$src" "$rel"
+    info "created $rel"
+    return 0
+  fi
+
+  # Already identical to the kit: keep the base fresh and move on.
+  if cmp -s "$src" "$dest"; then
+    info "unchanged $rel"
+    record_base "$src" "$rel"
+    return 0
+  fi
+
+  # The project file differs from the kit. Resolve the merge base.
+  local basefile=""
+  if [ -f "$base" ]; then
+    basefile="$base"
+  elif [ -n "$STAMPED" ] && [ "$STAMPED" = "$CURRENT" ]; then
+    # No cached base yet, but the kit has not advanced since this project was
+    # stamped, so the current kit copy *is* the base and the drift is purely local.
+    basefile="$src"
+  fi
+
+  if [ -z "$basefile" ]; then
+    # No recoverable base (an older project updated for the first time, jumping
+    # kit versions with local edits). Never clobber: keep the local file, seed the
+    # base so future updates can merge, and flag it for a manual look.
+    PRESERVED=$((PRESERVED + 1))
+    if [ "$DRY_RUN" -eq 1 ]; then info "would keep $rel (local edits, no merge base)"; return 0; fi
+    record_base "$src" "$rel"
+    info "kept $rel (local edits, no merge base - compare with: devblueprint diff)"
+    return 0
+  fi
+
+  # Local file matches the base: no local edits, safe to fast-forward to the kit.
+  if cmp -s "$basefile" "$dest"; then
+    CHANGED=$((CHANGED + 1))
+    if [ "$DRY_RUN" -eq 1 ]; then info "would update $rel"; return 0; fi
+    cp "$src" "$dest"
+    record_base "$src" "$rel"
+    info "updated $rel"
+    return 0
+  fi
+
+  # Base matches the kit: the kit has nothing new here, so keep the local edits.
+  if cmp -s "$basefile" "$src"; then
+    info "unchanged $rel (kept local edits)"
+    return 0
+  fi
+
+  # Both sides changed: three-way merge base -> ours + theirs. This needs git;
+  # without it we cannot merge, so preserve the local file rather than risk
+  # clobbering it (a failed `git merge-file` would otherwise leave empty output).
+  if ! command -v git >/dev/null 2>&1; then
+    PRESERVED=$((PRESERVED + 1))
+    if [ "$DRY_RUN" -eq 1 ]; then info "would keep $rel (local edits; git unavailable to merge)"; return 0; fi
+    record_base "$src" "$rel"
+    info "kept $rel (local edits; git unavailable to merge - resolve manually)"
+    return 0
+  fi
+
+  local merged rc=0
+  merged="$(mktemp)"
+  git merge-file -p \
+    -L "$rel (local edits)" \
+    -L "base (devblueprint ${STAMPED:-unknown})" \
+    -L "$rel (devblueprint $CURRENT)" \
+    "$dest" "$basefile" "$src" > "$merged" 2>/dev/null || rc=$?
+
+  if [ "$rc" -eq 0 ]; then
+    MERGED=$((MERGED + 1)); CHANGED=$((CHANGED + 1))
+    if [ "$DRY_RUN" -eq 1 ]; then info "would merge $rel (local edits + kit update)"; rm -f "$merged"; return 0; fi
+    cp "$merged" "$dest"
+    record_base "$src" "$rel"
+    info "merged $rel (local edits + kit update)"
+  elif [ "$rc" -gt 0 ] && [ "$rc" -lt 128 ]; then
+    # git merge-file returns the conflict count (>= 1) here.
+    CONFLICTS=$((CONFLICTS + 1))
+    if [ "$DRY_RUN" -eq 1 ]; then info "would conflict $rel (needs a manual merge)"; rm -f "$merged"; return 0; fi
+    cp "$merged" "$dest"
+    record_base "$src" "$rel"
+    info "CONFLICT $rel (kept both sides with markers - resolve, then commit)"
+  else
+    # git errored (rc >= 128, e.g. a signal or an internal failure): never clobber,
+    # keep the local file and flag it.
+    PRESERVED=$((PRESERVED + 1))
+    if [ "$DRY_RUN" -ne 1 ]; then
+      record_base "$src" "$rel"
+      info "kept $rel (could not merge automatically - resolve manually)"
+    fi
+  fi
+  rm -f "$merged"
+  return 0
 }
 
 list_variants() {
@@ -887,7 +1026,11 @@ project_name_of() {
 # tokens are reconstructed from the project itself - branches from scripts/wt.conf,
 # project name from CLAUDE.md, and the variant tokens from the stamped (or
 # --variant) variant's manifest. CLAUDE.md is never touched: it is the user-owned
-# canonical copy. Reads TARGET/VARIANT/DRY_RUN and bumps CHANGED through sync_file.
+# canonical copy. The agent files are the opposite: pure rendered artifacts derived
+# from that canonical guidance, with no init-time merge base of their own, so they
+# are re-rendered through sync_file (overwrite) rather than three-way merged - edits
+# belong in CLAUDE.md, and a drifted agent file heals on the next update. Reads
+# TARGET/VARIANT/DRY_RUN.
 sync_agent_files() {
   local list variant a tmpl_dest tmp
   local PROJECT_NAME MAIN_BRANCH BASE_BRANCH WT_CMD QUALITY_GATE COPY_LANGUAGE_NOTE \
@@ -920,7 +1063,7 @@ sync_agent_files() {
 }
 
 cmd_update() {
-  TARGET="" VARIANT="" DRY_RUN=0 CHANGED=0
+  TARGET="" VARIANT="" DRY_RUN=0 CHANGED=0 MERGED=0 CONFLICTS=0 PRESERVED=0
   while [ "$#" -gt 0 ]; do
     case "$1" in
       --target) TARGET="$2"; shift 2 ;;
@@ -944,29 +1087,36 @@ cmd_update() {
     [ -d "$vdir" ] || die "unknown variant '$VARIANT' (see: devblueprint list)"
   fi
 
+  # The merge base is anchored on the project's stamped kit version vs. the current
+  # one: when they match, an absent base cache can be reconstructed from the current
+  # kit (any drift is provably local). merge_file reads both.
+  local STAMPED CURRENT
+  STAMPED="$(stamp_version "$TARGET")"
+  CURRENT="$(kit_version)"
+
   if [ "$DRY_RUN" -eq 1 ]; then
     echo "Dry run: re-syncing DevBlueprint core files into $TARGET"
   else
     echo "Re-syncing DevBlueprint core files into $TARGET"
   fi
   echo "  preserved: CLAUDE.md, CONTRIBUTING.md, wt.conf, CI, .gitignore, your code"
+  echo "  local edits to managed files are merged, not overwritten"
   echo
 
-  # Core-owned, project-independent files: always safe to overwrite because they
-  # carry no per-project or per-variant content.
-  local eng="$TARGET/docs/engineering"
-  sync_file "$CORE/git-workflow.md"          "$eng/git-workflow.md"
-  sync_file "$CORE/engineering-standards.md" "$eng/engineering-standards.md"
-  sync_file "$CORE/.editorconfig"            "$TARGET/.editorconfig"
-  sync_file "$CORE/.gitattributes"           "$TARGET/.gitattributes"
-  sync_file "$ROOT/scripts/wt.sh"            "$TARGET/scripts/wt.sh"
+  # Core-owned managed files. Each is reconciled with a three-way merge against the
+  # .devblueprint-base/ cache, so a project's local edits survive the re-sync.
+  merge_file "$CORE/git-workflow.md"          "docs/engineering/git-workflow.md"
+  merge_file "$CORE/engineering-standards.md" "docs/engineering/engineering-standards.md"
+  merge_file "$CORE/.editorconfig"            ".editorconfig"
+  merge_file "$CORE/.gitattributes"           ".gitattributes"
+  merge_file "$ROOT/scripts/wt.sh"            "scripts/wt.sh"
   if [ -f "$TARGET/scripts/wt.sh" ]; then
     chmod +x "$TARGET/scripts/wt.sh" 2>/dev/null || true
   fi
-  sync_file "$CORE/github/pull_request_template.md"        "$TARGET/.github/pull_request_template.md"
-  sync_file "$CORE/github/ISSUE_TEMPLATE/bug_report.md"    "$TARGET/.github/ISSUE_TEMPLATE/bug_report.md"
-  sync_file "$CORE/github/ISSUE_TEMPLATE/feature_request.md" "$TARGET/.github/ISSUE_TEMPLATE/feature_request.md"
-  sync_file "$CORE/github/ISSUE_TEMPLATE/config.yml"       "$TARGET/.github/ISSUE_TEMPLATE/config.yml"
+  merge_file "$CORE/github/pull_request_template.md"          ".github/pull_request_template.md"
+  merge_file "$CORE/github/ISSUE_TEMPLATE/bug_report.md"      ".github/ISSUE_TEMPLATE/bug_report.md"
+  merge_file "$CORE/github/ISSUE_TEMPLATE/feature_request.md" ".github/ISSUE_TEMPLATE/feature_request.md"
+  merge_file "$CORE/github/ISSUE_TEMPLATE/config.yml"         ".github/ISSUE_TEMPLATE/config.yml"
 
   # conventions.md is core base + a variant overlay, and quality-and-testing.md is
   # variant-owned, so refreshing them needs the variant. Only touch them when the
@@ -976,9 +1126,9 @@ cmd_update() {
     tmp="$(mktemp)"
     cat "$CORE/conventions.md" > "$tmp"
     [ -f "$vdir/docs/conventions.append.md" ] && cat "$vdir/docs/conventions.append.md" >> "$tmp"
-    sync_file "$tmp" "$eng/conventions.md"
+    merge_file "$tmp" "docs/engineering/conventions.md"
     rm -f "$tmp"
-    sync_file "$vdir/docs/quality-and-testing.md" "$eng/quality-and-testing.md"
+    merge_file "$vdir/docs/quality-and-testing.md" "docs/engineering/quality-and-testing.md"
   else
     info "skip conventions.md, quality-and-testing.md (variant overlay; pass --variant to refresh)"
   fi
@@ -990,12 +1140,29 @@ cmd_update() {
 
   echo
   if [ "$DRY_RUN" -eq 1 ]; then
-    echo "Dry run complete - $CHANGED file(s) would change, nothing written."
-  elif [ "$CHANGED" -eq 0 ]; then
+    local msg="Dry run complete - $CHANGED file(s) would change"
+    [ "$MERGED" -gt 0 ]    && msg="$msg (incl. $MERGED merged with local edits)"
+    [ "$CONFLICTS" -gt 0 ] && msg="$msg, $CONFLICTS would need a manual merge"
+    echo "$msg, nothing written."
+    return 0
+  fi
+  if [ "$CONFLICTS" -gt 0 ]; then
+    echo "Updated $CHANGED file(s); $CONFLICTS file(s) could not be merged cleanly."
+    echo "  Resolve the <<<<<<< / >>>>>>> conflict markers, then commit."
+    echo "  See what drifted with: devblueprint diff --target $TARGET"
+    return 1
+  fi
+  if [ "$CHANGED" -eq 0 ] && [ "$PRESERVED" -eq 0 ]; then
     echo "Already up to date."
   else
-    echo "Updated $CHANGED file(s). Review the diff before committing."
+    if [ "$MERGED" -gt 0 ]; then
+      echo "Updated $CHANGED file(s) (merged local edits in $MERGED). Review the diff before committing."
+    else
+      echo "Updated $CHANGED file(s). Review the diff before committing."
+    fi
+    [ "$PRESERVED" -gt 0 ] && echo "  Kept $PRESERVED file(s) with local edits and no merge base - reconcile manually if needed."
   fi
+  return 0
 }
 
 # diff_file <src> <dest-rel> : compare one managed file in the project against the

@@ -154,4 +154,7 @@ Full detail lands in the target project's `docs/engineering/git-workflow.md`.
   `devblueprint update --target <dir>` (add `--variant <name>` to also refresh the
   variant-overlaid `conventions.md` / `quality-and-testing.md`, `--dry-run` to preview).
   `update` only rewrites the core-owned files, so it never disturbs a project's `CLAUDE.md`,
-  `wt.conf`, CI or code.
+  `wt.conf`, CI or code. Local edits to the managed files are three-way merged (not
+  overwritten) against the `.devblueprint-base/` cache of the last-synced kit copy; a genuine
+  overlap is reported as a conflict with `<<<<<<<` markers and a non-zero exit. Commit the
+  `.devblueprint-base/` cache so the merge base travels with the repo.
