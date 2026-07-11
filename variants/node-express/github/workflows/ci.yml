@@ -1,10 +1,10 @@
 name: CI
 
-# The quality gate for every change: ESLint (lint), tsc (types), vitest (tests),
-# and the tsc build. Runs the same four gates as
-# `npm run lint && npm run typecheck && npm test && npm run build`. Must be green
-# before a PR can merge. Gates both integration branches: feature PRs into
-# `develop` and the periodic `develop` -> `master` release PR.
+# The quality gate for every change: the env-schema contract, ESLint (lint), tsc
+# (types), vitest (tests), and the tsc build. Runs the same gates as
+# `sh scripts/check-env.sh && npm run lint && npm run typecheck && npm test && npm run build`.
+# Must be green before a PR can merge. Gates both integration branches: feature
+# PRs into `develop` and the periodic `develop` -> `master` release PR.
 
 on:
   pull_request:
@@ -28,6 +28,11 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      # Fast, toolchain-free contract check: .env.example must stay in lockstep
+      # with .env.schema (and a real .env, if present, must satisfy it).
+      - name: Validate env schema
+        run: sh scripts/check-env.sh
 
       - name: Set up Node
         uses: actions/setup-node@v4
