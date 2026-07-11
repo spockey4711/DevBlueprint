@@ -802,13 +802,16 @@ cmd_init() {
     ' "$wtconf" > "$tmp" && mv "$tmp" "$wtconf"
   fi
 
-  # 5. The variant's github/ tree (CI workflow + any .github metadata) and its
-  # root-level extras/, both copied recursively so a variant can ship new config
-  # by dropping a file in - no CLI change. gitignore keeps a by-name copy because
-  # it is renamed from the un-dotted source, and Makefile is a named top-level
-  # file. extras/ lands before the core hygiene below, so a variant that ships its
-  # own .editorconfig via extras/ wins over the agnostic core one.
+  # 5. The variant's github/ tree (CI workflow + any .github metadata), its
+  # gitlab/ tree (the provider-agnostic .gitlab-ci.yml twin) and its root-level
+  # extras/, all copied recursively so a variant can ship new config by dropping a
+  # file in - no CLI change. gitlab/ lands at the project root, so a variant's
+  # gitlab/.gitlab-ci.yml becomes .gitlab-ci.yml. gitignore keeps a by-name copy
+  # because it is renamed from the un-dotted source, and Makefile is a named
+  # top-level file. extras/ lands before the core hygiene below, so a variant that
+  # ships its own .editorconfig via extras/ wins over the agnostic core one.
   copy_tree "$vdir/github" "$TARGET/.github"
+  copy_tree "$vdir/gitlab" "$TARGET"
   copy "$vdir/gitignore" "$TARGET/.gitignore"
   [ -f "$vdir/Makefile" ] && copy "$vdir/Makefile" "$TARGET/Makefile"
   copy_tree "$vdir/extras" "$TARGET"
