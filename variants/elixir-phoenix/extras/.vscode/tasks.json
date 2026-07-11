@@ -1,0 +1,73 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Quality gate",
+      "detail": "Run the full quality gate - formatting, lint, types, tests and build. Do this before every commit and push.",
+      "type": "shell",
+      "command": "make check",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared",
+        "clear": true
+      },
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      }
+    },
+    {
+      "label": "Check formatting",
+      "detail": "Verify the code is formatted (the gate fails on unformatted code).",
+      "type": "shell",
+      "command": "make format-check",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared",
+        "clear": true
+      }
+    },
+    {
+      "label": "Lint",
+      "detail": "Check code style and catch common mistakes.",
+      "type": "shell",
+      "command": "make lint",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared",
+        "clear": true
+      }
+    },
+    {
+      "label": "Type-check",
+      "detail": "Verify types line up across the code.",
+      "type": "shell",
+      "command": "make typecheck",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared",
+        "clear": true
+      }
+    },
+    {
+      "label": "Run tests",
+      "detail": "Run the test suite.",
+      "type": "shell",
+      "command": "make test",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared",
+        "clear": true
+      },
+      "group": {
+        "kind": "test",
+        "isDefault": true
+      }
+    }
+  ]
+}
