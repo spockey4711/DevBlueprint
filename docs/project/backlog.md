@@ -69,7 +69,7 @@ Each task is a brand-new standalone file, so all four are independent with zero 
 
 #### P10 - Guided init (one CLI task + three parallel supports)
 
-- [ ] P10-1: (CLI) Interactive wizard: `devblueprint init` with no flags runs a plain-language
+- [x] P10-1: (CLI) Interactive wizard: `devblueprint init` with no flags runs a plain-language
   prompt that explains each question, suggests sensible defaults (especially the target path),
   and shows exactly what will be written before touching disk (reuse the existing `plan`
   output). The single biggest lever - no flag knowledge required.

@@ -3,6 +3,7 @@
 # gate + AI-assistant guidance) from the shared core and a stack variant.
 #
 # Usage:
+#   devblueprint init            (no flags: guided interactive wizard)
 #   devblueprint list [--json]
 #   devblueprint init --target <dir> --variant <variant> [--name <name>] \
 #       [--from <intake.yml>] [--extends <baseline>] [--base <branch>] [--main <branch>] \
@@ -86,6 +87,34 @@ DB_BASE_DIR=".devblueprint-base"
 
 die() { echo "devblueprint: $*" >&2; exit 1; }
 info() { printf '  %s\n' "$*"; }
+
+# ask <prompt> <default> : print <prompt> (with the default shown in brackets)
+# to stderr, read one line from stdin, and echo the answer on stdout - the
+# default when the user just presses Enter. The prompt goes to stderr so callers
+# can capture the answer with `x="$(ask ...)"` without swallowing the question.
+# An empty read (EOF, e.g. Ctrl-D) falls back to the default rather than tripping
+# `set -e`. Used by the interactive `init` wizard.
+ask() {
+  local prompt="$1" default="${2:-}" reply
+  if [ -n "$default" ]; then
+    printf '%s [%s]: ' "$prompt" "$default" >&2
+  else
+    printf '%s: ' "$prompt" >&2
+  fi
+  IFS= read -r reply || reply=""
+  [ -n "$reply" ] || reply="$default"
+  printf '%s' "$reply"
+}
+
+# confirm <prompt> : ask a yes/no question on stderr and return 0 for yes, 1 for
+# no. Pressing Enter (an empty line) means yes; an EOF (no input at all, read
+# fails) means no, so a non-interactive or aborted wizard never writes to disk.
+confirm() {
+  local reply
+  printf '%s [Y/n]: ' "$1" >&2
+  IFS= read -r reply || reply="n"
+  case "$reply" in ''|y|Y|yes|Yes|YES) return 0 ;; *) return 1 ;; esac
+}
 
 # kit_version : the kit's own version, the single source of truth in ./VERSION.
 # Stamped into every scaffold so `update` can tell a project's core files apart
@@ -1343,6 +1372,92 @@ EOF
   echo "  5. Start a task in its own worktree:  ./scripts/wt.sh new feat/first-task"
 }
 
+# variant_exists <name> : true when <name> is a real variant (a directory under
+# VARIANTS carrying a manifest.env). Used by the wizard to re-prompt on a typo.
+variant_exists() {
+  [ -n "$1" ] && [ -f "$VARIANTS/$1/manifest.env" ]
+}
+
+# cmd_wizard : the interactive `init` (run when `devblueprint init` is given no
+# flags). It asks a handful of plain-language questions - each prefaced with a
+# one-line explanation and a sensible default - collects them into the same
+# flags `init` takes, shows exactly what would be written by reusing the `plan`
+# (dry-run) output, and only then, on an explicit yes, scaffolds for real. So a
+# newcomer can create a project without knowing a single flag. Answers are read
+# from stdin, so a real terminal drives it live and a piped script drives it in
+# one shot; either way an early EOF falls back to the shown defaults and the
+# final confirm defaults to "no", so a missing answer can never scaffold by
+# surprise.
+cmd_wizard() {
+  echo "Welcome to DevBlueprint. This will set up a new project's engineering"
+  echo "scaffolding (git workflow + quality gate + AI-assistant guidance)."
+  echo "Press Enter to accept the default shown in [brackets]. Nothing is written"
+  echo "to disk until you confirm at the end."
+  echo
+
+  # 1. Project name. Becomes the title in CLAUDE.md and seeds the folder default.
+  echo "What is the project called? This is just a friendly name for the docs."
+  local name
+  name="$(ask "Project name" "my-project")"
+  echo
+
+  # 2. Target folder. The single most important answer, so we suggest a concrete
+  # path (~/Projects/<slug>, no spaces) the user can accept as-is. A leading ~/
+  # is expanded by hand - it is data here, not a shell word.
+  echo "Where should the project live? This folder will be created if it does not"
+  echo "exist yet. A path with no spaces under your home is a good default."
+  local target
+  target="$(ask "Target folder" "$HOME/Projects/$(agent_slug "$name")")"
+  # Expand a leading ~/ by hand (it is data here, not a shell word, so the shell
+  # never expands it for us - same idiom as resolve_baseline_path).
+  [ "${target#\~/}" != "$target" ] && target="$HOME/${target#\~/}"
+  [ -d "$target" ] && [ -n "$(ls -A "$target" 2>/dev/null)" ] \
+    && echo "  (note: $target already has files - existing ones are kept, never overwritten)"
+  echo
+
+  # 3. Variant. Show the catalogue and re-prompt until it is a real one.
+  echo "Which project type (variant) is this? Pick the stack that fits; 'generic'"
+  echo "is a safe, language-agnostic starting point. Available variants:"
+  list_variants
+  local variant
+  while :; do
+    variant="$(ask "Variant" "generic")"
+    variant_exists "$variant" && break
+    echo "  '$variant' is not a known variant - pick one of the names listed above."
+  done
+  echo
+
+  # 4. Branch workflow. Default to the recommended two-branch flow; option 2 is a
+  # single trunk (base == main), which cmd_init already understands.
+  echo "How should branches work?"
+  echo "  1) develop -> master  - feature work on develop, released to master (recommended)"
+  echo "  2) single branch      - simpler: everything lands on one main branch"
+  local flow base_branch main_branch
+  flow="$(ask "Choose 1 or 2" "1")"
+  case "$flow" in
+    2) main_branch="$(ask "Name of the single branch" "main")"; base_branch="$main_branch" ;;
+    *) main_branch="master"; base_branch="develop" ;;
+  esac
+  echo
+
+  # Assemble the exact flags init takes, then reuse the real init code path in
+  # dry-run to show precisely what would be written - the plan can never drift
+  # from the apply because it is the same function.
+  local -a args=(--target "$target" --variant "$variant" --name "$name"
+                 --base "$base_branch" --main "$main_branch")
+  echo "Here is exactly what would be written - nothing has touched disk yet:"
+  echo
+  cmd_init --dry-run "${args[@]}"
+  echo
+
+  if ! confirm "Create the project now?"; then
+    echo "Cancelled - nothing was written."
+    return 0
+  fi
+  echo
+  cmd_init "${args[@]}"
+}
+
 # cmd_plan : preview mode. Exactly `init --dry-run` so the plan can never drift
 # from what init actually writes - it runs the real init code path with every
 # disk mutation short-circuited to a "would ..." line.
@@ -2231,7 +2346,7 @@ cmd_upgrade() {
 }
 
 usage() {
-  sed -n '5,20p' "$0" | sed 's/^# \{0,1\}//'
+  sed -n '5,21p' "$0" | sed 's/^# \{0,1\}//'
 }
 
 main() {
@@ -2239,7 +2354,7 @@ main() {
   if [ "$#" -ge 1 ]; then shift; fi
   case "$cmd" in
     list) cmd_list "$@" ;;
-    init) cmd_init "$@" ;;
+    init) if [ "$#" -eq 0 ]; then cmd_wizard; else cmd_init "$@"; fi ;;
     plan) cmd_plan "$@" ;;
     update) cmd_update "$@" ;;
     diff) cmd_diff "$@" ;;

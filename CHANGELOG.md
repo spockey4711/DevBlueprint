@@ -40,6 +40,13 @@ All notable changes are documented here, following
 
 ### Added
 
+- `devblueprint init` with no flags now runs a guided interactive wizard: it asks a handful of
+  plain-language questions (each prefaced with a one-line explanation), suggests a sensible
+  default for every answer - especially a concrete `~/Projects/<slug>` target path - shows
+  exactly what would be written by reusing the `plan` (dry-run) output, and only scaffolds after
+  an explicit confirmation, so a newcomer can create a project without knowing a single flag.
+  Answers are read from stdin, so an early EOF falls back to the shown defaults and the final
+  confirm defaults to "no" - a missing answer never writes to disk. Refs: P10-1.
 - `docs/cheatsheet.md`: a one-page everyday-commands reference a beginner can keep open beside
   them - the normal loop top to bottom (`git fetch`, `wt.sh new`, small `git add`/`commit`
   steps, `make check`, `git push`, `gh pr create`, `wt.sh gc`) plus quick-reference tables for
