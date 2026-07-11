@@ -32,7 +32,7 @@ Two themes. **P8** is the pure explain/docs layer - ship it first, near-zero cod
 
 #### P8 - Absolute-beginner onboarding docs (docs only, mostly parallel)
 
-- [ ] P8-1: Create a `GETTING-STARTED.md` skeleton (intro + section headings for
+- [x] P8-1: Create a `GETTING-STARTED.md` skeleton (intro + section headings for
   prerequisites, choosing a folder, first run, first task) and link it from the top of the
   README. The anchor the rest of P8 fills in. (enabler - do first)
 - [ ] P8-2: Prerequisites section - install a terminal, git, Node and an editor, split per OS
