@@ -16,6 +16,10 @@ All notable changes are documented here, following
   `docs/concepts/commits-and-gate.md`) for the full reasoning, so the process teaches itself. It
   runs the real `wt.sh` / git / `make check` commands, never a simulated flow, and is documented
   in `GUIDE.md`. Agent files only. Refs: P12-2.
+- New `docs/concepts/README.md` indexes the "why we work this way" concept notes: it explains how
+  concept notes differ from reference docs, gives newcomers a reading order (worktrees, then
+  commits-and-gate) with a one-line hook for each, points at the glossary for unfamiliar terms,
+  and links on to the reference layer for the concrete *how*. Refs: P12-4.
 - Every variant except `ios-swift` (which needs macOS + Xcode) now ships a
   `.devcontainer/devcontainer.json`, so a scaffolded project opens in GitHub Codespaces or a
   local VS Code Dev Container with the toolchain and recommended extensions ready and no local
