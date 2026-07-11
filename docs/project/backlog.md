@@ -1,7 +1,9 @@
 # Backlog
 
 The prioritized task list - the source of truth for what to build next. Reference an id in
-commits and PRs (e.g. `Refs: P0-1`).
+commits and PRs (e.g. `Refs: P0-1`). Task markers: `- [ ]` todo, `- [x]` done, `- [~]` merged
+with a follow-up still pending (see the task lifecycle in
+[`docs/engineering/git-workflow.md`](../engineering/git-workflow.md)).
 
 ## P0 - core promise (init/update must be trustworthy)
 

@@ -30,10 +30,16 @@ Trigger: a request like "do task P0-3 from the backlog".
    quality-and-testing doc).
 5. **Push** the branch to `origin`.
 6. **Open a PR into `develop`** describing what changed and why, referencing the task
-   (`Refs: P0-3`). See [Pull requests](#pull-requests). Never self-merge.
+   (`Refs: P0-3`). Tick the task's box in `docs/project/backlog.md` in the same PR - as soon as
+   the work is done and only the merge remains, mark it `- [x]` (do not wait for the merge). See
+   [Pull requests](#pull-requests). Never self-merge.
 7. **Hand the PR off for review and merge into `develop`.** The main clone never moved, so
    there is nothing to switch back. Once the PR is merged, `wt gc` removes the now-merged
    worktree and its branch.
+
+Backlog markers: `- [ ]` not started, `- [x]` done, `- [~]` merged but a follow-up step still
+remains. A task is never left `- [ ]` once its PR has merged - use `- [~]` only when something
+still has to happen after the merge, otherwise `- [x]`.
 
 Promoting the accumulated work from `develop` to `master` is a separate, periodic step - see
 [Releases](#releases-promoting-develop-to-master).

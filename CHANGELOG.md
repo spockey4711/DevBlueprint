@@ -19,6 +19,10 @@ All notable changes are documented here, following
 
 ### Added
 
+- Backlog checkbox convention documented in the git-workflow task lifecycle (core-owned, so it
+  ships to every scaffolded project) and surfaced as a marker legend in the backlog header and
+  the `init` backlog stub: tick a task `- [x]` as soon as its PR is ready to merge, never leave a
+  merged task `- [ ]`, and use `- [~]` when a follow-up step remains after the merge.
 - Security-gate baseline added to every variant's CI (`variants/*/github/workflows/`): a shared
   `security.yml` (gitleaks secret scan, semgrep SAST, and PR `dependency-review`), a per-language
   `codeql.yml` (skipped for `rust` and `generic`, which have no supported/needed CodeQL target), a
