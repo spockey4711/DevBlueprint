@@ -40,6 +40,9 @@ All notable changes are documented here, following
 
 ### Added
 
+- `docs/glossary.md`: a plain-language glossary defining the everyday terms a beginner meets in
+  these docs (terminal, path, repo, branch, commit, PR, worktree, CI, lint, variant, quality
+  gate), one sentence each. Refs: P9-1.
 - `GETTING-STARTED.md`: a beginner-onboarding guide skeleton linked from the top of the README,
   with an intro and section headings for prerequisites, choosing a folder, the first run and the
   first task. The anchor the rest of the P8 onboarding docs fill in. Refs: P8-1.
