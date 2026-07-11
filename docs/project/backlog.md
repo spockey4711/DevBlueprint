@@ -108,7 +108,7 @@ Each task is a brand-new standalone file, so all four are independent with zero 
 - [ ] P12-3: Cross-link the glossary and reference layer - first mention of each term in the
   existing docs links to its `docs/glossary.md` entry, so no term is ever left unexplained.
   (builds on P9)
-- [ ] P12-4: `docs/concepts/README.md` - a short index that ties the "why we work this way"
+- [x] P12-4: `docs/concepts/README.md` - a short index that ties the "why we work this way"
   concept notes together and points newcomers at a reading order. (builds on P11-3/P11-4)
 
 #### P13 - Localization of user-facing copy (docs only; enabler + three translations)
