@@ -18,12 +18,17 @@ CI runs the same gate on every PR - never deploy a commit that has not passed it
 
 Copy `.env.example` to `.env` for local work and set the same keys in your deploy target's secret
 store. Never commit a real `.env*` file (only `.env.example` is tracked). Read config from the
-environment (12-factor) - never hard-code a secret in code, logs or committed files.
+environment (12-factor) - never hard-code a secret in code, logs or committed files. `.env.schema`
+is the contract these variables must satisfy, and `make check` fails if `.env.example` drifts from
+it (or if a real `.env` is missing a required key) - so the environment stays validated, not just
+documented.
 
 - [ ] Every key in `.env.example` has a value in the target's secret store.
 - [ ] Secrets (DB URLs, API keys) are read from the environment, never committed or logged.
 - [ ] `APP_ENV=production` in the deployed environment.
 - [ ] Values differ per environment (staging/production) - no shared production secrets.
+- [ ] Required keys and value formats are declared in `.env.schema` so the gate catches a missing
+      or malformed one before deploy.
 - [ ] Rotate any secret that has ever been committed or pasted into a log/PR.
 
 ## Database
@@ -44,9 +49,14 @@ Skip this section if the service has no database.
 
 A PaaS that builds and hosts from your repo - the path of least resistance.
 
+Starter configs ship under `deploy/` - `deploy/fly.toml` (Fly.io), `deploy/render.yaml` (Render),
+and `deploy/terraform/` for declarative provisioning; keep the one you use and fill in its `<...>`
+placeholders (see `deploy/README.md`).
+
 1. Connect the Git repository; set the production branch to your default branch.
 2. Build a static binary (`CGO_ENABLED=0 go build -o app ./cmd/server`) and set the start command
-   to run it. Many platforms detect Go automatically; a `Dockerfile` (below) gives you full control.
+   to run it. Many platforms detect Go automatically; the shipped `Dockerfile` (below) gives you
+   full control.
 3. Add every key from `.env.example` to the platform's secret/config store, scoped per environment.
 4. Add a health check pointing at the app's health route. Deploy from the production branch; roll
    back by re-promoting the previous release.
@@ -55,10 +65,12 @@ A PaaS that builds and hosts from your repo - the path of least resistance.
 
 Go's static binaries make for tiny images.
 
-1. Write a multi-stage `Dockerfile`: a `golang` build stage that runs
-   `CGO_ENABLED=0 go build -o /app ./cmd/server`, then a minimal runtime stage (`scratch` or
-   `gcr.io/distroless/static`) that copies the binary and runs as a non-root user.
-2. Build and run:
+1. Fill in the shipped multi-stage `Dockerfile`: a `golang` build stage that runs
+   `CGO_ENABLED=0 go build -o /out/app ./cmd/server`, then a distroless runtime stage
+   (`gcr.io/distroless/static:nonroot`) that copies the binary and runs as a non-root user.
+   `.dockerignore` already keeps VCS history and `.env*` out of the build context.
+2. Build and run - or use `docker compose up --build`, which reads the shipped
+   `docker-compose.yml`:
 
    ```bash
    docker build -t my-app .

@@ -47,6 +47,13 @@ All notable changes are documented here, following
   Intake files also gain an `agents` key so a baseline can standardize the coding-agent toolset.
   A ready-to-copy `agent/org-baseline.example.yml` ships alongside `agent/intake.example.yml`.
   Refs: P7-4.
+- Ops artifacts for the `backend-go` variant: a multi-stage `Dockerfile` (static `CGO_ENABLED=0`
+  binary -> `distroless/static:nonroot`) + `.dockerignore` + `docker-compose.yml`, `deploy/`
+  skeletons for Fly/Render/Terraform, and a `.env.schema` promoted from `.env.example` and enforced
+  in the gate. `make check` gains a `validate-env` step and CI a `Validate env schema` step (its
+  workflow inlines the gate rather than calling `make check`), both running `scripts/check-env.sh`
+  to keep `.env.example` in lockstep with the schema and validate required keys/patterns in any real
+  `.env`; the `doctor --run-gate` gate runs it too. Refs: P7-3.
 - Ops artifacts for the `generic` variant: a `Dockerfile` + `.dockerignore` + `docker-compose.yml`,
   `deploy/` skeletons for Fly/Render/Terraform, and a `.env.schema` promoted from `.env.example` and
   enforced in the gate - `make check` runs `scripts/check-env.sh` (a new `validate-env` step) to keep

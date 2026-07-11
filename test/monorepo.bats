@@ -65,8 +65,9 @@ load helper
   [ "$status" -eq 0 ]
 
   # The Go gate contains $(gofumpt -l .); in a recipe that must be $$(...) so make
-  # does not expand it as a make variable. The generated Makefile must parse.
-  run grep -F 'cd packages/svc && test -z "$$(gofumpt -l .)"' "$TARGET/Makefile"
+  # does not expand it as a make variable. The generated Makefile must parse. The
+  # gate leads with the env-schema check (`sh scripts/check-env.sh`).
+  run grep -F 'cd packages/svc && sh scripts/check-env.sh && test -z "$$(gofumpt -l .)"' "$TARGET/Makefile"
   [ "$status" -eq 0 ]
 
   if command -v make >/dev/null; then

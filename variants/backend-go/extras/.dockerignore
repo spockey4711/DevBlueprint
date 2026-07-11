@@ -1,0 +1,35 @@
+# Keep the Docker build context small and secret-free. A leaner context uploads
+# and builds faster and, crucially, keeps local secrets and VCS history out of the
+# image. The build stage regenerates anything below from go.mod + the sources.
+
+# Version control and CI
+.git
+.gitignore
+.github
+
+# Local environment and secrets - never ship these into an image (.env.example
+# is the one tracked template, and even it is not needed inside the image).
+.env
+.env.*
+!.env.example
+
+# Build output and local binaries - recompiled inside the build stage.
+/bin/
+/dist/
+*.exe
+app
+
+# Test and coverage artifacts
+*.test
+*.out
+coverage.*
+profile.cov
+
+# Vendored deps - the build stage runs `go mod download` instead.
+/vendor/
+
+# Docs and editor / OS cruft
+docs
+.DS_Store
+.idea
+.vscode
