@@ -19,6 +19,13 @@ All notable changes are documented here, following
 
 ### Added
 
+- Security-gate baseline added to every variant's CI (`variants/*/github/workflows/`): a shared
+  `security.yml` (gitleaks secret scan, semgrep SAST, and PR `dependency-review`), a per-language
+  `codeql.yml` (skipped for `rust` and `generic`, which have no supported/needed CodeQL target), a
+  shared `commit-checks.yml` (commitlint plus a Conventional-Commits PR-title check), and a
+  per-language `coverage.yml` that reports line coverage and enforces a soft floor from the
+  `COVERAGE_MIN` repository variable (default `0` = report-only, so a fresh scaffold stays green).
+  All files ship through the existing `github/` tree copy, so no CLI change was needed. Refs: P6-4.
 - New `spring-java` variant: a Java 21 + Spring Boot backend built with the Gradle wrapper,
   Spotless (google-java-format), Checkstyle, and JUnit 5. Self-contained under
   `variants/spring-java/` (manifest, `setup.sh`, Makefile, CI + dependabot, `.tool-versions`,
