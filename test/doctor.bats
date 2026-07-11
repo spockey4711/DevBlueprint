@@ -66,3 +66,101 @@ load helper
   [[ "$output" == *"pre-commit hook not wired yet"* ]]
   [[ "$output" == *"all foundation files present"* ]]
 }
+
+# --fix (P6-5): doctor no longer only reports a missing or corrupted foundation
+# file - with --fix it restores the file from the kit and passes.
+
+@test "doctor flags an empty foundation file as corrupt and exits non-zero" {
+  db init --target "$TARGET" --name demo --variant generic >/dev/null
+  # A zero-byte file is a corruption, not a healthy file.
+  : > "$TARGET/docs/engineering/git-workflow.md"
+
+  run db doctor --target "$TARGET"
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"git-workflow.md (empty)"* ]]
+}
+
+@test "doctor --fix restores a missing foundation file and then passes" {
+  db init --target "$TARGET" --name demo --variant generic >/dev/null
+  rm "$TARGET/.editorconfig"
+
+  run db doctor --target "$TARGET" --fix
+  [ "$status" -eq 0 ]
+  [[ "$output" == *".editorconfig (repaired: was missing)"* ]]
+  [[ "$output" == *"repaired 1 file(s)"* ]]
+  [ -s "$TARGET/.editorconfig" ]
+
+  # A follow-up doctor now finds nothing wrong.
+  run db doctor --target "$TARGET"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"all foundation files present"* ]]
+}
+
+@test "doctor --fix restores a corrupted (empty) foundation file" {
+  db init --target "$TARGET" --name demo --variant generic >/dev/null
+  : > "$TARGET/docs/engineering/conventions.md"
+
+  run db doctor --target "$TARGET" --fix
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"conventions.md (repaired: was empty)"* ]]
+  [ -s "$TARGET/docs/engineering/conventions.md" ]
+}
+
+@test "doctor --fix rebuilds files byte-identically to a fresh scaffold" {
+  local ref="$TEST_TMP/ref"
+  db init --target "$ref" --name demo --variant generic >/dev/null
+  db init --target "$TARGET" --name demo --variant generic >/dev/null
+  # Corrupt a variant-owned copy and a core copy; both must come back identical.
+  : > "$TARGET/.gitignore"
+  rm "$TARGET/docs/engineering/quality-and-testing.md"
+
+  run db doctor --target "$TARGET" --fix
+  [ "$status" -eq 0 ]
+  cmp "$ref/.gitignore" "$TARGET/.gitignore"
+  cmp "$ref/docs/engineering/quality-and-testing.md" "$TARGET/docs/engineering/quality-and-testing.md"
+}
+
+@test "doctor --fix rebuilds the .devblueprint stamp from --variant when it is gone" {
+  db init --target "$TARGET" --name demo --variant generic >/dev/null
+  rm "$TARGET/.devblueprint"
+
+  # The stamp is the variant's own record, so without it --fix needs --variant.
+  run db doctor --target "$TARGET" --fix --variant generic
+  [ "$status" -eq 0 ]
+  [[ "$output" == *".devblueprint (repaired: was missing)"* ]]
+  grep -q "^variant=generic$" "$TARGET/.devblueprint"
+  # The rebuilt stamp lets a plain doctor resolve the variant again.
+  run db doctor --target "$TARGET" --run-gate
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"running: make check"* ]]
+}
+
+@test "doctor --fix cannot rebuild a variant-owned file without a variant" {
+  db init --target "$TARGET" --name demo --variant generic >/dev/null
+  # Drop the stamp (variant source) and a variant-owned file together.
+  rm "$TARGET/.devblueprint" "$TARGET/.gitignore"
+
+  run db doctor --target "$TARGET" --fix
+  [ "$status" -ne 0 ]
+  [[ "$output" == *".gitignore (missing)"* ]]
+  [ ! -e "$TARGET/.gitignore" ]
+}
+
+@test "doctor --fix rejects an unknown --variant" {
+  db init --target "$TARGET" --name demo --variant generic >/dev/null
+
+  run db doctor --target "$TARGET" --fix --variant nope
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"unknown variant 'nope'"* ]]
+}
+
+@test "doctor --json --fix reports the fixed count and repaired checks as ok" {
+  db init --target "$TARGET" --name demo --variant generic >/dev/null
+  rm "$TARGET/.editorconfig"
+
+  run db doctor --target "$TARGET" --json --fix
+  [ "$status" -eq 0 ]
+  [[ "$output" == *'"fixed":1'* ]]
+  [[ "$output" == *'"ok":true'* ]]
+  [[ "$output" == *'{"name":".editorconfig","status":"ok"'* ]]
+}

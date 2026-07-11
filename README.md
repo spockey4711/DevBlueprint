@@ -92,6 +92,12 @@ bin/devblueprint doctor --target ~/Projects/myapp
 # --run-gate runs the project's quality gate (resolved from its variant)
 bin/devblueprint doctor --target ~/Projects/myapp --strict --run-gate
 
+# --fix auto-repairs any missing or corrupted (empty) foundation file from the kit
+# instead of only reporting it. Pass --variant when the .devblueprint stamp is the
+# file being repaired, so variant-owned files (and the stamp) can be rebuilt too.
+bin/devblueprint doctor --target ~/Projects/myapp --fix
+bin/devblueprint doctor --target ~/Projects/myapp --fix --variant node-express
+
 # See where a project has drifted from the current kit before updating (read-only)
 bin/devblueprint diff --target ~/Projects/myapp
 
@@ -109,7 +115,7 @@ bin/devblueprint version
 
 # Machine-readable output for agents: `list`, `doctor` and `version` take --json.
 # `list --json` yields the variants (name, title, quality gate); `doctor --json`
-# yields {ok, failures, checks[], scaffoldVersion, kitVersion} and still exits
+# yields {ok, failures, fixed, checks[], scaffoldVersion, kitVersion} and still exits
 # non-zero when a check fails - so an agent parses state instead of scraping text.
 bin/devblueprint list --json
 bin/devblueprint doctor --target ~/Projects/myapp --json
