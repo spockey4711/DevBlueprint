@@ -19,6 +19,12 @@ All notable changes are documented here, following
 
 ### Added
 
+- New `flutter` variant: a Flutter/Dart app stack (`dart format`, `flutter analyze` with
+  `very_good_analysis` + strict analyzer modes, `flutter test`) with a `lib/`+`lib/src/`+`test/`
+  +`integration_test/` scaffold, `Makefile` gate, CI (subosito/flutter-action), and `extras/`
+  (`.tool-versions` SDK pin + `.github/dependabot.yml` for pub + github-actions). `setup.sh` wires
+  `pubspec.yaml`, `analysis_options.yaml`, `.fvmrc`, a pre-commit config and a placeholder
+  `lib/main.dart` + widget test. Refs: P6-2a.
 - New `spring-java` variant: a Java 21 + Spring Boot backend built with the Gradle wrapper,
   Spotless (google-java-format), Checkstyle, and JUnit 5. Self-contained under
   `variants/spring-java/` (manifest, `setup.sh`, Makefile, CI + dependabot, `.tool-versions`,
