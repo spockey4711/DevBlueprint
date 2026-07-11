@@ -1,0 +1,34 @@
+# Build artifacts and compiled output
+/_build/
+/cover/
+/doc/
+/.fetch
+erl_crash.dump
+
+# Dependencies (committed lockfile, fetched code is not)
+/deps/
+
+# Dialyzer PLT cache
+/priv/plts/
+*.plt
+*.plt.hash
+
+# Phoenix / asset build output
+/priv/static/assets/
+/priv/static/cache_manifest.json
+/assets/node_modules/
+
+# Secrets and generated release config (keep the checked-in examples)
+/config/*.secret.exs
+*.secret.exs
+
+# Env (keep the example)
+.env
+.env.*
+!.env.example
+
+# Runtime / OS / editor cruft
+*.log
+.elixir_ls/
+.lexical/
+.DS_Store

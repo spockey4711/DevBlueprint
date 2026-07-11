@@ -262,7 +262,7 @@ unchanged - only their ordering into waves. The eight P6-2 variants are each the
   `variants/*/github/` (one variant subtree per task).
 - [x] P6-2e: New variant `laravel`, self-contained mirroring P2-4. **Owns:** `variants/laravel/`.
   (dep: P2-1)
-- [ ] P6-2f: New variant `sveltekit`, self-contained mirroring P2-4. **Owns:**
+- [x] P6-2f: New variant `sveltekit`, self-contained mirroring P2-4. **Owns:**
   `variants/sveltekit/`. (dep: P2-1)
 
 ### Wave 4 - org baseline + ops artifacts + last variants
@@ -274,7 +274,7 @@ unchanged - only their ordering into waves. The eight P6-2 variants are each the
   `docker-compose.yml`, Fly/Vercel/Render config and Terraform snippets, plus `.env.example`
   promoted to a validated env schema checked in the gate. **Owns:** `variants/*/extras/`
   (one variant subtree per task).
-- [ ] P6-2g: New variant `elixir-phoenix`, self-contained mirroring P2-4. **Owns:**
+- [x] P6-2g: New variant `elixir-phoenix`, self-contained mirroring P2-4. **Owns:**
   `variants/elixir-phoenix/`. (dep: P2-1)
 - [ ] P6-2h: New variant `terraform-iac`, self-contained mirroring P2-4. **Owns:**
   `variants/terraform-iac/`. (dep: P2-1)

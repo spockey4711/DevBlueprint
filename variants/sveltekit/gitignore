@@ -1,0 +1,39 @@
+# Dependencies (committed lockfile, installed packages are not)
+/node_modules/
+.pnpm-store/
+
+# SvelteKit generated output + build
+/.svelte-kit/
+/build/
+/dist/
+/.vercel/
+/.netlify/
+/.wrangler/
+
+# Test / tooling caches and reports
+/coverage/
+/playwright-report/
+/test-results/
+/.playwright/
+
+# Vite cache
+/node_modules/.vite/
+*.tsbuildinfo
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# Env (keep the example)
+.env
+.env.*
+!.env.example
+
+# IDE / editor cruft
+/.idea/
+/.vscode/
+/.fleet/
+/.nova/
+/.zed/
+.DS_Store

@@ -1,0 +1,76 @@
+name: Coverage
+
+# Measures line coverage on every change and enforces a soft floor. The floor is
+# read from the COVERAGE_MIN repository variable (Settings > Secrets and variables
+# > Actions > Variables) and defaults to 0, i.e. report-only: coverage is always
+# visible in the job summary, and a team opts into a hard gate by raising
+# COVERAGE_MIN - no code change needed. This respects the variant's
+# "meaningful coverage, not a global percentage" guidance in
+# docs/engineering/quality-and-testing.md.
+
+on:
+  pull_request:
+    branches: [develop, master]
+  push:
+    branches: [develop, master]
+
+concurrency:
+  group: coverage-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  MIX_ENV: test
+
+jobs:
+  coverage:
+    name: Line coverage
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up BEAM (Erlang + Elixir)
+        uses: erlef/setup-beam@v1
+        with:
+          otp-version: "27"
+          elixir-version: "1.18"
+
+      - name: Cache deps and _build
+        uses: actions/cache@v4
+        with:
+          path: |
+            deps
+            _build
+          key: mix-${{ runner.os }}-${{ hashFiles('**/mix.lock') }}
+          restore-keys: mix-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: mix deps.get
+
+      - name: Test with coverage
+        # ExCoveralls' --min-coverage fails the run when total coverage is below the
+        # floor and always prints the coverage table. When it is not installed yet
+        # (a fresh scaffold) fall back to the built-in cover and skip the floor so
+        # the job stays green.
+        env:
+          MIN: ${{ vars.COVERAGE_MIN || '0' }}
+        run: |
+          if mix help coveralls >/dev/null 2>&1; then
+            mix coveralls --min-coverage "$MIN" | tee coverage.txt
+          else
+            echo "excoveralls not installed - add {:excoveralls, \"~> 0.18\", only: :test} to enable a coverage floor."
+            mix test --cover | tee coverage.txt || true
+          fi
+
+      - name: Coverage summary
+        if: always()
+        run: |
+          [ -f coverage.txt ] || exit 0
+          pct=$(grep -oE '\[TOTAL\][[:space:]]*[0-9.]+%' coverage.txt | grep -oE '[0-9.]+%' | head -1)
+          [ -z "$pct" ] && exit 0
+          printf '### Coverage\n\nLine coverage **%s** (floor %s%%).\n' "$pct" "${MIN:-0}" >> "$GITHUB_STEP_SUMMARY"
+        env:
+          MIN: ${{ vars.COVERAGE_MIN || '0' }}
