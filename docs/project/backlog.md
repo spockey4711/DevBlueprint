@@ -48,7 +48,7 @@ the other three fills a different section, so conflicts are limited to distinct 
 - [x] P8-3: "Where do I put the project / which path do I pick" section - absolute vs. relative
   paths, what `~` means, no spaces in paths, a suggested `~/Projects/<name>` default, and how
   to open that folder in the terminal and the editor. (builds on P8-1; own section)
-- [ ] P8-4: End-to-end "your first project" tutorial section - one worked run from `init` to
+- [x] P8-4: End-to-end "your first project" tutorial section - one worked run from `init` to
   the first green PR, every command shown with its expected output. (builds on P8-1; own
   section; smoother once P10-1 lands, but write it against today's flow first)
 
@@ -60,9 +60,9 @@ Each task is a brand-new standalone file, so all four are independent with zero 
   commit, PR, worktree, CI, lint, variant, quality gate; one sentence each.
 - [x] P9-2: `docs/faq.md` - the common "why did this happen / what now" questions a beginner
   hits (directory already exists, not a git repo, gate is red, wrong branch), one answer each.
-- [ ] P9-3: `docs/cheatsheet.md` - a one-page everyday-commands reference (the wt.sh, git,
+- [x] P9-3: `docs/cheatsheet.md` - a one-page everyday-commands reference (the wt.sh, git,
   and `make check` calls used in the normal loop) that a beginner can keep open beside them.
-- [ ] P9-4: `docs/reading-errors.md` - how to read an error you did not expect: a lint
+- [x] P9-4: `docs/reading-errors.md` - how to read an error you did not expect: a lint
   failure, a red CI log, a stack trace - what to look for and where, in plain language.
 
 ### Months 6-12: reduce the barrier to entry - first CLI polish + no-terminal path
