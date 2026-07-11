@@ -40,6 +40,9 @@ All notable changes are documented here, following
 
 ### Added
 
+- `docs/faq.md`: a plain-language FAQ answering the common "why did this happen, what now?"
+  moments a beginner hits (a directory/file already exists, "not a git repository", a red quality
+  gate, being on the wrong branch), with a symptom, a cause and a next step for each. Refs: P9-2.
 - `docs/cheatsheet.md`: a one-page everyday-commands reference a beginner can keep open beside
   them - the normal loop top to bottom (`git fetch`, `wt.sh new`, small `git add`/`commit`
   steps, `make check`, `git push`, `gh pr create`, `wt.sh gc`) plus quick-reference tables for
