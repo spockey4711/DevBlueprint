@@ -1,0 +1,34 @@
+# Fly.io deployment config (skeleton). Fill in the <...> values, then
+# `fly launch --copy-config` (first time) or `fly deploy`. Secrets are NOT set
+# here - use `fly secrets set KEY=value` so they live in Fly's vault, never in
+# this committed file. Set APP_KEY that way too. See docs/ops/deployment.md.
+
+app = "<your-app-name>"
+primary_region = "<region>"   # a Fly region code, e.g. "iad", "fra", "syd"
+
+[build]
+  dockerfile = "Dockerfile"
+
+# Migrations and config caching run once per release, not on every boot.
+# Wire this to a release script (php artisan migrate --force && config:cache).
+[deploy]
+  release_command = "<release-command>"   # e.g. "php artisan migrate --force"
+
+# Non-secret config only. Real secrets (APP_KEY, DB_PASSWORD, ...) go through
+# `fly secrets set`.
+[env]
+  APP_ENV = "production"
+  APP_DEBUG = "false"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = true
+  auto_start_machines = true
+  min_machines_running = 0
+
+  [[http_service.checks]]
+    method = "get"
+    path = "<health-check-path>"   # e.g. "/up" (Laravel's built-in health route)
+    interval = "15s"
+    timeout = "2s"

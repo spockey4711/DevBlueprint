@@ -1,0 +1,61 @@
+# Run the Laravel app in containers locally, close to how it runs in production but
+# wired for development. `docker compose up --build` builds the Dockerfile in this
+# directory and starts php-fpm.
+#
+# PHP does not serve HTTP on its own: php-fpm listens on port 9000 and a web server
+# (nginx/Caddy) proxies requests to it. The `app` service runs php-fpm; uncomment
+# the `web` service and drop in an nginx config to expose HTTP. Need a database?
+# Uncomment the `db` service and point DB_* / DATABASE_URL at it.
+#
+# Secrets come from a local .env (gitignored) via env_file - never hard-code them
+# here. Generate APP_KEY once with `php artisan key:generate` and keep it in .env.
+services:
+  app:
+    build: .
+    env_file:
+      - .env
+    environment:
+      APP_ENV: local
+    # php-fpm listens on 9000; the web server (below) proxies to it, so no host
+    # port is published here. Expose it directly only for debugging.
+    expose:
+      - "9000"
+    restart: unless-stopped
+    # depends_on:
+    #   db:
+    #     condition: service_healthy
+
+  # --- Web server (uncomment to serve HTTP) -----------------------------------
+  # nginx terminates HTTP and proxies PHP requests to the `app` (php-fpm) service.
+  # Provide ./docker/nginx.conf (a standard Laravel fastcgi vhost pointing at
+  # app:9000, root /app/public) and mount the app's public/ for static files.
+  # web:
+  #   image: nginx:stable
+  #   depends_on:
+  #     - app
+  #   ports:
+  #     - "8080:80"
+  #   volumes:
+  #     - ./docker/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+  #   restart: unless-stopped
+
+  # --- Database (uncomment if the app uses one) -------------------------------
+  # db:
+  #   image: postgres:16
+  #   env_file:
+  #     - .env
+  #   environment:
+  #     POSTGRES_USER: ${DB_USERNAME:-laravel}
+  #     POSTGRES_PASSWORD: ${DB_PASSWORD:-secret}
+  #     POSTGRES_DB: ${DB_DATABASE:-laravel}
+  #   volumes:
+  #     - db-data:/var/lib/postgresql/data
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER}"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 5
+  #   restart: unless-stopped
+
+# volumes:
+#   db-data:
