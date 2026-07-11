@@ -1,5 +1,7 @@
 # Glossary
 
+Deutsch: [i18n/de/docs/glossary.md](../i18n/de/docs/glossary.md)
+
 Plain-language definitions of the terms used throughout this repo's docs. One sentence each; if
 a doc uses a word you do not recognize, look for it here first. Elsewhere in the docs, the first
 mention of each term links straight to its entry below.

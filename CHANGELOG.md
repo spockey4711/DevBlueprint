@@ -7,6 +7,11 @@ All notable changes are documented here, following
 
 ### Added
 
+- German translation of the glossary at `i18n/de/docs/glossary.md`, the first locale to land
+  under the `i18n/` layer. It mirrors `docs/glossary.md` one-to-one, carries the canonical-source
+  header that marks English as authoritative, keeps every term headword, command, path and anchor
+  verbatim while translating the prose, and is linked from the top of the English source. The
+  `i18n/README.md` status table now marks the `docs/glossary.md` cell done for `de`. Refs: P13-3.
 - New `i18n/` localization layer with a short policy at `i18n/README.md`: English is the source of
   truth and stays the only language for code, engineering/reference docs, commits and PRs, while
   beginner tutorial copy (`GETTING-STARTED.md`, `docs/glossary.md`, `docs/faq.md`,
