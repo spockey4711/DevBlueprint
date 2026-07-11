@@ -15,6 +15,7 @@
 #   devblueprint update --target <dir> [--variant <variant>] [--dry-run]
 #   devblueprint diff --target <dir> [--variant <variant>]
 #   devblueprint doctor --target <dir> [--strict] [--run-gate] [--fix] [--variant <variant>] [--json]
+#   devblueprint doctor --env [--json]
 #   devblueprint detect --target <dir>
 #   devblueprint upgrade [--channel stable|next] [--version <ver>] [--check] [--force]
 #   devblueprint version [--json]
@@ -1465,17 +1466,22 @@ cmd_plan() {
   cmd_init --dry-run "$@"
 }
 
-# report_check <status> <name> <message> : record one doctor check. In the
+# report_check <status> <name> <message> [fix] : record one doctor check. In the
 # default human mode it prints the badge + message exactly as doctor always has;
 # under --json it appends a {"name","status","message"} object to CHECKS_JSON
-# instead of printing. status is one of ok|miss|note|fail|gate. Both JSON and
-# CHECKS_JSON are locals of cmd_doctor, visible here by bash's dynamic scoping.
+# instead of printing. status is one of ok|miss|note|fail|gate. The optional
+# <fix> is a follow-up hint (e.g. a copy-paste install command for a missing
+# prerequisite): in human mode it prints on its own indented line beneath the
+# badge; under --json it becomes a "fix" field on the check. Both JSON and
+# CHECKS_JSON are locals of the calling doctor command, visible here by bash's
+# dynamic scoping.
 report_check() {
-  local status="$1" name="$2" msg="$3"
+  local status="$1" name="$2" msg="$3" fix="${4:-}"
   if [ "$JSON" -eq 1 ]; then
-    local sep=""
+    local sep="" fixjson=""
     [ -n "$CHECKS_JSON" ] && sep=","
-    CHECKS_JSON="${CHECKS_JSON}${sep}{\"name\":\"$(json_esc "$name")\",\"status\":\"$status\",\"message\":\"$(json_esc "$msg")\"}"
+    [ -n "$fix" ] && fixjson=",\"fix\":\"$(json_esc "$fix")\""
+    CHECKS_JSON="${CHECKS_JSON}${sep}{\"name\":\"$(json_esc "$name")\",\"status\":\"$status\",\"message\":\"$(json_esc "$msg")\"${fixjson}}"
     return 0
   fi
   local badge
@@ -1490,9 +1496,20 @@ report_check() {
   # %-4s pads "ok" to the badge column so every message lines up (the badge words
   # are all <= 4 chars); two trailing spaces separate badge from message.
   printf '  %-4s  %s\n' "$badge" "$msg"
+  # Align the fix line under the message column (badge is 2+4+2 = 8 chars wide).
+  # Kept as a full `if` so the empty-fix case does not return non-zero and trip
+  # `set -e` in callers that invoke report_check as their last statement.
+  if [ -n "$fix" ]; then printf '        %s\n' "$fix"; fi
 }
 
 cmd_doctor() {
+  # doctor --env is a host prerequisite check (git / Node / a working shell) with
+  # no --target - the first command a beginner runs, before a project even exists.
+  # Split it off before the project-doctor flag parsing below.
+  local a
+  for a in "$@"; do
+    case "$a" in --env) cmd_doctor_env "$@"; return ;; esac
+  done
   local target="" strict=0 run_gate=0 fix=0 VARIANT="" JSON=0 CHECKS_JSON=""
   while [ "$#" -gt 0 ]; do
     case "$1" in
@@ -1622,6 +1639,114 @@ cmd_doctor() {
     echo "doctor: all foundation files present (scaffolded from DevBlueprint ${stamped:-unknown}; current $(kit_version))"
   else
     die "$failures check(s) failed"
+  fi
+}
+
+# detect_os : the host OS as one of macos|windows|linux|unknown, used to pick the
+# right copy-paste install command in env_fix. WSL reports Linux and is treated as
+# Linux (its package manager is the distro's), which is what a beginner wants.
+detect_os() {
+  case "$(uname -s 2>/dev/null)" in
+    Darwin)                 echo macos ;;
+    Linux)                  echo linux ;;
+    MINGW* | MSYS* | CYGWIN*) echo windows ;;
+    *)                      echo unknown ;;
+  esac
+}
+
+# env_fix <tool> <os> : the copy-paste command that installs <tool> on <os>,
+# matching the per-OS prerequisite steps in GETTING-STARTED.md. On macOS the
+# commands need Homebrew, so when `brew` itself is absent the fix tells the user to
+# install it first. Empty when we cannot advise (an unrecognized OS), so the caller
+# just reports the tool missing without a bogus command.
+env_fix() {
+  local tool="$1" os="$2"
+  # macOS installs go through Homebrew; surface that dependency up front when brew
+  # is not yet on the PATH so `brew install ...` does not fail for a beginner.
+  local brew_prefix=""
+  if [ "$os" = "macos" ] && ! command -v brew >/dev/null 2>&1; then
+    brew_prefix="install Homebrew first (https://brew.sh), then: "
+  fi
+  case "$tool:$os" in
+    git:macos)     echo "install with: ${brew_prefix}brew install git" ;;
+    git:windows)   echo "install with: winget install --id Git.Git -e" ;;
+    git:linux)     echo "install with: sudo apt update && sudo apt install -y git" ;;
+    node:macos)    echo "install with: ${brew_prefix}brew install node" ;;
+    node:windows)  echo "install with: winget install --id OpenJS.NodeJS.LTS -e" ;;
+    node:linux)    echo "install with: curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash - && sudo apt install -y nodejs" ;;
+    shell:windows) echo "use Git Bash (bundled with Git for Windows) or WSL - see https://learn.microsoft.com/windows/wsl/install" ;;
+    shell:*)       echo "install a POSIX shell (bash) with your system's package manager" ;;
+    *)             echo "" ;;
+  esac
+}
+
+# cmd_doctor_env : prerequisite check for the host machine, not a scaffolded
+# project (so it takes no --target). Verifies the three things a beginner needs
+# before anything else - git, Node, and a working shell - and, when one is
+# missing, prints a copy-paste install command for the detected OS. Exits non-zero
+# if any prerequisite is missing, so it doubles as a gate the getting-started docs
+# can point at. --json mirrors the project doctor's machine-readable shape.
+cmd_doctor_env() {
+  local JSON=0 CHECKS_JSON=""
+  while [ "$#" -gt 0 ]; do
+    case "$1" in
+      --env)  shift ;;                 # consumed by the dispatch; tolerate here too
+      --json) JSON=1; shift ;;
+      *)      die "unknown option: $1 (doctor --env takes only --json)" ;;
+    esac
+  done
+
+  local os failures=0 v
+  os="$(detect_os)"
+
+  # git: the tool that records history; needed for every worktree and commit.
+  if command -v git >/dev/null 2>&1; then
+    v="$(git --version 2>/dev/null || echo 'git')"
+    report_check ok git "git found ($v)"
+  else
+    report_check miss git "git not found" "$(env_fix git "$os")"
+    failures=$((failures + 1))
+  fi
+
+  # Node: the runtime that lets the devblueprint command run (it ships npm too).
+  if command -v node >/dev/null 2>&1; then
+    v="$(node --version 2>/dev/null || echo 'node')"
+    report_check ok node "Node found ($v)"
+  else
+    report_check miss node "Node not found" "$(env_fix node "$os")"
+    failures=$((failures + 1))
+  fi
+
+  # A working shell: this script is already running in one, so the check is a
+  # sanity check that $SHELL resolves to a real interactive shell (or that bash/sh
+  # is at least on the PATH) - reassurance for a beginner more than a likely miss.
+  local shell_bin=""
+  if [ -n "${SHELL:-}" ] && [ -x "$SHELL" ]; then
+    shell_bin="$SHELL"
+  else
+    shell_bin="$(command -v bash 2>/dev/null || command -v sh 2>/dev/null || true)"
+  fi
+  if [ -n "$shell_bin" ]; then
+    report_check ok shell "shell found ($shell_bin)"
+  else
+    report_check miss shell "no working shell found" "$(env_fix shell "$os")"
+    failures=$((failures + 1))
+  fi
+
+  if [ "$JSON" -eq 1 ]; then
+    local ok
+    [ "$failures" -eq 0 ] && ok=true || ok=false
+    printf '{"ok":%s,"os":"%s","failures":%d,"checks":[%s]}\n' \
+      "$ok" "$(json_esc "$os")" "$failures" "$CHECKS_JSON"
+    [ "$failures" -eq 0 ] || exit 1
+    return 0
+  fi
+
+  echo
+  if [ "$failures" -eq 0 ]; then
+    echo "doctor: all prerequisites present (git, Node, a working shell)"
+  else
+    die "$failures prerequisite(s) missing - install the tool(s) above, reopen your terminal, then rerun: devblueprint doctor --env"
   fi
 }
 
@@ -2346,7 +2471,7 @@ cmd_upgrade() {
 }
 
 usage() {
-  sed -n '5,21p' "$0" | sed 's/^# \{0,1\}//'
+  sed -n '5,22p' "$0" | sed 's/^# \{0,1\}//'
 }
 
 main() {
