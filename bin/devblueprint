@@ -11,6 +11,7 @@
 #   devblueprint update --target <dir> [--variant <variant>] [--dry-run]
 #   devblueprint doctor --target <dir> [--strict] [--run-gate] [--json]
 #   devblueprint detect --target <dir>
+#   devblueprint upgrade [--channel stable|next] [--version <ver>] [--check] [--force]
 #   devblueprint version [--json]
 #   devblueprint help
 #
@@ -41,6 +42,14 @@ CORE="$ROOT/core"
 # kit's own variants/.
 VARIANTS="${DEVBLUEPRINT_VARIANTS:-$ROOT/variants}"
 VERSION_FILE="$ROOT/VERSION"
+# GitHub slug the kit is published from; used by `upgrade` to resolve release
+# tags and download tarballs. Mirrors install.sh's REPO (owned there; kept in
+# sync by hand).
+REPO="spockey4711/DevBlueprint"
+# Kit-local channel state written by `upgrade` (channel + pin + installed
+# version), so a bare `upgrade` re-follows the recorded channel and a pinned kit
+# stays frozen. Lives next to VERSION; never shipped in a release tarball.
+CHANNEL_FILE="$ROOT/.channel"
 
 die() { echo "devblueprint: $*" >&2; exit 1; }
 info() { printf '  %s\n' "$*"; }
@@ -1008,8 +1017,207 @@ cmd_version() {
   fi
 }
 
+# --- upgrade helpers -------------------------------------------------------
+
+# fetch_url <url> : print the contents of <url> to stdout, curl preferred with a
+# wget fallback. Mirrors install.sh's downloader (owned there); duplicated because
+# P4-2 owns only bin/devblueprint + test/. Non-zero exit on transport failure.
+fetch_url() {
+  if command -v curl >/dev/null 2>&1; then
+    curl -fsSL "$1"
+  elif command -v wget >/dev/null 2>&1; then
+    wget -qO- "$1"
+  else
+    die "need curl or wget to reach $1"
+  fi
+}
+
+# latest_release_tag : the newest GitHub release tag (e.g. v0.1.0), or empty when
+# the repo has none yet. $DEVBLUEPRINT_LATEST_TAG overrides the network lookup so
+# the test suite (and offline runs) never call GitHub. The API returns JSON; we
+# pull "tag_name" with sed to stay jq-free like the rest of the kit.
+latest_release_tag() {
+  if [ -n "${DEVBLUEPRINT_LATEST_TAG:-}" ]; then
+    printf '%s' "$DEVBLUEPRINT_LATEST_TAG"
+    return 0
+  fi
+  fetch_url "https://api.github.com/repos/$REPO/releases/latest" 2>/dev/null \
+    | sed -n 's/.*"tag_name"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -n1
+}
+
+# remote_version <ref> : the VERSION a given git ref ships, without downloading
+# the whole kit. $DEVBLUEPRINT_UPGRADE_SRC (a local kit dir, like install.sh's
+# DEVBLUEPRINT_SRC) short-circuits the network for tests and offline use. Trimmed
+# the same way as kit_version. Empty when the ref or its VERSION cannot be read.
+remote_version() {
+  local ref="$1"
+  if [ -n "${DEVBLUEPRINT_UPGRADE_SRC:-}" ]; then
+    [ -f "$DEVBLUEPRINT_UPGRADE_SRC/VERSION" ] && tr -d '[:space:]' < "$DEVBLUEPRINT_UPGRADE_SRC/VERSION"
+    return 0
+  fi
+  fetch_url "https://raw.githubusercontent.com/$REPO/$ref/VERSION" 2>/dev/null | tr -d '[:space:]'
+}
+
+# fetch_kit <kind> <ref> <dest> : populate <dest> with the kit at <ref>. <kind> is
+# "tag" or "head" and selects GitHub's tags/ vs heads/ archive path.
+# $DEVBLUEPRINT_UPGRADE_SRC copies a local kit instead of downloading (tests /
+# offline), exactly as install.sh's DEVBLUEPRINT_SRC does.
+fetch_kit() {
+  local kind="$1" ref="$2" dest="$3" url
+  if [ -n "${DEVBLUEPRINT_UPGRADE_SRC:-}" ]; then
+    [ -d "$DEVBLUEPRINT_UPGRADE_SRC" ] || die "DEVBLUEPRINT_UPGRADE_SRC=$DEVBLUEPRINT_UPGRADE_SRC is not a directory"
+    tar -C "$DEVBLUEPRINT_UPGRADE_SRC" -cf - . | tar -C "$dest" -xf -
+    return 0
+  fi
+  command -v tar >/dev/null 2>&1 || die "need tar to unpack DevBlueprint"
+  case "$kind" in
+    tag)  url="https://github.com/$REPO/archive/refs/tags/$ref.tar.gz" ;;
+    *)    url="https://github.com/$REPO/archive/refs/heads/$ref.tar.gz" ;;
+  esac
+  # --strip-components=1 drops the GitHub "DevBlueprint-<ref>/" top-level dir.
+  fetch_url "$url" | tar -xz --strip-components=1 -C "$dest" \
+    || die "download or extraction failed (is ref '$ref' valid?)"
+}
+
+# channel_state : load the recorded channel + pin from $CHANNEL_FILE into
+# CH_CHANNEL / CH_PIN, defaulting to the reproducible `stable` channel and no pin
+# when the kit has never been upgraded. Read with the same sed idiom as the
+# .devblueprint scaffold stamp.
+channel_state() {
+  CH_CHANNEL="stable" CH_PIN=""
+  [ -f "$CHANNEL_FILE" ] || return 0
+  local c p
+  c="$(sed -n 's/^channel=//p' "$CHANNEL_FILE" | head -n1)"
+  p="$(sed -n 's/^pin=//p' "$CHANNEL_FILE" | head -n1)"
+  [ -n "$c" ] && CH_CHANNEL="$c"
+  CH_PIN="$p"
+}
+
+# write_channel_state <channel> <pin> <version> : record what upgrade resolved so
+# a later bare `upgrade` re-follows the same channel (and a pin stays frozen).
+write_channel_state() {
+  cat > "$CHANNEL_FILE" <<EOF
+# DevBlueprint kit channel - written by \`devblueprint upgrade\`.
+channel=$1
+pin=$2
+version=$3
+EOF
+}
+
+# normalize_tag <ver> : a bare semver like 0.1.0 becomes the release tag v0.1.0;
+# an already-prefixed v0.1.0 (or any other ref) is passed through unchanged.
+normalize_tag() {
+  case "$1" in
+    [0-9]*) printf 'v%s' "$1" ;;
+    *)      printf '%s' "$1" ;;
+  esac
+}
+
+# cmd_upgrade : self-update the installed kit in place. Resolves a target ref from
+# an explicit pin (--version), an explicit/recorded channel (stable=latest release
+# tag, next=master), fetches it into a staging dir, and swaps it over $ROOT. The
+# chosen channel/pin is recorded in $CHANNEL_FILE so `update` targets stay
+# reproducible. Refuses installs it must not touch (git clone, npm, Homebrew).
+cmd_upgrade() {
+  local channel="" version="" check=0 force=0
+  while [ "$#" -gt 0 ]; do
+    case "$1" in
+      --channel) channel="$2"; shift 2 ;;
+      --version) version="$2"; shift 2 ;;
+      --check | --dry-run) check=1; shift ;;
+      --force) force=1; shift ;;
+      *) die "unknown option: $1" ;;
+    esac
+  done
+
+  # Guards: only the curl|sh / git-clone-then-run install is ours to replace.
+  # Package-manager installs upgrade through their own tooling; a dev clone is
+  # managed by git. Refuse the rest so we never clobber someone's checkout.
+  [ -d "$ROOT/.git" ] && die "'$ROOT' is a git clone - upgrade it with git (pull), not upgrade"
+  case "$ROOT" in
+    */node_modules/*) die "installed via npm - upgrade with 'npm i -g devblueprint' or 'npx devblueprint@latest'" ;;
+    */Cellar/*)       die "installed via Homebrew - upgrade with 'brew upgrade devblueprint'" ;;
+  esac
+
+  # Resolve the desired channel/pin. Precedence: --version pins (freezes);
+  # --channel follows a channel and clears any pin; otherwise the recorded state;
+  # otherwise the `stable` default.
+  channel_state
+  local chan pin
+  if [ -n "$version" ]; then
+    chan="$CH_CHANNEL"; pin="$version"
+  elif [ -n "$channel" ]; then
+    chan="$channel"; pin=""
+  else
+    chan="$CH_CHANNEL"; pin="$CH_PIN"
+  fi
+  case "$chan" in stable | next) : ;; *) die "invalid channel '$chan' (expected stable or next)" ;; esac
+
+  # Map channel/pin to a concrete git ref + archive kind.
+  local kind ref
+  if [ -n "$pin" ]; then
+    kind="tag"; ref="$(normalize_tag "$pin")"
+  elif [ "$chan" = "next" ]; then
+    kind="head"; ref="master"
+  else
+    ref="$(latest_release_tag)"
+    [ -n "$ref" ] || die "no stable release found for $REPO - try: devblueprint upgrade --channel next"
+    kind="tag"
+  fi
+
+  local current target
+  current="$(kit_version)"
+  target="$(remote_version "$ref")"
+  [ -n "$target" ] || die "could not read the version for ref '$ref'"
+
+  echo "Channel: $chan${pin:+ (pinned $pin)}   ref: $ref"
+  echo "  installed: $current   available: $target"
+
+  if [ "$check" -eq 1 ]; then
+    if [ "$current" = "$target" ] && [ "$force" -eq 0 ]; then
+      echo "Up to date."
+    else
+      echo "Run 'devblueprint upgrade' to apply."
+    fi
+    return 0
+  fi
+
+  # Already current: record the (possibly changed) channel/pin so the choice
+  # persists, but skip the download+swap unless forced.
+  if [ "$current" = "$target" ] && [ "$force" -eq 0 ]; then
+    write_channel_state "$chan" "$pin" "$target"
+    echo "Already up to date ($current)."
+    return 0
+  fi
+
+  # Stage the new kit, validate it, then swap it over $ROOT one top-level entry at
+  # a time. Removing the old bin/devblueprint unlinks the file the running process
+  # is executing, but its open inode stays valid until exit (POSIX), so replacing
+  # ourselves mid-run is safe - the same rm-then-extract shape install.sh uses.
+  local staging
+  staging="$(mktemp -d)"
+  # shellcheck disable=SC2064
+  trap "rm -rf '$staging'" EXIT
+  fetch_kit "$kind" "$ref" "$staging"
+  [ -x "$staging/bin/devblueprint" ] || die "fetched kit is missing bin/devblueprint (ref '$ref')"
+
+  local entry base
+  for entry in "$staging"/* "$staging"/.[!.]*; do
+    [ -e "$entry" ] || continue          # unmatched glob under set -u stays literal
+    base="$(basename "$entry")"
+    case "$base" in
+      .git | .channel) continue ;;       # never import VCS metadata or our own state
+    esac
+    rm -rf "${ROOT:?}/$base"
+    cp -R "$entry" "$ROOT/$base"
+  done
+
+  write_channel_state "$chan" "$pin" "$target"
+  echo "Upgraded $current -> $target."
+}
+
 usage() {
-  sed -n '5,15p' "$0" | sed 's/^# \{0,1\}//'
+  sed -n '5,16p' "$0" | sed 's/^# \{0,1\}//'
 }
 
 main() {
@@ -1022,9 +1230,10 @@ main() {
     update) cmd_update "$@" ;;
     doctor) cmd_doctor "$@" ;;
     detect) cmd_detect "$@" ;;
+    upgrade) cmd_upgrade "$@" ;;
     version | --version | -V) cmd_version "$@" ;;
     help | -h | --help | "") usage ;;
-    *) die "unknown command '$cmd' (try: list, init, plan, update, doctor, detect, version, help)" ;;
+    *) die "unknown command '$cmd' (try: list, init, plan, update, doctor, detect, upgrade, version, help)" ;;
   esac
 }
 

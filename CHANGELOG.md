@@ -26,6 +26,25 @@ All notable changes are documented here, following
   included). The selection is recorded in the `.devblueprint` stamp, and `devblueprint update`
   re-renders the selected files from the current templates so they never drift from
   `CLAUDE.md` - while leaving the user-owned `CLAUDE.md` itself untouched. Refs: P5-3.
+- Kit self-CI: a `scaffold-matrix.yml` workflow scaffolds every variant into a throwaway dir,
+  wires it with the variant's `setup.sh`, and runs its quality gate, failing on any red so
+  variant rot (a broken scaffold, `setup.sh`, `Makefile` or gate) is caught before a release.
+  Variants are discovered dynamically, so a new variant is covered without editing the workflow.
+  The per-variant engine is `scripts/scaffold-check.sh` (verifies each scaffold with
+  `devblueprint doctor`): variants whose `setup.sh` produces a complete, self-checking starter
+  on a toolchain the runner already ships (`generic`, `rust`, `node-express`) run the full gate
+  via `doctor --run-gate`; the rest - those that need you to create the real app/package first,
+  plus `backend-go` (its gate needs separately-pinned linters) - get a scaffold plus an
+  idempotent `setup.sh` check via `doctor --strict`. Refs: P4-3.
+- `devblueprint upgrade`: self-update the installed kit in place, with stable/next channels and
+  pinning, so `update` targets stay reproducible. `--channel stable` follows the latest GitHub
+  release tag; `--channel next` follows `master`; `--version <ver>` pins an exact release and
+  freezes it. `--check` (alias `--dry-run`) reports installed vs available without writing;
+  `--force` re-applies at the same version. The chosen channel and pin are recorded in a
+  kit-local `.channel` file (default channel `stable`). It fetches the target into a staging
+  dir and swaps it over the kit root - safe to replace itself mid-run because the old inode
+  stays open until exit. It refuses installs it must not touch (a git clone, npm, Homebrew),
+  pointing at the right tool for each. Refs: P4-2.
 - Static intake config builder: a single, backend-less HTML page
   (`web/config-builder/index.html`) that turns a short form into a
   `.devblueprint-intake.yml`, for users who set the kit up by hand instead of through an
