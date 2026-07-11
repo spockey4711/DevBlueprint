@@ -19,6 +19,12 @@ All notable changes are documented here, following
 
 ### Added
 
+- New `flutter` variant: a Flutter/Dart app stack (`dart format`, `flutter analyze` with
+  `very_good_analysis` + strict analyzer modes, `flutter test`) with a `lib/`+`lib/src/`+`test/`
+  +`integration_test/` scaffold, `Makefile` gate, CI (subosito/flutter-action), and `extras/`
+  (`.tool-versions` SDK pin + `.github/dependabot.yml` for pub + github-actions). `setup.sh` wires
+  `pubspec.yaml`, `analysis_options.yaml`, `.fvmrc`, a pre-commit config and a placeholder
+  `lib/main.dart` + widget test. Refs: P6-2a.
 - `update` now three-way merges managed files instead of overwriting them, so local edits
   survive a re-sync. It caches the last-synced kit copy of each file under
   `.devblueprint-base/` as the merge base (base vs. the project's file vs. the current kit),
