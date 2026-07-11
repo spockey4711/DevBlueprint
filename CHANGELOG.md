@@ -15,6 +15,23 @@ All notable changes are documented here, following
   Enter confirm still scaffold), and the "folder already has files" reassurance. `test/doctor-env.bats`
   now covers a host missing more than one prerequisite (pluralised count and a fix per tool, in both
   human and `--json` output). Tests only - no `bin/devblueprint` change. Refs: P14-2.
+- German (`de`) translation of `GETTING-STARTED.md` at `i18n/de/GETTING-STARTED.md`, the first
+  locale in the new `i18n/` layer. It mirrors the English beginner path one-to-one, keeping every
+  command, path, filename, code block and tool output verbatim and translating only the prose;
+  cross-file links resolve back to the canonical English files. The file carries the
+  canonical-source header, the English source links to it, and the `i18n/README.md` status table
+  is updated. Refs: P13-2.
+- German (`de`) translations of the FAQ (`i18n/de/docs/faq.md`) and cheat sheet
+  (`i18n/de/docs/cheatsheet.md`), mirroring `docs/faq.md` and `docs/cheatsheet.md` under the
+  `i18n/de/` subtree. Each carries the canonical-source header (English stays authoritative) and
+  keeps every command, path, filename, code block and link target identical to its English source,
+  translating only the prose. The two English sources now link to their German versions, and the
+  `i18n/README.md` status table marks both as done. Refs: P13-4.
+- German translation of the glossary at `i18n/de/docs/glossary.md`, the first locale to land
+  under the `i18n/` layer. It mirrors `docs/glossary.md` one-to-one, carries the canonical-source
+  header that marks English as authoritative, keeps every term headword, command, path and anchor
+  verbatim while translating the prose, and is linked from the top of the English source. The
+  `i18n/README.md` status table now marks the `docs/glossary.md` cell done for `de`. Refs: P13-3.
 - New `i18n/` localization layer with a short policy at `i18n/README.md`: English is the source of
   truth and stays the only language for code, engineering/reference docs, commits and PRs, while
   beginner tutorial copy (`GETTING-STARTED.md`, `docs/glossary.md`, `docs/faq.md`,
