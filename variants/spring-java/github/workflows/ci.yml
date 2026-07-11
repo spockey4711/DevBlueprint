@@ -1,9 +1,10 @@
 name: CI
 
-# The quality gate for every change: Spotless (format check), Checkstyle (static
-# analysis on main + test sources), and the JUnit tests - all through the Gradle
-# wrapper. Must be green before a PR can merge. Gates both integration branches:
-# feature PRs into `develop` and the periodic `develop` -> `master` release PR.
+# The quality gate for every change: the env-schema contract, Spotless (format
+# check), Checkstyle (static analysis on main + test sources), and the JUnit tests
+# - all through the Gradle wrapper. Must be green before a PR can merge. Gates both
+# integration branches: feature PRs into `develop` and the periodic `develop` ->
+# `master` release PR.
 
 on:
   pull_request:
@@ -25,6 +26,11 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      # Fast, toolchain-free contract check: .env.example must stay in lockstep
+      # with .env.schema (and a real .env, if present, must satisfy it).
+      - name: Validate env schema
+        run: sh scripts/check-env.sh
 
       - name: Set up JDK 21
         uses: actions/setup-java@v4
