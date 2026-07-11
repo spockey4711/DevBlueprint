@@ -19,9 +19,15 @@ Or, with the shipped Makefile: `make check`.
 - `CLAUDE.md`, `CONTRIBUTING.md`, `CHANGELOG.md` filled in for this stack.
 - `scripts/wt.sh` + `scripts/wt.conf` (post-create runs `cargo fetch`).
 - `Makefile` wiring the quality gate (`make check`).
-- `.github/workflows/ci.yml` (rustfmt + clippy + cargo test).
+- `.github/workflows/ci.yml` (env-schema check + rustfmt + clippy + cargo test).
 - `.github/dependabot.yml` (cargo + github-actions updates) and `.tool-versions` (toolchain pin).
 - `.gitignore` for Rust / cargo artifacts.
+- `docs/ops/deployment.md` (deploy runbook: managed/Docker/VPS + DB + env checklists) and
+  `.env.example` (committed template; real `.env*` stay ignored).
+- Ops artifacts: `Dockerfile` (`cargo build --release` -> distroless non-root) + `.dockerignore` +
+  `docker-compose.yml`, `deploy/` (Fly/Render/Terraform skeletons), and `.env.schema` +
+  `scripts/check-env.sh` (the env contract `make check` and CI enforce). All skeletons - fill the
+  `<...>` placeholders.
 - `src/`, `tests/` scaffold.
 
 ## After init (wire the toolchain)
