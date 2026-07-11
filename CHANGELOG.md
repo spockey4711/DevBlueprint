@@ -7,6 +7,12 @@ All notable changes are documented here, following
 
 ### Fixed
 
+- The `terraform-iac` variant shipped without the provider-agnostic CI baseline: it landed
+  right after the P7-2 sweep and so had no `gitlab/.gitlab-ci.yml` or
+  `github/workflows/preview-deploy.yml`. The `init scaffolds provider-agnostic CI for every
+  variant` test iterates over all variants, so the gap turned the whole `bats` suite red. Added
+  a Terraform-flavored `.gitlab-ci.yml` (a `quality` stage running `terraform fmt`/`validate`/
+  `tflint`/`test` on the pinned versions) plus the stack-neutral `preview-deploy.yml`. Refs: P7-2.
 - `doctor --run-gate` test for the `backend-go` variant asserted the gate line started with
   `gofumpt`, but the variant's gate is `test -z "$(gofumpt -l .)" && ...`. The assertion now
   matches the real gate string, so CI's stricter `bats` (which aborts a test on any failing
@@ -32,6 +38,11 @@ All notable changes are documented here, following
   Intake files also gain an `agents` key so a baseline can standardize the coding-agent toolset.
   A ready-to-copy `agent/org-baseline.example.yml` ships alongside `agent/intake.example.yml`.
   Refs: P7-4.
+- Ops artifacts for the `generic` variant: a `Dockerfile` + `.dockerignore` + `docker-compose.yml`,
+  `deploy/` skeletons for Fly/Render/Terraform, and a `.env.schema` promoted from `.env.example` and
+  enforced in the gate - `make check` runs `scripts/check-env.sh` (a new `validate-env` step) to keep
+  `.env.example` in lockstep with the schema and validate required keys/patterns in any real `.env`.
+  Refs: P7-3.
 - Provider-agnostic CI: every variant now ships a `.gitlab-ci.yml` alongside its GitHub Actions
   workflows, so a scaffolded project runs the same gates on either forge. The pipeline mirrors
   `ci.yml` (a `quality` stage running the variant's gate), the security baseline (a `security`
