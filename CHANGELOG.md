@@ -54,6 +54,13 @@ All notable changes are documented here, following
   workflow inlines the gate rather than calling `make check`), both running `scripts/check-env.sh`
   to keep `.env.example` in lockstep with the schema and validate required keys/patterns in any real
   `.env`; the `doctor --run-gate` gate runs it too. Refs: P7-3.
+- Ops artifacts for the `backend-python` variant: a multi-stage `Dockerfile` (uv-built venv ->
+  slim `python:3.12-slim` running uvicorn as a non-root user) + `.dockerignore` + `docker-compose.yml`,
+  `deploy/` skeletons for Fly/Render/Terraform, and a `.env.schema` reconciled with `.env.example` and
+  enforced in the gate. The variant has no Makefile, so the contract is wired via the manifest
+  `QUALITY_GATE` (prepended `sh scripts/check-env.sh`) and a `Validate env schema` CI step, both
+  running `scripts/check-env.sh` to keep `.env.example` in lockstep with the schema and validate
+  required keys/patterns in any real `.env`. Refs: P7-3.
 - Ops artifacts for the `generic` variant: a `Dockerfile` + `.dockerignore` + `docker-compose.yml`,
   `deploy/` skeletons for Fly/Render/Terraform, and a `.env.schema` promoted from `.env.example` and
   enforced in the gate - `make check` runs `scripts/check-env.sh` (a new `validate-env` step) to keep

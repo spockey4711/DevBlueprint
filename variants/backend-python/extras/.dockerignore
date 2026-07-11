@@ -1,0 +1,41 @@
+# Keep the Docker build context small and secret-free. A leaner context uploads
+# and builds faster and, crucially, keeps local secrets and VCS history out of the
+# image. The build stage regenerates anything below from pyproject.toml + uv.lock.
+
+# Version control and CI
+.git
+.gitignore
+.github
+
+# Local environment and secrets - never ship these into an image (.env.example
+# is the one tracked template, and even it is not needed inside the image).
+.env
+.env.*
+!.env.example
+
+# Virtualenvs and dependency caches - the build stage runs `uv sync` instead.
+.venv/
+venv/
+.uv/
+
+# Python build output and caches - recompiled inside the build stage.
+__pycache__/
+*.pyc
+*.pyo
+build/
+dist/
+*.egg-info/
+
+# Test, type-check and coverage artifacts
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage.*
+htmlcov/
+
+# Docs and editor / OS cruft
+docs
+.DS_Store
+.idea
+.vscode
