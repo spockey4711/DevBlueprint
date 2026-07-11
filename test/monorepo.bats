@@ -56,8 +56,8 @@ load helper
   [ "$status" -eq 0 ]
 
   run cat "$TARGET/Makefile"
-  [[ "$output" == *"cd packages/api && ruff check ."* ]]
-  # web-nextjs leads its gate with the env-schema check.
+  # Each variant leads its gate with the env-schema check.
+  [[ "$output" == *"cd packages/api && sh scripts/check-env.sh && ruff check ."* ]]
   [[ "$output" == *"cd packages/web && sh scripts/check-env.sh && pnpm lint"* ]]
 }
 
@@ -85,9 +85,10 @@ load helper
 
   run cat "$TARGET/.github/workflows/ci.yml"
   [[ "$output" == *"- package: api"* ]]
-  [[ "$output" == *"gate: 'ruff check ."* ]]
+  # Each gate leads with the env-schema check.
+  [[ "$output" == *"gate: 'sh scripts/check-env.sh && ruff check ."* ]]
   [[ "$output" == *"- package: web"* ]]
-  [[ "$output" == *"gate: 'pnpm lint"* ]]
+  [[ "$output" == *"gate: 'sh scripts/check-env.sh && pnpm lint"* ]]
   [[ "$output" == *'working-directory: packages/${{ matrix.package }}'* ]]
   # Single-branch flow collapses the push branches to just master.
   [[ "$output" == *'branches: [ "master" ]'* ]]
