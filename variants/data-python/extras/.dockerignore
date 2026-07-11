@@ -1,0 +1,44 @@
+# Keep the Docker build context small and secret-free. A leaner context uploads
+# and builds faster and, crucially, keeps local secrets, VCS history and bulky
+# data out of the image. `uv sync` reinstalls dependencies inside the build.
+
+# Version control and CI
+.git
+.gitignore
+.github
+
+# Local environment and secrets - never ship these into an image (.env.example
+# is the one tracked template, and even it is not needed inside the image).
+.env
+.env.*
+!.env.example
+
+# Python caches and virtualenvs - rebuilt inside the image by `uv sync`.
+.venv/
+__pycache__/
+*.py[cod]
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+
+# Data - inputs and outputs live in object storage / DVC, never baked into the
+# image. Only the empty scaffold is tracked; keep the payloads out of the build.
+data/raw/
+data/processed/
+data/external/
+
+# Test and coverage artifacts
+.coverage
+coverage.*
+htmlcov/
+
+# Notebooks and checkpoints - the pipeline runs importable code under src/, not
+# notebooks; keep the exploratory tree out of the job image.
+notebooks/
+.ipynb_checkpoints/
+
+# Docs and editor / OS cruft
+docs
+.DS_Store
+.idea
+.vscode
