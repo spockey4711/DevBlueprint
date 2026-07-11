@@ -228,13 +228,13 @@ unchanged - only their ordering into waves. The eight P6-2 variants are each the
 - [ ] P6-1: (CLI) Monorepo / multi-variant init - one repo, multiple packages, per-package
   quality gates, aggregated CI. The one large structural change; everything is single-variant
   today. **Owns:** `bin/devblueprint` (init multi-variant path), `test/`.
-- [ ] P6-4: Security-gate baseline across variants: gitleaks (secret scan), semgrep (SAST),
+- [x] P6-4: Security-gate baseline across variants: gitleaks (secret scan), semgrep (SAST),
   dependency-review and CodeQL workflows, commitlint + PR-title check, and coverage
   thresholds - added to each variant's CI. Fan out per variant. **Owns:** `variants/*/github/`
   (one variant subtree per task).
-- [ ] P6-2a: New variant `flutter`, self-contained mirroring P2-4. **Owns:** `variants/flutter/`.
+- [x] P6-2a: New variant `flutter`, self-contained mirroring P2-4. **Owns:** `variants/flutter/`.
   (dep: P2-1)
-- [ ] P6-2b: New variant `spring-java`, self-contained mirroring P2-4. **Owns:**
+- [x] P6-2b: New variant `spring-java`, self-contained mirroring P2-4. **Owns:**
   `variants/spring-java/`. (dep: P2-1)
 
 ### Wave 2 - flavors + release automation + variants

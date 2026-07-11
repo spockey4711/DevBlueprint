@@ -1,0 +1,4 @@
+# Toolchain pin for asdf / mise. Keeps local, CI and teammates on one Flutter SDK
+# (Dart ships inside it). Match the version to .fvmrc and pubspec.yaml's
+# `environment:` constraints.
+flutter 3.27.1-stable
