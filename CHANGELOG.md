@@ -7,6 +7,13 @@ All notable changes are documented here, following
 
 ### Added
 
+- The `devblueprint-setup` interview skill gained a **Beginner mode**: when the user signals they
+  are new, it assumes zero prior knowledge, glosses every term the interview raises (variant,
+  deploy target, branch, two-branch vs. trunk, worktree, PR, quality gate, intake file) in one
+  line using the `docs/glossary.md` wording, and actively helps at the path step (glosses the
+  target path, offers a concrete default, shows `pwd`/`ls` when the user is lost, and confirms the
+  resolved absolute path before writing). Same five questions, same `plan`-before-`init`. Refs:
+  P10-2.
 - The static config builder (`web/config-builder/`) now covers everything the CLI accepts, not
   just a subset. It gained the missing intake keys (`flavors`, `agents`, `extends`), refreshed the
   variant dropdown to all 17 stacks, and added a **Target directory** field plus a second output
