@@ -56,6 +56,15 @@ All notable changes are documented here, following
   `scripts/check-env.sh` to keep `.env.example` in lockstep with the schema and validate required
   keys/patterns in any real `.env`; the manifest `QUALITY_GATE` prepends it so `doctor --run-gate`
   runs it too. Refs: P7-3.
+- Ops artifacts for the `elixir-phoenix` variant: a multi-stage `Dockerfile` (a `hexpm/elixir` build
+  stage running `MIX_ENV=prod mix release` -> a non-root `debian:bookworm-slim` runtime) +
+  `.dockerignore` + `docker-compose.yml`, `deploy/` skeletons for Fly/Render/Terraform (Fly.io is the
+  common Phoenix target), and a `.env.schema` + new `.env.example` (`SECRET_KEY_BASE`, `DATABASE_URL`,
+  `PHX_HOST`, `PORT`, `MIX_ENV`) enforced in the gate. `make check` gains a `validate-env` step (first)
+  and CI a `Validate env schema` step, both running `scripts/check-env.sh` to keep `.env.example` in
+  lockstep with the schema and validate required keys/patterns in any real `.env`; the manifest's
+  `QUALITY_GATE` (so `doctor --run-gate`) runs it too. The `docs/ops/deployment.md` runbook runs Ecto
+  migrations as a release command (`bin/app eval "App.Release.migrate"`), never on boot. Refs: P7-3.
 - Ops artifacts for the `backend-go` variant: a multi-stage `Dockerfile` (static `CGO_ENABLED=0`
   binary -> `distroless/static:nonroot`) + `.dockerignore` + `docker-compose.yml`, `deploy/`
   skeletons for Fly/Render/Terraform, and a `.env.schema` promoted from `.env.example` and enforced
