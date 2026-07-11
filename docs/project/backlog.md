@@ -198,7 +198,7 @@ The biggest adoption lever - today you must clone the repo to run `bin/devbluepr
 
 CLI tasks P5-1, P5-3, P5-5 each take their own wave.
 
-- [ ] P5-1: (CLI) `devblueprint diff --target` - report where a project has drifted from the
+- [x] P5-1: (CLI) `devblueprint diff --target` - report where a project has drifted from the
   current kit, using the `.devblueprint` version stamp as the base. The read-only precursor to
   a smarter `update`. **Owns:** `bin/devblueprint` (new `cmd_diff`), `test/`.
 - [x] P5-2: Multi-agent instruction templates. Author `AGENTS.md`, `.cursor/rules/`, and
