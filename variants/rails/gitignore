@@ -1,0 +1,50 @@
+# Rails runtime
+/.bundle
+/log/*
+/tmp/*
+!/log/.keep
+!/tmp/.keep
+/tmp/pids/*
+!/tmp/pids/
+!/tmp/pids/.keep
+/storage/*
+!/storage/.keep
+/tmp/storage/*
+!/tmp/storage/
+!/tmp/storage/.keep
+
+# Assets
+/public/assets
+/public/packs
+/public/packs-test
+/node_modules
+/app/assets/builds/*
+!/app/assets/builds/.keep
+
+# Databases (SQLite dev/test)
+/db/*.sqlite3
+/db/*.sqlite3-*
+
+# Test / coverage
+/coverage/
+/tmp/screenshots/
+
+# Bootsnap / Spring caches
+/tmp/cache/*
+!/tmp/cache/.keep
+/config/master.key
+
+# Credentials keys (keep the encrypted files, never the keys)
+/config/credentials/*.key
+
+# IDE / editor cruft
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.swp
+.DS_Store
+
+# Env (keep the example)
+.env
+.env.*
+!.env.example

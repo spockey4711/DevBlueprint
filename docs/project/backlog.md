@@ -250,7 +250,7 @@ unchanged - only their ordering into waves. The eight P6-2 variants are each the
   **Owns:** `variants/*/github/` + release config (one variant subtree per task).
 - [x] P6-2c: New variant `dotnet`, self-contained mirroring P2-4. **Owns:** `variants/dotnet/`.
   (dep: P2-1)
-- [ ] P6-2d: New variant `rails`, self-contained mirroring P2-4. **Owns:** `variants/rails/`.
+- [x] P6-2d: New variant `rails`, self-contained mirroring P2-4. **Owns:** `variants/rails/`.
   (dep: P2-1)
 
 ### Wave 3 - doctor --fix + GitLab CI + variants
