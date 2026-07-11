@@ -244,7 +244,7 @@ unchanged - only their ordering into waves. The eight P6-2 variants are each the
 - [ ] P6-3: (CLI) Variant add-on/flavor mechanism - orthogonal overlays (db, auth, container)
   layered onto a base variant at init, e.g. `--flavor postgres,docker`. **Owns:**
   `bin/devblueprint` (flavor resolution), `test/`, `variants/_flavors/`.
-- [ ] P7-1: Release automation per variant - Conventional-Commits-driven versioning, CHANGELOG
+- [x] P7-1: Release automation per variant - Conventional-Commits-driven versioning, CHANGELOG
   generation and GitHub releases (release-please or semantic-release), wired into each
   variant's CI. Closes the loop on the existing changelog discipline. Fan out per variant.
   **Owns:** `variants/*/github/` + release config (one variant subtree per task).

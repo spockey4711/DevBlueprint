@@ -36,6 +36,15 @@ All notable changes are documented here, following
   per-language `coverage.yml` that reports line coverage and enforces a soft floor from the
   `COVERAGE_MIN` repository variable (default `0` = report-only, so a fresh scaffold stays green).
   All files ship through the existing `github/` tree copy, so no CLI change was needed. Refs: P6-4.
+- Release automation added to every variant's CI (`variants/*/github/`): a shared `release.yml`
+  runs [release-please](https://github.com/googleapis/release-please) on each push to `master`,
+  maintaining a standing release PR that turns the Conventional-Commits history into a SemVer
+  bump, generated `CHANGELOG.md` entries, a git tag and a GitHub Release. A per-variant
+  `release-please-config.json` pins the release strategy to the stack's native updater (`go`,
+  `python`, `node`, `rust`, `dart`) or `simple` where release-please has none (Gradle, .NET,
+  Swift, generic), with `release-please-manifest.json` as the pre-launch `0.0.0` version source
+  of truth. Files ship through the existing `github/` tree copy, so no CLI change was needed;
+  each variant's quality doc gains a "Release automation" section. Refs: P7-1.
 - New `rails` variant: a Ruby on Rails 8 web app built with Bundler, RuboCop
   (`rubocop-rails-omakase`), Brakeman for security scanning, and Minitest. Self-contained under
   `variants/rails/` (manifest, `setup.sh`, Makefile, CI + dependabot, `.tool-versions`, gitignore,
