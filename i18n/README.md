@@ -74,7 +74,7 @@ For German:
 
 | Source file | `de` |
 | --- | --- |
-| `GETTING-STARTED.md` | - |
+| `GETTING-STARTED.md` | [done](de/GETTING-STARTED.md) |
 | `docs/glossary.md` | - |
 | `docs/faq.md` | - |
 | `docs/cheatsheet.md` | - |

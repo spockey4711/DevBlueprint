@@ -116,7 +116,7 @@ Each task is a brand-new standalone file, so all four are independent with zero 
 - [x] P13-1: Establish an `i18n/` layer and a short policy - repo/code/docs stay English
   (CLAUDE.md rule), but beginner tutorial copy may be localised in a dedicated layer.
   (enabler - do first)
-- [ ] P13-2: German translation of `GETTING-STARTED.md` as the first locale, since raw
+- [x] P13-2: German translation of `GETTING-STARTED.md` as the first locale, since raw
   beginners benefit most from their native language. (builds on P13-1, P8)
 - [ ] P13-3: German translation of the glossary (`docs/glossary.md`). Distinct source file
   from P13-2. (builds on P13-1, P9-1)
