@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>DevBlueprint intake builder</title>
   <meta name="description"
-    content="Build a .devblueprint-intake.yml from a form - no backend, nothing hosted." />
+    content="Build a .devblueprint-intake.yml and the matching devblueprint command from a form - no backend, nothing hosted." />
   <style>
     :root {
       --bg: #0f1115;
@@ -101,6 +101,7 @@
       box-shadow: 0 0 0 2px rgba(75, 139, 255, 0.25);
     }
     input.invalid { border-color: var(--danger); }
+    input.mono { font-family: var(--mono); }
     .check {
       display: flex;
       align-items: flex-start;
@@ -108,6 +109,11 @@
     }
     .check input { margin-top: 0.2rem; width: 1.05rem; height: 1.05rem; accent-color: var(--accent-strong); }
     .check .lbl { margin-bottom: 0; }
+    .checks {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.35rem 1.25rem;
+    }
     fieldset {
       border: none;
       margin: 0;
@@ -120,6 +126,37 @@
       margin: 0.3rem 0 0;
       min-height: 0;
     }
+    /* Segmented single/monorepo mode toggle. */
+    .seg {
+      display: inline-flex;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .seg button {
+      border: none;
+      border-radius: 0;
+      background: var(--panel-2);
+      padding: 0.45rem 0.9rem;
+      font-weight: 600;
+    }
+    .seg button[aria-pressed="true"] {
+      background: var(--accent-strong);
+      color: #fff;
+    }
+    /* One name:variant row in monorepo mode. */
+    .pkg-row {
+      display: grid;
+      grid-template-columns: 1fr 1.3fr auto;
+      gap: 0.5rem;
+      margin-bottom: 0.5rem;
+      align-items: center;
+    }
+    .pkg-row button.del {
+      padding: 0.5rem 0.7rem;
+      line-height: 1;
+    }
+    .hidden { display: none !important; }
     .preview-head {
       display: flex;
       align-items: center;
@@ -140,12 +177,18 @@
       border: 1px solid var(--border);
       border-radius: 8px;
       overflow: auto;
-      max-height: 60vh;
+      max-height: 46vh;
       font-family: var(--mono);
       font-size: 0.82rem;
       color: var(--code);
       white-space: pre;
       tab-size: 2;
+    }
+    pre.cmd {
+      color: var(--text);
+      max-height: none;
+      white-space: pre-wrap;
+      word-break: break-word;
     }
     .actions {
       display: flex;
@@ -172,6 +215,11 @@
     button:hover { filter: brightness(1.1); }
     button:disabled { opacity: 0.45; cursor: not-allowed; filter: none; }
     .copied { color: var(--code); font-size: 0.8rem; align-self: center; }
+    .section-sep {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 1.25rem 0;
+    }
     footer.page {
       max-width: 1040px;
       margin: 0 auto;
@@ -186,9 +234,10 @@
   <header class="page">
     <h1>DevBlueprint intake builder</h1>
     <p>
-      Fill in the form to generate a <code>.devblueprint-intake.yml</code>. Save it next
-      to your project and feed it to the CLI - no account, no server, nothing is sent
-      anywhere. This page runs entirely in your browser.
+      Fill in the form to generate a <code>.devblueprint-intake.yml</code> and the exact
+      <code>devblueprint</code> command that applies it - including the target path and, for a
+      monorepo, one variant per package. No account, no server, nothing is sent anywhere: this
+      page runs entirely in your browser.
     </p>
   </header>
 
@@ -197,20 +246,61 @@
       <h2>Project answers</h2>
 
       <div class="field">
+        <label class="lbl">Layout</label>
+        <div class="seg" role="group" aria-label="Project layout">
+          <button type="button" id="mode-single" aria-pressed="true">Single project</button>
+          <button type="button" id="mode-monorepo" aria-pressed="false">Monorepo</button>
+        </div>
+        <p class="hint">A single-stack project picks one variant; a monorepo scaffolds one repo
+          with many packages, each its own variant. Drives <code>--variant</code> vs repeated
+          <code>--package</code>.</p>
+      </div>
+
+      <div class="field">
+        <label class="lbl" for="target">Target directory<span class="req">*</span></label>
+        <input type="text" id="target" class="mono" placeholder="~/Projects/myapp" />
+        <p class="hint">Where to scaffold - the <code>--target</code> path. Not a key in the file
+          (it says <em>where</em>, not <em>what</em>); it goes on the command line below.</p>
+        <p class="err" id="target-err"></p>
+      </div>
+
+      <div class="field">
         <label class="lbl" for="name">Project name</label>
         <input type="text" id="name" placeholder="my-project" />
         <p class="hint">Human-facing name; fills <code>{{PROJECT_NAME}}</code>. Optional -
           defaults to the target directory's basename.</p>
       </div>
 
-      <div class="field">
-        <label class="lbl" for="variant">Stack variant<span class="req">*</span></label>
-        <select id="variant" required>
-          <option value="" selected>Choose a variant...</option>
-        </select>
-        <p class="hint">Required. The stack DevBlueprint scaffolds. Matches a
-          <code>devblueprint list</code> slug.</p>
-        <p class="err" id="variant-err"></p>
+      <!-- Single-project mode: one variant, optional flavors. -->
+      <div id="single-only">
+        <div class="field">
+          <label class="lbl" for="variant">Stack variant<span class="req">*</span></label>
+          <select id="variant">
+            <option value="" selected>Choose a variant...</option>
+          </select>
+          <p class="hint">Required. The stack DevBlueprint scaffolds. Matches a
+            <code>devblueprint list</code> slug.</p>
+          <p class="err" id="variant-err"></p>
+        </div>
+
+        <div class="field">
+          <label class="lbl">Flavors</label>
+          <div class="checks" id="flavors"></div>
+          <p class="hint">Optional add-on overlays layered onto the variant
+            (<code>--flavor</code>). Mutually exclusive with a monorepo.</p>
+        </div>
+      </div>
+
+      <!-- Monorepo mode: one name:variant row per package. -->
+      <div id="mono-only" class="hidden">
+        <div class="field">
+          <label class="lbl">Packages<span class="req">*</span></label>
+          <div id="pkg-list"></div>
+          <button type="button" id="pkg-add">+ Add package</button>
+          <p class="hint">Each package is a <code>--package name:variant</code>. The repo shares
+            one set of docs and branches; every package carries its own stack.</p>
+          <p class="err" id="pkg-err"></p>
+        </div>
       </div>
 
       <div class="field">
@@ -226,6 +316,26 @@
         <p class="hint">Where feature work integrates. Default: <code>develop</code>.
           Set it equal to the main branch to select the single-branch (trunk) flow.</p>
         <p class="err" id="base-err"></p>
+      </div>
+
+      <div class="field">
+        <label class="lbl">Coding-agent files</label>
+        <div class="checks">
+          <label class="check"><input type="checkbox" checked disabled /> <span class="lbl">claude</span></label>
+          <label class="check"><input type="checkbox" id="agent-codex" /> <span class="lbl">codex</span></label>
+          <label class="check"><input type="checkbox" id="agent-cursor" /> <span class="lbl">cursor</span></label>
+          <label class="check"><input type="checkbox" id="agent-copilot" /> <span class="lbl">copilot</span></label>
+        </div>
+        <p class="hint">Which instruction files to emit (<code>--agents</code>). <code>claude</code>
+          is always included.</p>
+      </div>
+
+      <div class="field">
+        <label class="lbl" for="extends">Org baseline (extends)</label>
+        <input type="text" id="extends" class="mono" placeholder="org-baseline" />
+        <p class="hint">Inherit a shared baseline's answers (<code>extends</code>). A bare name is
+          resolved from the baseline dirs; a path (with <code>/</code> or a
+          <code>.yml</code> suffix) is resolved relative to the file. Optional.</p>
       </div>
 
       <div class="field">
@@ -262,7 +372,7 @@
 
     <section class="card" aria-live="polite">
       <div class="preview-head">
-        <h2>Preview</h2>
+        <h2>Intake file</h2>
         <span class="filename">.devblueprint-intake.yml</span>
       </div>
       <pre class="out" id="output"></pre>
@@ -271,6 +381,18 @@
         <button type="button" id="copy">Copy</button>
         <span class="copied" id="copied" hidden>Copied</span>
       </div>
+
+      <hr class="section-sep" />
+
+      <div class="preview-head">
+        <h2>Command</h2>
+        <span class="filename">run from anywhere</span>
+      </div>
+      <pre class="out cmd" id="cmd"></pre>
+      <div class="actions">
+        <button type="button" id="copy-cmd">Copy command</button>
+        <span class="copied" id="copied-cmd" hidden>Copied</span>
+      </div>
     </section>
   </main>
 
@@ -278,8 +400,7 @@
     Schema reference:
     <a href="https://github.com/spockey4711/DevBlueprint/blob/master/docs/agent/intake-schema.md"
       target="_blank" rel="noopener">docs/agent/intake-schema.md</a>.
-    Apply it with
-    <code>devblueprint init --target &lt;dir&gt; --from .devblueprint-intake.yml</code>.
+    <code>plan</code> is a dry run (writes nothing); <code>init</code> applies it.
   </footer>
 
   <script>
@@ -287,46 +408,165 @@
 
     // Variant slugs and titles, mirroring `devblueprint list`. This static page has
     // no CLI to query, so the set is inlined; keep it in sync with variants/ when the
-    // kit gains or renames a variant.
+    // kit gains or renames a variant (each variants/<slug>/manifest.env VARIANT_TITLE).
     var VARIANTS = [
       ["android-kotlin", "Android app (Kotlin + Gradle)"],
       ["backend-go", "Backend service (Go)"],
       ["backend-python", "Backend / API (Python + uv)"],
       ["data-python", "Data science (Python + uv)"],
+      ["dotnet", "Backend service (C# / .NET)"],
+      ["elixir-phoenix", "Backend / web app (Elixir / Phoenix)"],
+      ["flutter", "Flutter app (Dart)"],
       ["generic", "Generic (language-agnostic)"],
       ["ios-swift", "iOS app (Swift + Xcode)"],
+      ["laravel", "Backend / web app (PHP / Laravel)"],
       ["node-express", "Backend API (Node + Express + TypeScript)"],
+      ["rails", "Web app (Ruby on Rails)"],
       ["rust", "Rust (cargo)"],
+      ["spring-java", "Backend service (Java + Spring Boot)"],
+      ["sveltekit", "Web app (SvelteKit + pnpm)"],
+      ["terraform-iac", "Infrastructure as Code (Terraform)"],
       ["web-nextjs", "Web app (Next.js + pnpm)"]
     ];
 
+    // Add-on flavor slugs, mirroring variants/_flavors/. Keep in sync with that dir.
+    var FLAVORS = ["postgres", "docker", "auth"];
+
     var $ = function (id) { return document.getElementById(id); };
     var els = {
+      target: $("target"),
       name: $("name"),
       variant: $("variant"),
       main: $("main"),
       base: $("base"),
+      extends: $("extends"),
       community: $("community"),
       contactWrap: $("contact-wrap"),
       contact: $("contact"),
       deploy: $("deploy"),
+      agentCodex: $("agent-codex"),
+      agentCursor: $("agent-cursor"),
+      agentCopilot: $("agent-copilot"),
+      modeSingle: $("mode-single"),
+      modeMonorepo: $("mode-monorepo"),
+      singleOnly: $("single-only"),
+      monoOnly: $("mono-only"),
+      pkgList: $("pkg-list"),
+      pkgAdd: $("pkg-add"),
       output: $("output"),
+      cmd: $("cmd"),
       download: $("download"),
       copy: $("copy"),
-      copied: $("copied")
+      copied: $("copied"),
+      copyCmd: $("copy-cmd"),
+      copiedCmd: $("copied-cmd")
     };
 
-    // Populate the variant dropdown from the inlined list.
-    VARIANTS.forEach(function (v) {
-      var opt = document.createElement("option");
-      opt.value = v[0];
-      opt.textContent = v[0] + "  -  " + v[1];
-      els.variant.appendChild(opt);
-    });
+    // "single" | "monorepo". Drives which fields feed the file and command.
+    var mode = "single";
 
-    // A branch name is invalid if empty-after-trim (when typed) or contains
-    // whitespace. Empty is allowed (falls back to the default); we only flag a
-    // value that git could not use.
+    // Build an <option>-filled variant <select>. Reused for the single-mode dropdown
+    // and every package row.
+    function variantSelect(withPrompt) {
+      var sel = document.createElement("select");
+      if (withPrompt) {
+        var p = document.createElement("option");
+        p.value = "";
+        p.textContent = "Choose a variant...";
+        sel.appendChild(p);
+      }
+      VARIANTS.forEach(function (v) {
+        var opt = document.createElement("option");
+        opt.value = v[0];
+        opt.textContent = v[0] + "  -  " + v[1];
+        sel.appendChild(opt);
+      });
+      return sel;
+    }
+
+    // Populate the single-mode variant dropdown and the flavor checkboxes. The
+    // dropdown already carries its prompt option in the markup, so clone only the
+    // variant options (variantSelect(false)).
+    (function initFields() {
+      variantSelect(false).childNodes.forEach(function (opt) {
+        els.variant.appendChild(opt.cloneNode(true));
+      });
+      FLAVORS.forEach(function (f) {
+        var lbl = document.createElement("label");
+        lbl.className = "check";
+        var cb = document.createElement("input");
+        cb.type = "checkbox";
+        cb.value = f;
+        cb.dataset.flavor = "1";
+        var span = document.createElement("span");
+        span.className = "lbl";
+        span.textContent = f;
+        lbl.appendChild(cb);
+        lbl.appendChild(span);
+        $("flavors").appendChild(lbl);
+      });
+    })();
+
+    // Add one package row (name input + variant select + remove button).
+    function addPackageRow() {
+      var row = document.createElement("div");
+      row.className = "pkg-row";
+
+      var nameInput = document.createElement("input");
+      nameInput.type = "text";
+      nameInput.className = "mono pkg-name";
+      nameInput.placeholder = "web";
+
+      var sel = variantSelect(true);
+      sel.className = "pkg-variant";
+
+      var del = document.createElement("button");
+      del.type = "button";
+      del.className = "del";
+      del.textContent = "x";
+      del.setAttribute("aria-label", "Remove package");
+      del.addEventListener("click", function () {
+        row.remove();
+        render();
+      });
+
+      row.appendChild(nameInput);
+      row.appendChild(sel);
+      row.appendChild(del);
+      els.pkgList.appendChild(row);
+    }
+
+    // Read the package rows into an array of {name, variant} (raw, untrimmed-safe).
+    function readPackages() {
+      var out = [];
+      els.pkgList.querySelectorAll(".pkg-row").forEach(function (row) {
+        out.push({
+          name: row.querySelector(".pkg-name").value.trim(),
+          variant: row.querySelector(".pkg-variant").value
+        });
+      });
+      return out;
+    }
+
+    function selectedFlavors() {
+      var out = [];
+      $("flavors").querySelectorAll("input[data-flavor]").forEach(function (cb) {
+        if (cb.checked) out.push(cb.value);
+      });
+      return out;
+    }
+
+    // Extra agents beyond the always-on claude, in the CLI's canonical order.
+    function selectedAgents() {
+      var out = [];
+      if (els.agentCodex.checked) out.push("codex");
+      if (els.agentCursor.checked) out.push("cursor");
+      if (els.agentCopilot.checked) out.push("copilot");
+      return out;
+    }
+
+    // A branch name is invalid if it contains whitespace. Empty is allowed (falls
+    // back to the default); we only flag a value git could not use.
     function branchError(value) {
       if (value === "") return "";
       if (/\s/.test(value)) return "Branch names cannot contain spaces.";
@@ -337,10 +577,17 @@
     function emit(key, value) {
       var trimmed = value.trim();
       if (trimmed !== value) {
-        // Preserve exactly what the user typed, double-quoted.
         return key + ': "' + value.replace(/"/g, '\\"') + '"';
       }
       return key + ": " + value;
+    }
+
+    // Shell-quote a token only when it contains characters a shell would treat
+    // specially. Keeps the common case (plain paths, slugs) unquoted and readable.
+    function shellQuote(value) {
+      if (value === "") return "''";
+      if (/^[A-Za-z0-9_@%+=:,.\/~-]+$/.test(value)) return value;
+      return "'" + value.replace(/'/g, "'\\''") + "'";
     }
 
     function build() {
@@ -352,18 +599,29 @@
       lines.push("");
 
       var name = els.name.value.trim();
-      var variant = els.variant.value;
       var main = els.main.value.trim();
       var base = els.base.value.trim();
+      var extendsVal = els.extends.value.trim();
       var community = els.community.checked;
       var contact = els.contact.value.trim();
       var deploy = els.deploy.value.trim();
+      var agents = selectedAgents();
 
+      if (extendsVal) lines.push(emit("extends", extendsVal));
       if (name) lines.push(emit("name", name));
-      // variant is required; always emit it (empty flags an incomplete file).
-      lines.push(emit("variant", variant));
+      // A monorepo picks a variant per package on the command line, so variant and
+      // flavors are omitted from the file (the CLI rejects them alongside --package).
+      if (mode === "single") {
+        // variant is required in single mode; always emit it (empty flags an
+        // incomplete file).
+        lines.push(emit("variant", els.variant.value));
+        var flavors = selectedFlavors();
+        if (flavors.length) lines.push(emit("flavors", flavors.join(", ")));
+      }
       if (main) lines.push(emit("main", main));
       if (base) lines.push(emit("base", base));
+      // claude is the default; only spell out agents when extras are picked.
+      if (agents.length) lines.push(emit("agents", ["claude"].concat(agents).join(", ")));
       lines.push(emit("community", community ? "true" : "false"));
       if (community && contact) lines.push(emit("contact", contact));
       if (deploy) lines.push(emit("deploy", deploy));
@@ -371,12 +629,31 @@
       return lines.join("\n") + "\n";
     }
 
+    // The ready-to-run plan + init commands. --target and any --package flags live
+    // here (never in the file); everything else is carried by --from.
+    function buildCommand() {
+      var target = els.target.value.trim();
+      var targetTok = target ? shellQuote(target) : "<target-dir>";
+      var pkgFlags = "";
+      if (mode === "monorepo") {
+        readPackages().forEach(function (p) {
+          if (p.name && p.variant) {
+            pkgFlags += " --package " + shellQuote(p.name + ":" + p.variant);
+          }
+        });
+      }
+      var tail = pkgFlags + " --from .devblueprint-intake.yml";
+      return "# Dry run - writes nothing, shows exactly what init would do:\n" +
+        "devblueprint plan --target " + targetTok + tail + "\n\n" +
+        "# Apply it once the plan looks right:\n" +
+        "devblueprint init --target " + targetTok + tail + "\n";
+    }
+
     function setFieldError(inputEl, errEl, message) {
       errEl.textContent = message;
-      if (message) {
-        inputEl.classList.add("invalid");
-      } else {
-        inputEl.classList.remove("invalid");
+      if (inputEl) {
+        if (message) inputEl.classList.add("invalid");
+        else inputEl.classList.remove("invalid");
       }
       return message === "";
     }
@@ -385,19 +662,51 @@
       // Contact is only editable when community files are enabled.
       els.contactWrap.disabled = !els.community.checked;
 
+      // The target path is command-only (never a key in the file), so an empty one
+      // does not block the file download - it only leaves a <target-dir> placeholder
+      // in the command. Surface that as a neutral note, not a blocking error.
+      $("target-err").textContent = els.target.value.trim()
+        ? "" : "Add the path to complete the command below (it is not part of the file).";
+      els.target.classList.remove("invalid");
+
       var ok = true;
-      ok = setFieldError(
-        els.variant, $("variant-err"),
-        els.variant.value ? "" : "Pick a variant - init has no default."
-      ) && ok;
       ok = setFieldError(els.main, $("main-err"), branchError(els.main.value.trim())) && ok;
       ok = setFieldError(els.base, $("base-err"), branchError(els.base.value.trim())) && ok;
 
-      els.output.textContent = build();
+      if (mode === "single") {
+        ok = setFieldError(els.variant, $("variant-err"),
+          els.variant.value ? "" : "Pick a variant - init has no default.") && ok;
+      } else {
+        var pkgs = readPackages();
+        var complete = pkgs.filter(function (p) { return p.name && p.variant; });
+        var msg = "";
+        if (complete.length === 0) {
+          msg = "Add at least one package with a name and a variant.";
+        } else if (pkgs.some(function (p) { return /\s/.test(p.name); })) {
+          msg = "Package names cannot contain spaces.";
+        }
+        ok = setFieldError(null, $("pkg-err"), msg) && ok;
+      }
 
-      // Download is blocked while the file is incomplete/invalid; copy stays live
-      // so a partial draft can still be grabbed.
+      els.output.textContent = build();
+      els.cmd.textContent = buildCommand();
+
+      // Download is blocked while the file is incomplete/invalid; copy stays live so
+      // a partial draft can still be grabbed.
       els.download.disabled = !ok;
+    }
+
+    function setMode(next) {
+      mode = next;
+      var single = next === "single";
+      els.modeSingle.setAttribute("aria-pressed", String(single));
+      els.modeMonorepo.setAttribute("aria-pressed", String(!single));
+      els.singleOnly.classList.toggle("hidden", !single);
+      els.monoOnly.classList.toggle("hidden", single);
+      if (!single && els.pkgList.querySelectorAll(".pkg-row").length === 0) {
+        addPackageRow();
+      }
+      render();
     }
 
     function download() {
@@ -412,32 +721,41 @@
       URL.revokeObjectURL(url);
     }
 
-    function flashCopied() {
-      els.copied.hidden = false;
-      window.setTimeout(function () { els.copied.hidden = true; }, 1500);
+    function flashCopied(el) {
+      el.hidden = false;
+      window.setTimeout(function () { el.hidden = true; }, 1500);
     }
 
-    function copy() {
-      var text = build();
+    // Copy `text` to the clipboard, flashing `flag` on success. Falls back to a
+    // hidden textarea + execCommand where the async clipboard API is unavailable.
+    function copyText(text, flag) {
       if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(text).then(flashCopied, fallbackCopy);
+        navigator.clipboard.writeText(text).then(
+          function () { flashCopied(flag); },
+          function () { fallbackCopy(text, flag); }
+        );
       } else {
-        fallbackCopy();
-      }
-      function fallbackCopy() {
-        var ta = document.createElement("textarea");
-        ta.value = text;
-        ta.style.position = "fixed";
-        ta.style.opacity = "0";
-        document.body.appendChild(ta);
-        ta.select();
-        try { document.execCommand("copy"); flashCopied(); } catch (e) { /* ignore */ }
-        document.body.removeChild(ta);
+        fallbackCopy(text, flag);
       }
     }
 
+    function fallbackCopy(text, flag) {
+      var ta = document.createElement("textarea");
+      ta.value = text;
+      ta.style.position = "fixed";
+      ta.style.opacity = "0";
+      document.body.appendChild(ta);
+      ta.select();
+      try { document.execCommand("copy"); flashCopied(flag); } catch (e) { /* ignore */ }
+      document.body.removeChild(ta);
+    }
+
+    els.modeSingle.addEventListener("click", function () { setMode("single"); });
+    els.modeMonorepo.addEventListener("click", function () { setMode("monorepo"); });
+    els.pkgAdd.addEventListener("click", function () { addPackageRow(); render(); });
     els.download.addEventListener("click", download);
-    els.copy.addEventListener("click", copy);
+    els.copy.addEventListener("click", function () { copyText(build(), els.copied); });
+    els.copyCmd.addEventListener("click", function () { copyText(buildCommand(), els.copiedCmd); });
     document.getElementById("builder").addEventListener("input", render);
     document.getElementById("builder").addEventListener("change", render);
 
