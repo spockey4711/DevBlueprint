@@ -7,11 +7,12 @@ name: Scaffold matrix
 # out across variants and provisions each one's toolchain.
 #
 # Each matrix job runs on a fresh, isolated GitHub-hosted runner (the throwaway
-# environment), which already ships Go, Node, Rust and make; the bootstrap step
-# adds only the extra tools a variant's gate needs (gofumpt + golangci-lint for
-# Go). Variants that require you to create the real app first (Next.js, SwiftPM,
-# Gradle, Python sources) are checked scaffold-only by scaffold-check.sh, so they
-# need no language runtime here.
+# environment), which already ships Node, Rust and make - the toolchains the
+# gated variants (generic, rust, node-express) need, with rustup pinning itself
+# from the scaffolded rust-toolchain.toml. Variants that require you to create
+# the real app first (Next.js, SwiftPM, Gradle, Python sources) - and backend-go,
+# whose gate needs separately-pinned linters - are checked scaffold-only by
+# scaffold-check.sh, so no extra toolchain is provisioned here.
 
 on:
   pull_request:
@@ -51,20 +52,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Bootstrap variant toolchain
-        run: |
-          case "${{ matrix.variant }}" in
-            backend-go)
-              go install mvdan.cc/gofumpt@latest
-              curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh \
-                | sh -s -- -b "$(go env GOPATH)/bin"
-              echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
-              ;;
-            *)
-              echo "no extra toolchain needed for ${{ matrix.variant }}"
-              ;;
-          esac
 
       - name: Scaffold, wire and check
         run: scripts/scaffold-check.sh "${{ matrix.variant }}"

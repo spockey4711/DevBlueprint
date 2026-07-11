@@ -16,7 +16,9 @@
 #   - Variants whose setup.sh scaffolds a complete, self-checking starter (see
 #     gated_variant below) get the full treatment: `./setup.sh` installs the
 #     toolchain, then `devblueprint doctor --strict --run-gate` runs the real
-#     quality gate and fails on any red.
+#     quality gate and fails on any red. These use a toolchain the CI runner
+#     already ships or that pins itself (make, rustup via rust-toolchain.toml,
+#     npm), so the workflow needs no extra bootstrapping.
 #   - The rest deliberately require you to create the real app/package first (a
 #     Next.js app, a SwiftPM/Xcode project, a Gradle project, Python sources), so
 #     their gate cannot pass on an empty scaffold. For them we verify the
@@ -47,12 +49,18 @@ all_variants() {
 }
 
 # gated_variant <variant> : true for variants whose setup.sh scaffolds a
-# complete, self-checking starter, so the full quality gate runs green in CI.
-# Keep this in sync when a new variant ships a buildable starter; anything not
-# listed falls back to the scaffold-only check (the safe default).
+# complete, self-checking starter that runs green with a toolchain the CI runner
+# already ships (or that pins itself), so the full quality gate can run.
+# Keep this in sync when a new variant qualifies; anything not listed falls back
+# to the scaffold-only check (the safe default).
+#
+# backend-go is deliberately scaffold-only: its gate needs gofumpt + golangci-lint
+# installed separately, and its shipped .golangci.yml tracks a specific
+# golangci-lint major - a version coupling that belongs with the variant, not
+# this harness. Wire its gate in once the variant pins those tools.
 gated_variant() {
   case "$1" in
-    generic|rust|backend-go|node-express) return 0 ;;
+    generic|rust|node-express) return 0 ;;
     *) return 1 ;;
   esac
 }
@@ -64,7 +72,6 @@ gate_tool() {
   case "$1" in
     generic)      echo make ;;
     rust)         echo cargo ;;
-    backend-go)   echo go ;;
     node-express) echo npm ;;
     *)            echo "" ;;
   esac
@@ -150,8 +157,11 @@ check_variant() {
   local v="$1"
   [ -f "$VARIANTS_DIR/$v/manifest.env" ] || die "unknown variant '$v' (see: scaffold-check.sh --list)"
 
+  # The dir basename becomes the scaffolded project's package name (setup.sh
+  # derives it from $PWD), so keep it a valid identifier - a '.' separator would
+  # produce an invalid Cargo/npm package name. Hyphens are safe everywhere.
   local work rc=0
-  work="$(mktemp -d "${TMPDIR:-/tmp}/scaffold-${v}.XXXXXX")"
+  work="$(mktemp -d "${TMPDIR:-/tmp}/scaffold-${v}-XXXXXX")"
   run_variant "$v" "$work" || rc=$?
 
   if [ "${SCAFFOLD_CHECK_KEEP:-0}" = "1" ]; then

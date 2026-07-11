@@ -25,8 +25,9 @@ All notable changes are documented here, following
   Variants are discovered dynamically, so a new variant is covered without editing the workflow.
   The per-variant engine is `scripts/scaffold-check.sh` (verifies each scaffold with
   `devblueprint doctor`): variants whose `setup.sh` produces a complete, self-checking starter
-  (`generic`, `rust`, `backend-go`, `node-express`) run the full gate via `doctor --run-gate`;
-  the rest, which need you to create the real app/package first, get a scaffold plus an
+  on a toolchain the runner already ships (`generic`, `rust`, `node-express`) run the full gate
+  via `doctor --run-gate`; the rest - those that need you to create the real app/package first,
+  plus `backend-go` (its gate needs separately-pinned linters) - get a scaffold plus an
   idempotent `setup.sh` check via `doctor --strict`. Refs: P4-3.
 - Installability: DevBlueprint now runs without a clone via three channels. A root `package.json`
   exposes `npx devblueprint` through a Node launcher (`packaging/npm/launch.cjs`); a Homebrew
