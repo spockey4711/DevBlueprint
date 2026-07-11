@@ -36,6 +36,10 @@ All notable changes are documented here, following
   per-language `coverage.yml` that reports line coverage and enforces a soft floor from the
   `COVERAGE_MIN` repository variable (default `0` = report-only, so a fresh scaffold stays green).
   All files ship through the existing `github/` tree copy, so no CLI change was needed. Refs: P6-4.
+- New `rails` variant: a Ruby on Rails 8 web app built with Bundler, RuboCop
+  (`rubocop-rails-omakase`), Brakeman for security scanning, and Minitest. Self-contained under
+  `variants/rails/` (manifest, `setup.sh`, Makefile, CI + dependabot, `.tool-versions`, gitignore,
+  wt.conf, and the conventions/quality docs), auto-discovered by the CLI. Refs: P6-2d.
 - New `dotnet` variant: a C# / .NET 10 backend built with the `dotnet` CLI (SDK pinned in
   `global.json`), `dotnet format`, Roslyn analyzers with warnings-as-errors, and xUnit.
   Self-contained under `variants/dotnet/` (manifest, `setup.sh`, Makefile, CI + dependabot,
