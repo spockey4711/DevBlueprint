@@ -1,0 +1,9 @@
+{
+  "recommendations": [
+    "bmewburn.vscode-intelephense-client",
+    "laravel.vscode-laravel",
+    "open-southeners.laravel-pint",
+    "EditorConfig.EditorConfig",
+    "github.vscode-github-actions"
+  ]
+}
