@@ -1,0 +1,3 @@
+# Toolchain pin for asdf / mise. Keeps local, CI and teammates on one .NET SDK.
+# Match this to the SDK version pinned in global.json and installed in CI.
+dotnet 10.0.100

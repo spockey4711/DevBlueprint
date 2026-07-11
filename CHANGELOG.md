@@ -19,6 +19,11 @@ All notable changes are documented here, following
 
 ### Added
 
+- New `dotnet` variant: a C# / .NET 10 backend built with the `dotnet` CLI (SDK pinned in
+  `global.json`), `dotnet format`, Roslyn analyzers with warnings-as-errors, and xUnit.
+  Self-contained under `variants/dotnet/` (manifest, `setup.sh`, Makefile, CI + dependabot,
+  `.tool-versions`, gitignore, wt.conf, and the conventions/quality docs), auto-discovered by
+  the CLI. Refs: P6-2c.
 - New `flutter` variant: a Flutter/Dart app stack (`dart format`, `flutter analyze` with
   `very_good_analysis` + strict analyzer modes, `flutter test`) with a `lib/`+`lib/src/`+`test/`
   +`integration_test/` scaffold, `Makefile` gate, CI (subosito/flutter-action), and `extras/`
