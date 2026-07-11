@@ -1,0 +1,21 @@
+# Run the service in a container locally, close to how it runs in production but
+# wired for development. `docker compose up --build` builds the Dockerfile in this
+# directory and starts the app on port 8080.
+#
+# Secrets come from a local .env (gitignored) via env_file - never hard-code them
+# here. Need a database too? The `postgres` flavor ships a ready db service
+# (`devblueprint init ... --flavor postgres`); uncomment depends_on below to wait
+# on it.
+services:
+  app:
+    build: .
+    env_file:
+      - .env
+    environment:
+      APP_ENV: development
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
+    # depends_on:
+    #   db:
+    #     condition: service_healthy
