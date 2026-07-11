@@ -19,6 +19,10 @@ All notable changes are documented here, following
 
 ### Added
 
+- Backlog checkbox convention documented in the git-workflow task lifecycle (core-owned, so it
+  ships to every scaffolded project) and surfaced as a marker legend in the backlog header and
+  the `init` backlog stub: tick a task `- [x]` as soon as its PR is ready to merge, never leave a
+  merged task `- [ ]`, and use `- [~]` when a follow-up step remains after the merge.
 - Monorepo / multi-variant `init`: pass one or more `--package <name>:<variant>` (mutually
   exclusive with `--variant`) to scaffold several packages in one repo. Shared docs, worktree
   tooling and repo hygiene land once at the root; each package gets its stack overlay and a
