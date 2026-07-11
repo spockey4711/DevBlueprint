@@ -7,7 +7,7 @@ security scanning, Minitest for tests, and GitHub Actions CI.
 ## Quality gate
 
 ```bash
-bundle exec rubocop && bundle exec brakeman -q --no-pager && bundle exec rails test
+sh scripts/check-env.sh && bundle exec rubocop && bundle exec brakeman -q --no-pager && bundle exec rails test
 ```
 
 Or, with the shipped Makefile: `make check`.
@@ -22,6 +22,13 @@ Or, with the shipped Makefile: `make check`.
 - `.github/workflows/ci.yml` (RuboCop + Brakeman + tests).
 - `.github/dependabot.yml` (bundler + github-actions updates) and `.tool-versions` (toolchain pin).
 - `.gitignore` for Rails runtime, assets and local artifacts.
+- `docs/ops/deployment.md` (deploy runbook: managed/Docker/VPS + DB + assets + env checklists) and
+  `.env.example` (committed template; real `.env*` stay ignored).
+- Ops artifacts: `Dockerfile` (`ruby:3.3-slim` build stage -> slim non-root Puma runtime) +
+  `.dockerignore` + `docker-compose.yml`, `deploy/` (Fly/Render/Terraform skeletons), and
+  `.env.schema` + `scripts/check-env.sh` (the env contract `make check` and CI enforce). All
+  skeletons - fill the `<...>` placeholders. Migrations run as a deliberate release step
+  (`rails db:migrate`), never on boot.
 - `app`, `lib`, `test` scaffold.
 
 ## After init (wire the toolchain)

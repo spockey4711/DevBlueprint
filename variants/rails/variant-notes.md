@@ -21,3 +21,14 @@
   helper - do not scatter string literals through controllers and views.
 - Test with Minitest (the Rails default): fast model/unit tests plus fixtures for the DB, and
   reserve system tests (Capybara) for the handful of flows that genuinely need a browser.
+- Ops artifacts ship as fillable skeletons: a multi-stage `Dockerfile` (`ruby:3.3-slim` build stage
+  running `bundle install` + `rails assets:precompile` -> a slim non-root Puma runtime) +
+  `.dockerignore` + `docker-compose.yml` (with commented postgres/redis services) for containers,
+  and `deploy/` for a hosted target (`fly.toml`, `render.yaml`, `terraform/`). Keep the one target
+  you deploy to and delete the rest. Run `rails db:migrate` as a deliberate release step (Fly's
+  `release_command`, Render's `preDeployCommand`, a VPS deploy hook), never on boot.
+- The environment is a validated contract: `.env.schema` declares each variable (required/optional,
+  optional `pattern=`), and `make check` (plus CI) runs `scripts/check-env.sh` to keep `.env.example`
+  in lockstep with it and enforce required keys in any real `.env`. Declare new variables in both the
+  schema and `.env.example`, or the gate fails. `SECRET_KEY_BASE` and `RAILS_MASTER_KEY` are secrets -
+  they belong in the platform's secret store, never in git.

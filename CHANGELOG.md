@@ -68,6 +68,15 @@ All notable changes are documented here, following
   and CI a `Validate env schema` step, both running `scripts/check-env.sh` (copied verbatim from the
   `backend-go` variant) to keep `.env.example` in lockstep with the schema and validate required
   keys/patterns in any real `.env`; `QUALITY_GATE` runs it too. Refs: P7-3.
+- Ops artifacts for the `rails` variant: a multi-stage `Dockerfile` (`ruby:3.3-slim` build stage
+  running `bundle install` + `rails assets:precompile` -> a slim non-root Puma runtime) +
+  `.dockerignore` + `docker-compose.yml` (with commented postgres and redis services), `deploy/`
+  skeletons for Fly/Render/Terraform, a new `.env.schema` + key-for-key `.env.example`, and a Rails
+  deployment runbook (`docs/ops/deployment.md`, covering `rails db:migrate` as a release step,
+  `assets:precompile` and `SECRET_KEY_BASE`). `make check` gains a `validate-env` step and CI a
+  `Validate env schema` step, both running `scripts/check-env.sh` (copied verbatim from `backend-go`)
+  to keep `.env.example` in lockstep with the schema and validate required keys/patterns in any real
+  `.env`; the gate string in `manifest.env` gains the same check. Refs: P7-3.
 - Ops artifacts for the `generic` variant: a `Dockerfile` + `.dockerignore` + `docker-compose.yml`,
   `deploy/` skeletons for Fly/Render/Terraform, and a `.env.schema` promoted from `.env.example` and
   enforced in the gate - `make check` runs `scripts/check-env.sh` (a new `validate-env` step) to keep

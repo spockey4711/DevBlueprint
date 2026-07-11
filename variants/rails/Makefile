@@ -2,9 +2,15 @@
 # calls the same commands. The Ruby version is pinned in .ruby-version /
 # .tool-versions and gems are locked in Gemfile.lock, so local, CI and teammates
 # run the same toolchain.
-.PHONY: check lint format test security run console migrate setup
+.PHONY: check validate-env lint format test security run console migrate setup
 
-check: lint security test
+check: validate-env lint security test
+
+# Enforce the environment contract: .env.example must stay in lockstep with
+# .env.schema, and a real .env (if present) must satisfy every required key. This
+# is stack-agnostic and always on - fill in the schema, not this target.
+validate-env:
+	@sh scripts/check-env.sh
 
 # rubocop (the rubocop-rails-omakase ruleset) owns both formatting and style/lint
 # for Ruby - there is no separate formatter. `make format` autocorrects in place;
