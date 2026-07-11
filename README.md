@@ -88,6 +88,9 @@ bin/devblueprint doctor --target ~/Projects/myapp
 # --run-gate runs the project's quality gate (resolved from its variant)
 bin/devblueprint doctor --target ~/Projects/myapp --strict --run-gate
 
+# See where a project has drifted from the current kit before updating (read-only)
+bin/devblueprint diff --target ~/Projects/myapp
+
 # Later, pull core changes into an existing project (preview with --dry-run)
 bin/devblueprint update --target ~/Projects/myapp
 
@@ -122,6 +125,13 @@ the GitHub PR/issue templates) so old projects pick up improvements to `core/`, 
 deliberately never touches your `CLAUDE.md`, `wt.conf`, CI or code. Pass
 `--variant <name>` to also refresh the variant-overlaid `conventions.md` and
 `quality-and-testing.md`, and `--dry-run` to preview the changes first.
+
+`diff` is the read-only precursor to `update`: it reports which core-owned files have drifted
+from the current kit - marking each in sync, `drifted`, or `missing` - so you can see what
+`update` would touch without writing anything. It reads the `.devblueprint` stamp as the base:
+the stamped version says whether the kit has advanced since you scaffolded (so drift may be an
+upstream change to pull) or matches (so drift is a local edit), and the stamped variant is used
+to compare the two overlaid docs automatically (`--variant <name>` overrides it).
 
 Options: `--target <dir>` `--name <name>` `--variant <variant>` `--main <branch>`
 `--base <branch>` `--agents <list>` `--community` `--contact <method>` `--force`. Use

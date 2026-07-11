@@ -26,6 +26,12 @@ All notable changes are documented here, following
   included). The selection is recorded in the `.devblueprint` stamp, and `devblueprint update`
   re-renders the selected files from the current templates so they never drift from
   `CLAUDE.md` - while leaving the user-owned `CLAUDE.md` itself untouched. Refs: P5-3.
+- `devblueprint diff --target <dir>`: the read-only precursor to `update`. It reports which
+  core-owned files in a scaffolded project have drifted from the current kit - classifying each
+  as in sync, `drifted`, or `missing` - without writing anything. The `.devblueprint` stamp is
+  the base: its version distinguishes an upstream kit change from a local edit, and its recorded
+  variant resolves the two variant-overlaid docs so `--variant` is optional (but still overrides).
+  Covered by a new `test/diff.bats`. README and usage updated. Refs: P5-1.
 - Kit self-CI: a `scaffold-matrix.yml` workflow scaffolds every variant into a throwaway dir,
   wires it with the variant's `setup.sh`, and runs its quality gate, failing on any red so
   variant rot (a broken scaffold, `setup.sh`, `Makefile` or gate) is caught before a release.

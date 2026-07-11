@@ -9,6 +9,7 @@
 #       [--agents <list>] [--community] [--contact <method>] [--force] [--dry-run]
 #   devblueprint plan --target <dir> --from <intake.yml> [init flags]
 #   devblueprint update --target <dir> [--variant <variant>] [--dry-run]
+#   devblueprint diff --target <dir> [--variant <variant>]
 #   devblueprint doctor --target <dir> [--strict] [--run-gate] [--json]
 #   devblueprint detect --target <dir>
 #   devblueprint upgrade [--channel stable|next] [--version <ver>] [--check] [--force]
@@ -30,7 +31,10 @@
 # only the core-owned files (the agnostic engineering docs, wt.sh, the GitHub
 # PR/issue templates, and any selected agent files) into an existing project, so old
 # projects can pick up core changes without touching their CLAUDE.md or code.
-# `detect` inspects an existing repo's stack fingerprints (package.json,
+# `diff` is the read-only precursor to `update`: it reports which core-owned files in
+# a project have drifted from the current kit (in sync, drifted, or missing), using
+# the .devblueprint stamp as the base, without writing anything. `detect` inspects an
+# existing repo's stack fingerprints (package.json,
 # go.mod, Cargo.toml, Package.swift, pyproject.toml) and recommends the variant to
 # scaffold from, so adopting the workflow in an existing project needs no guesswork.
 set -euo pipefail
@@ -994,6 +998,113 @@ cmd_update() {
   fi
 }
 
+# diff_file <src> <dest-rel> : compare one managed file in the project against the
+# current kit's copy and classify it as in-sync, drifted, or missing. <src> is the
+# kit's version; <dest-rel> is the path relative to the target. Bumps SYNCED /
+# DRIFTED / MISSING and reads target - all locals of cmd_diff, visible here by
+# bash's dynamic scoping (the same pattern report_check uses). A missing <src>
+# (nothing to compare against) is a no-op.
+diff_file() {
+  local src="$1" rel="$2" dest="$target/$2" status
+  [ -f "$src" ] || return 0
+  if [ ! -e "$dest" ]; then
+    status=missing; MISSING=$((MISSING + 1))
+  elif cmp -s "$src" "$dest"; then
+    status=ok; SYNCED=$((SYNCED + 1))
+  else
+    status=drifted; DRIFTED=$((DRIFTED + 1))
+  fi
+  # %-8s pads the badge column ("drifted" is the widest at 7 chars) so paths align.
+  printf '  %-8s%s\n' "$status" "$rel"
+}
+
+# cmd_diff : report where a scaffolded project has drifted from the current kit
+# for the core-owned (managed) files - the read-only precursor to `update`. It
+# never writes; it compares each managed file in the project against the kit's
+# current copy and classifies it as in sync, drifted, or missing. The .devblueprint
+# stamp is the base: its version says whether the kit has advanced since the project
+# was scaffolded (so drift may be an upstream change to pull with `update`) or
+# matches (so any drift is a local edit), and its recorded variant resolves the two
+# variant-overlaid docs without needing --variant (which still overrides).
+cmd_diff() {
+  local target="" variant="" SYNCED=0 DRIFTED=0 MISSING=0
+  while [ "$#" -gt 0 ]; do
+    case "$1" in
+      --target) target="$2"; shift 2 ;;
+      --variant) variant="$2"; shift 2 ;;
+      *) die "unknown option: $1" ;;
+    esac
+  done
+  [ -n "$target" ] || die "missing --target <dir>"
+  [ -d "$target" ] || die "target '$target' does not exist"
+  target="$(cd "$target" && pwd)"
+  # Refuse to run outside a scaffolded project (same guard as update) so we never
+  # report an unrelated directory as one big pile of "missing" managed files.
+  if [ ! -d "$target/docs/engineering" ] && [ ! -f "$target/CLAUDE.md" ]; then
+    die "'$target' does not look like a DevBlueprint project (no docs/engineering/ or CLAUDE.md)"
+  fi
+
+  # Resolve the variant for the overlaid docs: explicit --variant wins, else the
+  # one recorded in the stamp. Empty -> the two overlay files are skipped.
+  [ -n "$variant" ] || variant="$(stamp_variant "$target")"
+  local vdir=""
+  if [ -n "$variant" ]; then
+    vdir="$VARIANTS/$variant"
+    [ -d "$vdir" ] || die "unknown variant '$variant' (see: devblueprint list)"
+  fi
+
+  local stamped current
+  stamped="$(stamp_version "$target")"
+  current="$(kit_version)"
+  echo "Comparing $target against the current kit (devblueprint $current)"
+  if [ -z "$stamped" ]; then
+    echo "  scaffolded from: unknown (no .devblueprint stamp; drift is measured against the current kit)"
+  elif [ "$stamped" = "$current" ]; then
+    echo "  scaffolded from: $stamped (up to date; any drift below is a local edit)"
+  else
+    echo "  scaffolded from: $stamped (kit has advanced to $current; drift may be an upstream update)"
+  fi
+  [ -n "$variant" ] && echo "  variant: $variant"
+  echo
+
+  # Core-owned files - the same set `update` re-syncs.
+  diff_file "$CORE/git-workflow.md"          "docs/engineering/git-workflow.md"
+  diff_file "$CORE/engineering-standards.md" "docs/engineering/engineering-standards.md"
+  diff_file "$CORE/.editorconfig"            ".editorconfig"
+  diff_file "$CORE/.gitattributes"           ".gitattributes"
+  diff_file "$ROOT/scripts/wt.sh"            "scripts/wt.sh"
+  diff_file "$CORE/github/pull_request_template.md"          ".github/pull_request_template.md"
+  diff_file "$CORE/github/ISSUE_TEMPLATE/bug_report.md"      ".github/ISSUE_TEMPLATE/bug_report.md"
+  diff_file "$CORE/github/ISSUE_TEMPLATE/feature_request.md" ".github/ISSUE_TEMPLATE/feature_request.md"
+  diff_file "$CORE/github/ISSUE_TEMPLATE/config.yml"         ".github/ISSUE_TEMPLATE/config.yml"
+
+  # Variant-overlaid docs: conventions.md is core base + variant append, and
+  # quality-and-testing.md is variant-owned. Rebuild the expected content exactly
+  # as init/update do, then compare. Skipped when no variant resolved.
+  if [ -n "$vdir" ]; then
+    local tmp
+    tmp="$(mktemp)"
+    cat "$CORE/conventions.md" > "$tmp"
+    [ -f "$vdir/docs/conventions.append.md" ] && cat "$vdir/docs/conventions.append.md" >> "$tmp"
+    diff_file "$tmp" "docs/engineering/conventions.md"
+    rm -f "$tmp"
+    diff_file "$vdir/docs/quality-and-testing.md" "docs/engineering/quality-and-testing.md"
+  else
+    info "skip conventions.md, quality-and-testing.md (variant overlay; pass --variant or add a stamp to compare)"
+  fi
+
+  echo
+  local total=$((SYNCED + DRIFTED + MISSING))
+  printf 'Summary: %d of %d managed file(s) in sync' "$SYNCED" "$total"
+  [ "$DRIFTED" -gt 0 ] && printf ', %d drifted' "$DRIFTED"
+  [ "$MISSING" -gt 0 ] && printf ', %d missing' "$MISSING"
+  printf '\n'
+  echo "  (managed files only; CLAUDE.md, wt.conf, CI and your code are never tracked)"
+  if [ "$DRIFTED" -gt 0 ] || [ "$MISSING" -gt 0 ]; then
+    echo "  Re-sync core-owned files with: devblueprint update --target $target${variant:+ --variant $variant}"
+  fi
+}
+
 # stamp_version <target> : the version recorded in a project's .devblueprint
 # stamp, or empty if there is no stamp (e.g. a project scaffolded before P0-3).
 stamp_version() {
@@ -1228,12 +1339,13 @@ main() {
     init) cmd_init "$@" ;;
     plan) cmd_plan "$@" ;;
     update) cmd_update "$@" ;;
+    diff) cmd_diff "$@" ;;
     doctor) cmd_doctor "$@" ;;
     detect) cmd_detect "$@" ;;
     upgrade) cmd_upgrade "$@" ;;
     version | --version | -V) cmd_version "$@" ;;
     help | -h | --help | "") usage ;;
-    *) die "unknown command '$cmd' (try: list, init, plan, update, doctor, detect, upgrade, version, help)" ;;
+    *) die "unknown command '$cmd' (try: list, init, plan, update, diff, doctor, detect, upgrade, version, help)" ;;
   esac
 }
 
