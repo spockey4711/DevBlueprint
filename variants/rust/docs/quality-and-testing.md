@@ -43,6 +43,19 @@ Target: meaningful coverage of the library's logic and error handling, not a glo
   runs `make lint` before each commit.
 - **CI** - `.github/workflows/ci.yml` runs the full gate on every PR into `develop`/`master`.
 
+## Security and commit gates
+
+Every PR also runs the security-gate baseline in `.github/workflows/` (shared
+across variants), complementing the quality gate above:
+
+- **`security.yml`** - gitleaks secret scanning, semgrep SAST, and (on PRs)
+  `dependency-review` against the GitHub Advisory Database.
+- **`commit-checks.yml`** - commitlint on every commit plus a Conventional-Commits
+  check on the PR title (the squash-merge subject).
+- **`coverage.yml`** - reports line coverage and enforces a soft floor read from
+  the `COVERAGE_MIN` repository variable (default `0`, i.e. report-only), so the
+  threshold is opt-in and never reddens a fresh scaffold.
+
 ## Definition of done
 
 1. It works and the public behaviour matches what the task asked for.

@@ -51,6 +51,21 @@ Compose UI code.
 - Release checklist: `versionCode`/`versionName` bumped, ProGuard/R8 rules verified on a release
   build, a signed `assembleRelease` / `bundleRelease` produced, and an internal-track smoke pass.
 
+## Security and commit gates
+
+Every PR also runs the security-gate baseline in `.github/workflows/` (shared
+across variants), complementing the quality gate above:
+
+- **`security.yml`** - gitleaks secret scanning, semgrep SAST, and (on PRs)
+  `dependency-review` against the GitHub Advisory Database.
+- **`codeql.yml`** - GitHub CodeQL semantic analysis; findings surface under
+  Security > Code scanning.
+- **`commit-checks.yml`** - commitlint on every commit plus a Conventional-Commits
+  check on the PR title (the squash-merge subject).
+- **`coverage.yml`** - reports line coverage and enforces a soft floor read from
+  the `COVERAGE_MIN` repository variable (default `0`, i.e. report-only), so the
+  threshold is opt-in and never reddens a fresh scaffold.
+
 ## Definition of done
 
 1. It works and matches the design/Material/accessibility specs.

@@ -1,0 +1,59 @@
+name: Coverage
+
+# Measures line coverage on every change and enforces a soft floor. The floor is
+# read from the COVERAGE_MIN repository variable (Settings > Secrets and variables
+# > Actions > Variables) and defaults to 0, i.e. report-only: coverage is always
+# visible in the job summary, and a team opts into a hard gate by raising
+# COVERAGE_MIN - no code change needed. This respects the variant's
+# "meaningful coverage, not a global percentage" guidance in
+# docs/engineering/quality-and-testing.md.
+
+on:
+  pull_request:
+    branches: [develop, master]
+  push:
+    branches: [develop, master]
+
+concurrency:
+  group: coverage-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  coverage:
+    name: Line coverage
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Test with coverage
+        # JaCoCo needs the 'jacoco' Gradle plugin applied in the build. When it is
+        # not (a fresh scaffold), the report is absent and the floor is skipped.
+        run: ./gradlew test jacocoTestReport --console=plain || true
+
+      - name: Enforce coverage floor
+        env:
+          MIN: ${{ vars.COVERAGE_MIN || '0' }}
+        run: |
+          report=$(find . -path '*/reports/jacoco/*/jacoco.csv' -print -quit)
+          if [ -z "$report" ]; then
+            echo "No JaCoCo report found - apply the 'jacoco' Gradle plugin to enable coverage."
+            exit 0
+          fi
+          # jacoco.csv: ...,LINE_MISSED(8),LINE_COVERED(9),...
+          pct=$(awk -F, 'NR > 1 { miss += $8; cov += $9 } END { if (miss + cov > 0) printf "%.2f", 100 * cov / (miss + cov); else print 0 }' "$report")
+          printf 'Line coverage: %s%% (floor %s%%)\n' "$pct" "$MIN"
+          printf '### Coverage\n\nLine coverage **%s%%** (floor %s%%).\n' "$pct" "$MIN" >> "$GITHUB_STEP_SUMMARY"
+          awk -v p="$pct" -v m="$MIN" 'BEGIN { if (p + 0 < m + 0) { printf "::error::line coverage %s%% is below the %s%% floor\n", p, m; exit 1 } }'
