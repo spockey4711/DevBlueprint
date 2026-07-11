@@ -48,7 +48,7 @@ the other three fills a different section, so conflicts are limited to distinct 
 - [x] P8-3: "Where do I put the project / which path do I pick" section - absolute vs. relative
   paths, what `~` means, no spaces in paths, a suggested `~/Projects/<name>` default, and how
   to open that folder in the terminal and the editor. (builds on P8-1; own section)
-- [ ] P8-4: End-to-end "your first project" tutorial section - one worked run from `init` to
+- [x] P8-4: End-to-end "your first project" tutorial section - one worked run from `init` to
   the first green PR, every command shown with its expected output. (builds on P8-1; own
   section; smoother once P10-1 lands, but write it against today's flow first)
 
