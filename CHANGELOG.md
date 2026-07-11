@@ -88,6 +88,14 @@ All notable changes are documented here, following
 
 ### Changed
 
+- Beginner-friendly CLI failures: `devblueprint` now tells you what to do next, not just what
+  broke. Errors that used to be a bare one-liner (`missing --target`, `target does not exist`,
+  `unknown option`, an intake/config/baseline file that is not found, a target that is not a
+  scaffolded project) now print a second indented `next:` line with a concrete recovery step -
+  an example command, the flag to add, or the command to run first. `doctor --strict` on a
+  project with no git repo and `doctor`'s failure summary point at `git init` and
+  `doctor --fix` respectively. The `die` helper gained an optional second "next step" argument
+  that renders this line, so the guidance stays consistent across every command. Refs: P12-1.
 - Restructured the P8-P15 beginner-onboarding roadmap into eight phases of exactly four
   parallel-first tasks each: at most one `(CLI)` task per phase, within-phase tasks touch
   disjoint files and do not build on each other (enabler exceptions like P8-1/P13-1 marked),
