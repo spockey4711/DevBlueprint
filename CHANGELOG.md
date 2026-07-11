@@ -7,6 +7,14 @@ All notable changes are documented here, following
 
 ### Added
 
+- New `i18n/` localization layer with a short policy at `i18n/README.md`: English is the source of
+  truth and stays the only language for code, engineering/reference docs, commits and PRs, while
+  beginner tutorial copy (`GETTING-STARTED.md`, `docs/glossary.md`, `docs/faq.md`,
+  `docs/cheatsheet.md`) may be translated under `i18n/<locale>/` in a subtree that mirrors the repo
+  root. The README documents the layout, BCP 47 locale codes, the canonical-source header every
+  translation carries, the add-a-translation steps and a per-locale status table. The existing
+  "dedicated layer" language rule in `CLAUDE.md` and `CONTRIBUTING.md` now points at it. The enabler
+  the P13 translations build on. Refs: P13-1.
 - New `docs/concepts/README.md` indexes the "why we work this way" concept notes: it explains how
   concept notes differ from reference docs, gives newcomers a reading order (worktrees, then
   commits-and-gate) with a one-line hook for each, points at the glossary for unfamiliar terms,
