@@ -225,7 +225,7 @@ unchanged - only their ordering into waves. The eight P6-2 variants are each the
 
 ### Wave 1 - monorepo + security CI + first variants
 
-- [ ] P6-1: (CLI) Monorepo / multi-variant init - one repo, multiple packages, per-package
+- [x] P6-1: (CLI) Monorepo / multi-variant init - one repo, multiple packages, per-package
   quality gates, aggregated CI. The one large structural change; everything is single-variant
   today. **Owns:** `bin/devblueprint` (init multi-variant path), `test/`.
 - [x] P6-4: Security-gate baseline across variants: gitleaks (secret scan), semgrep (SAST),
