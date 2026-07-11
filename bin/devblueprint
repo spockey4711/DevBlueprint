@@ -13,7 +13,7 @@
 #   devblueprint plan --target <dir> --from <intake.yml> [init flags]
 #   devblueprint update --target <dir> [--variant <variant>] [--dry-run]
 #   devblueprint diff --target <dir> [--variant <variant>]
-#   devblueprint doctor --target <dir> [--strict] [--run-gate] [--json]
+#   devblueprint doctor --target <dir> [--strict] [--run-gate] [--fix] [--variant <variant>] [--json]
 #   devblueprint detect --target <dir>
 #   devblueprint upgrade [--channel stable|next] [--version <ver>] [--check] [--force]
 #   devblueprint version [--json]
@@ -605,6 +605,40 @@ cmd_list() {
   fi
 }
 
+# changelog_body <variant-title> : the initial CHANGELOG.md a fresh scaffold ships.
+# Factored out of cmd_init so `doctor --fix` can rebuild a missing or corrupted
+# CHANGELOG byte-for-byte identically instead of duplicating the text.
+changelog_body() {
+  cat <<EOF
+# Changelog
+
+All notable changes are documented here, following
+[Keep a Changelog](https://keepachangelog.com/) and [SemVer](https://semver.org/).
+
+## [Unreleased]
+
+- Project scaffolded from DevBlueprint ($1).
+EOF
+}
+
+# stamp_body <variant> <agents-csv> <flavors-csv> : the .devblueprint scaffold stamp
+# body (kit version + variant + selected agents + any add-on flavors). Shared by
+# cmd_init and `doctor --fix` so a rebuilt stamp matches init exactly. The flavors
+# line is emitted only when <flavors-csv> is non-empty, mirroring init's original
+# conditional heredoc.
+stamp_body() {
+  local variant="$1" agents_csv="$2" flavors_csv="$3"
+  cat <<EOF
+# DevBlueprint scaffold stamp - read by \`devblueprint update\`.
+# Records the kit version, variant, selected agents, and any add-on flavors this
+# project was scaffolded from.
+version=$(kit_version)
+variant=$variant
+agents=$agents_csv${flavors_csv:+
+flavors=$flavors_csv}
+EOF
+}
+
 cmd_init() {
   # Values start empty so we can tell "given on the CLI" from "unset" and layer
   # intake-file values and defaults underneath (flags win). community_flag stays
@@ -743,29 +777,12 @@ cmd_init() {
   render "$CORE/templates/CONTRIBUTING.md.tmpl" "$TARGET/CONTRIBUTING.md"
 
   # 3. Fresh changelog.
-  emit_stdin "$TARGET/CHANGELOG.md" <<EOF
-# Changelog
-
-All notable changes are documented here, following
-[Keep a Changelog](https://keepachangelog.com/) and [SemVer](https://semver.org/).
-
-## [Unreleased]
-
-- Project scaffolded from DevBlueprint ($VARIANT_TITLE).
-EOF
+  changelog_body "$VARIANT_TITLE" | emit_stdin "$TARGET/CHANGELOG.md"
 
   # 3b. Scaffold stamp: records the kit version and variant this project was
   # generated from, so `devblueprint update` can tell whether the core docs and
   # scripts are stale. Shell-sourceable key=value; do not hand-edit the version.
-  emit_stdin "$TARGET/.devblueprint" <<EOF
-# DevBlueprint scaffold stamp - read by \`devblueprint update\`.
-# Records the kit version, variant, selected agents, and any add-on flavors this
-# project was scaffolded from.
-version=$(kit_version)
-variant=$VARIANT
-agents=${AGENTS// /,}${FLAVORS:+
-flavors=${FLAVORS// /,}}
-EOF
+  stamp_body "$VARIANT" "${AGENTS// /,}" "${FLAVORS// /,}" | emit_stdin "$TARGET/.devblueprint"
 
   # 4. Worktree tooling. Keep wt.conf's branches in sync with the chosen
   # workflow (e.g. --base master for a single-branch trunk), but only when we
@@ -1216,20 +1233,36 @@ report_check() {
 }
 
 cmd_doctor() {
-  local target="" strict=0 run_gate=0 JSON=0 CHECKS_JSON=""
+  local target="" strict=0 run_gate=0 fix=0 VARIANT="" JSON=0 CHECKS_JSON=""
   while [ "$#" -gt 0 ]; do
     case "$1" in
       --target) target="$2"; shift 2 ;;
       --strict) strict=1; shift ;;
       --run-gate) run_gate=1; shift ;;
+      # --fix rebuilds a missing or corrupted (empty) foundation file from the kit
+      # instead of only reporting it; --variant supplies the stack when the project's
+      # own .devblueprint stamp is the missing/corrupted file, so variant-owned files
+      # can still be restored (mirrors `update --variant`).
+      --fix) fix=1; shift ;;
+      --variant) VARIANT="$2"; shift 2 ;;
       --json) JSON=1; shift ;;
       *) die "unknown option: $1" ;;
     esac
   done
   [ -n "$target" ] || die "missing --target <dir>"
-  # failures accumulates every hard problem (missing files + strict escalations +
-  # a failing quality gate); doctor exits non-zero when it is non-empty.
-  local missing=0 failures=0 f
+  [ -z "$VARIANT" ] || [ -f "$VARIANTS/$VARIANT/manifest.env" ] || die "unknown variant '$VARIANT' (see: devblueprint list)"
+  # failures accumulates every hard problem (missing/corrupted files that could not
+  # be repaired + strict escalations + a failing quality gate); doctor exits
+  # non-zero when it is non-empty. repaired counts files --fix restored.
+  local missing=0 failures=0 repaired=0 f problem
+  # Context repair_file needs, kept local so fix_context's assignments (made through
+  # bash's dynamic scoping) never leak into the global environment.
+  local FIX_VARIANT="" FIX_VDIR="" FIX_AGENTS="" FIX_FLAVORS=""
+  local PROJECT_NAME="" MAIN_BRANCH="" BASE_BRANCH="" WT_CMD="" QUALITY_GATE="" \
+        COPY_LANGUAGE_NOTE="" VARIANT_NOTES="" VARIANT_TITLE="" SRC_DIRS="" CONTACT=""
+  # With --fix, reconstruct that context once, up front, from the project itself plus
+  # any --variant override.
+  [ "$fix" -eq 1 ] && fix_context "$target"
   for f in CLAUDE.md CONTRIBUTING.md CHANGELOG.md .gitignore .devblueprint \
            .editorconfig .gitattributes \
            scripts/wt.sh scripts/wt.conf .github/workflows/ci.yml \
@@ -1239,10 +1272,18 @@ cmd_doctor() {
            docs/engineering/git-workflow.md docs/engineering/conventions.md \
            docs/engineering/quality-and-testing.md \
            docs/engineering/engineering-standards.md; do
-    if [ -e "$target/$f" ]; then
+    # A foundation file is healthy only when it exists and is non-empty; an empty
+    # file is a corruption doctor treats like a missing one (a truncated write or a
+    # failed generation leaves a zero-byte file).
+    if [ -e "$target/$f" ] && [ -s "$target/$f" ]; then
       report_check ok "$f" "$f"
+      continue
+    fi
+    if [ -e "$target/$f" ]; then problem="empty"; else problem="missing"; fi
+    if [ "$fix" -eq 1 ] && repair_file "$target" "$f" && [ -s "$target/$f" ]; then
+      report_check ok "$f" "$f (repaired: was $problem)"; repaired=$((repaired + 1))
     else
-      report_check miss "$f" "$f"; missing=$((missing + 1))
+      report_check miss "$f" "$f ($problem)"; missing=$((missing + 1))
     fi
   done
   failures=$((failures + missing))
@@ -1306,14 +1347,15 @@ cmd_doctor() {
     local ok stamped
     stamped="$(stamp_version "$target")"
     [ "$failures" -eq 0 ] && ok=true || ok=false
-    printf '{"ok":%s,"target":"%s","scaffoldVersion":%s,"kitVersion":"%s","failures":%d,"checks":[%s]}\n' \
+    printf '{"ok":%s,"target":"%s","scaffoldVersion":%s,"kitVersion":"%s","failures":%d,"fixed":%d,"checks":[%s]}\n' \
       "$ok" "$(json_esc "$target")" "$(json_str_or_null "$stamped")" \
-      "$(json_esc "$(kit_version)")" "$failures" "$CHECKS_JSON"
+      "$(json_esc "$(kit_version)")" "$failures" "$repaired" "$CHECKS_JSON"
     [ "$failures" -eq 0 ] || exit 1
     return 0
   fi
 
   echo
+  [ "$repaired" -gt 0 ] && echo "doctor: repaired $repaired file(s)"
   if [ "$failures" -eq 0 ]; then
     local stamped
     stamped="$(stamp_version "$target")"
@@ -1321,6 +1363,101 @@ cmd_doctor() {
   else
     die "$failures check(s) failed"
   fi
+}
+
+# fix_context <target> : reconstruct everything repair_file needs to rebuild a
+# foundation file, from the project itself plus an optional --variant override - the
+# same reconstruction update/sync_agent_files perform. Sets FIX_VARIANT/FIX_VDIR (the
+# variant dir, empty when no valid variant is known), the stamp-derived
+# FIX_AGENTS/FIX_FLAVORS used to rebuild .devblueprint, and the render tokens
+# (PROJECT_NAME, branches, and the variant-manifest values VARIANT_TITLE/WT_CMD/
+# QUALITY_GATE/COPY_LANGUAGE_NOTE/VARIANT_NOTES) that CLAUDE.md, CONTRIBUTING.md and
+# CHANGELOG are rendered from. An empty FIX_VDIR tells repair_file it can only rebuild
+# the variant-independent core copies.
+fix_context() {
+  local target="$1"
+  FIX_VARIANT="${VARIANT:-$(stamp_variant "$target")}"
+  FIX_VDIR=""
+  FIX_AGENTS="$(stamp_agents "$target")"; [ -n "$FIX_AGENTS" ] || FIX_AGENTS="claude"
+  FIX_FLAVORS="$(stamp_flavors "$target")"
+  PROJECT_NAME="$(project_name_of "$target")"
+  MAIN_BRANCH="$(wtconf_branch "$target" MAIN_BRANCH)"; [ -n "$MAIN_BRANCH" ] || MAIN_BRANCH="master"
+  BASE_BRANCH="$(wtconf_branch "$target" BASE_BRANCH)"; [ -n "$BASE_BRANCH" ] || BASE_BRANCH="$MAIN_BRANCH"
+  VARIANT_TITLE="" WT_CMD="" QUALITY_GATE="" COPY_LANGUAGE_NOTE="" VARIANT_NOTES="" SRC_DIRS="" CONTACT=""
+  if [ -n "$FIX_VARIANT" ] && [ -f "$VARIANTS/$FIX_VARIANT/manifest.env" ]; then
+    FIX_VDIR="$VARIANTS/$FIX_VARIANT"
+    # shellcheck source=/dev/null
+    . "$FIX_VDIR/manifest.env"
+    [ -f "$FIX_VDIR/variant-notes.md" ] && VARIANT_NOTES="$(cat "$FIX_VDIR/variant-notes.md")"
+  fi
+  # {{CONTACT}} is substituted unconditionally by render_content, so give it the same
+  # visible placeholder init uses when no contact is known.
+  [ -n "$CONTACT" ] || CONTACT="INSERT CONTACT METHOD"
+}
+
+# repair_file <target> <rel> : rewrite one foundation file <rel> under <target> from
+# the kit, used by `doctor --fix` to restore a missing or corrupted (empty) file. It
+# mirrors exactly how cmd_init produced each file, reading the repair context
+# fix_context set up (FIX_VDIR + the render tokens). Returns 0 when the file is
+# rewritten and 1 when its source cannot be resolved - notably a variant-owned file
+# with no known variant (empty FIX_VDIR) - so the caller can still report it unfixed.
+# Overwrites unconditionally: repair is a deliberate rewrite, not init's
+# overwrite-safe placement. The source paths are kept identical to cmd_init's so the
+# two stay in step.
+repair_file() {
+  local target="$1" rel="$2" dest="$1/$2" src=""
+  # 1. Variant-independent core copies - restorable with no variant context.
+  case "$rel" in
+    .editorconfig)                             src="$CORE/.editorconfig" ;;
+    .gitattributes)                            src="$CORE/.gitattributes" ;;
+    scripts/wt.sh)                             src="$ROOT/scripts/wt.sh" ;;
+    .github/pull_request_template.md)          src="$CORE/github/pull_request_template.md" ;;
+    .github/ISSUE_TEMPLATE/bug_report.md)      src="$CORE/github/ISSUE_TEMPLATE/bug_report.md" ;;
+    .github/ISSUE_TEMPLATE/feature_request.md) src="$CORE/github/ISSUE_TEMPLATE/feature_request.md" ;;
+    docs/engineering/git-workflow.md)          src="$CORE/git-workflow.md" ;;
+    docs/engineering/engineering-standards.md) src="$CORE/engineering-standards.md" ;;
+  esac
+  if [ -n "$src" ]; then
+    [ -f "$src" ] || return 1
+    mkdir -p "$(dirname "$dest")"
+    cp "$src" "$dest"
+    [ "$rel" = scripts/wt.sh ] && chmod +x "$dest" 2>/dev/null
+    return 0
+  fi
+
+  # 2. Everything else depends on the variant (a variant-owned copy, or a template
+  # rendered against the variant manifest). Without a resolved variant we cannot
+  # rebuild it faithfully, so report it unfixed.
+  [ -n "$FIX_VDIR" ] || return 1
+  case "$rel" in
+    CLAUDE.md)
+      mkdir -p "$(dirname "$dest")"
+      render_content "$CORE/templates/CLAUDE.md.tmpl" > "$dest"; return 0 ;;
+    CONTRIBUTING.md)
+      render_content "$CORE/templates/CONTRIBUTING.md.tmpl" > "$dest"; return 0 ;;
+    CHANGELOG.md)
+      changelog_body "$VARIANT_TITLE" > "$dest"; return 0 ;;
+    .devblueprint)
+      stamp_body "$FIX_VARIANT" "$FIX_AGENTS" "$FIX_FLAVORS" > "$dest"; return 0 ;;
+    docs/engineering/conventions.md)
+      # Core base plus the variant's conventions overlay, exactly like cmd_init.
+      [ -f "$CORE/conventions.md" ] || return 1
+      mkdir -p "$(dirname "$dest")"
+      cp "$CORE/conventions.md" "$dest"
+      [ -f "$FIX_VDIR/docs/conventions.append.md" ] && cat "$FIX_VDIR/docs/conventions.append.md" >> "$dest"
+      return 0 ;;
+    .gitignore)                              src="$FIX_VDIR/gitignore" ;;
+    # A rebuilt wt.conf carries the variant's default branches: the project's own
+    # branch names lived only in the file we are restoring, so there is nothing left
+    # to read them from.
+    scripts/wt.conf)                         src="$FIX_VDIR/wt.conf" ;;
+    .github/workflows/ci.yml)                src="$FIX_VDIR/github/workflows/ci.yml" ;;
+    docs/engineering/quality-and-testing.md) src="$FIX_VDIR/docs/quality-and-testing.md" ;;
+  esac
+  [ -n "$src" ] && [ -f "$src" ] || return 1
+  mkdir -p "$(dirname "$dest")"
+  cp "$src" "$dest"
+  return 0
 }
 
 # resolve_gate <target> : the quality-gate command for a scaffolded project.
@@ -1356,6 +1493,16 @@ stamp_agents() {
   local stamp="$1/.devblueprint"
   [ -f "$stamp" ] || return 0
   sed -n 's/^agents=//p' "$stamp" | head -n1
+}
+
+# stamp_flavors <target> : the comma-separated add-on flavors recorded in a
+# project's .devblueprint stamp (e.g. "postgres,docker"), or empty when the stamp
+# is absent or the project was scaffolded without --flavor. `doctor --fix` reads it
+# to rebuild the stamp with its flavors line intact.
+stamp_flavors() {
+  local stamp="$1/.devblueprint"
+  [ -f "$stamp" ] || return 0
+  sed -n 's/^flavors=//p' "$stamp" | head -n1
 }
 
 # fingerprint_variant <target> : echo one "variant<TAB>reason" line per stack

@@ -30,6 +30,15 @@ All notable changes are documented here, following
   job (GitLab) stand up an ephemeral preview environment per PR/MR, comment its URL, and tear it
   down on close. Provider-neutral - the environment plumbing is wired and only the deploy step is
   a TODO, so a project points it at its host (Vercel, Netlify, Pages, Fly, ...). Refs: P7-2.
+- `doctor --fix` auto-repairs foundation files instead of only reporting them: a missing or
+  corrupted (zero-byte) foundation file is rebuilt from the kit, exactly as `init` produced it
+  (core copies, the variant's copies, and the templated `CLAUDE.md`/`CONTRIBUTING.md`/`CHANGELOG`
+  rendered against the project's own context - name, branches and stamped variant). A zero-byte
+  foundation file now counts as a corruption even without `--fix`, so plain `doctor` flags it.
+  `doctor --variant <variant>` supplies the stack when the project's `.devblueprint` stamp is the
+  file being repaired, so variant-owned files (and the stamp itself) can still be restored. A
+  healthy file is never touched, `--json` grows a `fixed` count, and repaired files report
+  `(repaired: was missing|empty)`. Refs: P6-5.
 - Add-on flavor mechanism for `init`: pass `--flavor <a,b>` to layer orthogonal overlays (a
   database, a container setup, auth scaffolding) onto the chosen base variant. Flavors live under
   `variants/_flavors/<name>/` (a `flavor.env` title, an `overlay/` tree copied into the project,
