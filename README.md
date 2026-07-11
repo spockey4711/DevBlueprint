@@ -20,6 +20,9 @@ depend on. There is no runtime, no lock-in; delete DevBlueprint afterwards and n
   (pre-commit) and in CI (GitHub Actions), with a clear definition of done.
 - **Conventions and an engineering-standards mindset** that keep a solo repo at team quality.
 - **A `CLAUDE.md`** that teaches an AI assistant the whole workflow up front.
+- **A zero-install path.** Every variant (except ios-swift) ships a `.devcontainer`, so the
+  scaffolded project opens in GitHub Codespaces or a local Dev Container with the toolchain and
+  extensions ready - no local install. See [`docs/codespaces.md`](docs/codespaces.md).
 
 ## The pieces
 
@@ -40,8 +43,9 @@ devblueprint/
 Each **variant** adds only what is stack-specific: the concrete quality-gate commands, CI
 workflows for both GitHub Actions and GitLab CI (`.gitlab-ci.yml`) plus a provider-neutral
 preview-deploy, a `.gitignore`, a `wt.conf` (branches + post-create install hook), a conventions
-overlay, the `CLAUDE.md` stack-notes block, and a `setup.sh` that wires the toolchain (tool
-configs, pre-commit hook, dependency install) in one command after `init`.
+overlay, the `CLAUDE.md` stack-notes block, a `setup.sh` that wires the toolchain (tool
+configs, pre-commit hook, dependency install) in one command after `init`, and editor/cloud
+config (`.vscode/`, and a `.devcontainer/` for the zero-install Codespaces path).
 
 ## Install
 

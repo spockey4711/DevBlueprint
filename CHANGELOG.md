@@ -7,6 +7,16 @@ All notable changes are documented here, following
 
 ### Added
 
+- Every variant except `ios-swift` (which needs macOS + Xcode) now ships a
+  `.devcontainer/devcontainer.json`, so a scaffolded project opens in GitHub Codespaces or a
+  local VS Code Dev Container with the toolchain and recommended extensions ready and no local
+  install - the first-class beginner path. Each container starts from the official image for its
+  stack (or a pinned vendor image for `elixir`/`flutter`/`android-kotlin`), auto-installs the same
+  extensions as the variant's `.vscode/extensions.json`, and runs `setup.sh` on create to warm the
+  toolchain and dependencies. A new `docs/codespaces.md` promotes the path (linked from
+  `GETTING-STARTED.md` and the README), and `test/vscode.bats` guards that every Linux-capable
+  variant carries a valid `devcontainer.json` whose extensions match its `extensions.json` and
+  that `init` scaffolds it. Refs: P11-2.
 - New `devblueprint doctor --env`: a host prerequisite check that needs no project (no `--target`).
   It verifies git, Node and a working shell are present and, for anything missing, prints a
   copy-paste install command for the detected OS (macOS via Homebrew, Windows via winget, Linux
