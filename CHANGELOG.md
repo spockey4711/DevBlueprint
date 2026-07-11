@@ -47,6 +47,15 @@ All notable changes are documented here, following
   Intake files also gain an `agents` key so a baseline can standardize the coding-agent toolset.
   A ready-to-copy `agent/org-baseline.example.yml` ships alongside `agent/intake.example.yml`.
   Refs: P7-4.
+- Ops artifacts for the `spring-java` variant: a multi-stage `Dockerfile` (an `eclipse-temurin:21-jdk`
+  build stage running `./gradlew bootJar` and extracting the layered jar -> an `eclipse-temurin:21-jre`
+  non-root runtime) + `.dockerignore` + `docker-compose.yml`, `deploy/` skeletons for Fly/Render/
+  Terraform, a deployment runbook re-targeted to Spring Boot (bootJar, JRE runtime, Flyway/Liquibase
+  migrations as a release step), and a `.env.schema` + `.env.example` env contract. `make check` gains
+  a `validate-env` step (first) and CI a `Validate env schema` step after checkout, both running
+  `scripts/check-env.sh` to keep `.env.example` in lockstep with the schema and validate required
+  keys/patterns in any real `.env`; the manifest `QUALITY_GATE` prepends it so `doctor --run-gate`
+  runs it too. Refs: P7-3.
 - Ops artifacts for the `backend-go` variant: a multi-stage `Dockerfile` (static `CGO_ENABLED=0`
   binary -> `distroless/static:nonroot`) + `.dockerignore` + `docker-compose.yml`, `deploy/`
   skeletons for Fly/Render/Terraform, and a `.env.schema` promoted from `.env.example` and enforced
