@@ -62,7 +62,7 @@ Each task is a brand-new standalone file, so all four are independent with zero 
   hits (directory already exists, not a git repo, gate is red, wrong branch), one answer each.
 - [ ] P9-3: `docs/cheatsheet.md` - a one-page everyday-commands reference (the wt.sh, git,
   and `make check` calls used in the normal loop) that a beginner can keep open beside them.
-- [ ] P9-4: `docs/reading-errors.md` - how to read an error you did not expect: a lint
+- [x] P9-4: `docs/reading-errors.md` - how to read an error you did not expect: a lint
   failure, a red CI log, a stack trace - what to look for and where, in plain language.
 
 ### Months 6-12: reduce the barrier to entry - first CLI polish + no-terminal path

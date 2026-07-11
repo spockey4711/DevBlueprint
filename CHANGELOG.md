@@ -40,6 +40,9 @@ All notable changes are documented here, following
 
 ### Added
 
+- `docs/reading-errors.md`: a plain-language guide to reading an unexpected error - the read /
+  look / change-one-thing / re-run loop, where the useful part of a message is, and how to read a
+  lint failure, a red CI log and a stack trace, with links to the glossary. Refs: P9-4.
 - `docs/glossary.md`: a plain-language glossary defining the everyday terms a beginner meets in
   these docs (terminal, path, repo, branch, commit, PR, worktree, CI, lint, variant, quality
   gate), one sentence each. Refs: P9-1.
