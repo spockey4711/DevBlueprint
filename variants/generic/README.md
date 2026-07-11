@@ -15,7 +15,12 @@ make check   # you wire the lint / typecheck / test / build targets
 - `CLAUDE.md`, `CONTRIBUTING.md`, `CHANGELOG.md`.
 - `scripts/wt.sh` + `scripts/wt.conf` (no-op post-create hook).
 - `.github/workflows/ci.yml` (runs `make check`).
-- `Makefile` with stub gate targets to fill in.
+- `Makefile` with stub gate targets to fill in (plus a `validate-env` step that runs in `make check`).
+- `docs/ops/deployment.md` (deploy runbook: managed/Docker/VPS + DB + env checklists) and
+  `.env.example` (committed template; real `.env*` stay ignored).
+- Ops artifacts: `Dockerfile` + `.dockerignore` + `docker-compose.yml`, `deploy/` (Fly/Render/
+  Terraform skeletons), and `.env.schema` + `scripts/check-env.sh` (the env contract `make check`
+  enforces). All skeletons - fill the `<...>` placeholders for your stack.
 - `.gitignore` and a `src/` + `tests/` skeleton.
 
 ## After init

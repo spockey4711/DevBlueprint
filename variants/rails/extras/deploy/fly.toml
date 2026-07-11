@@ -1,0 +1,35 @@
+# Fly.io deployment config (skeleton). Fill in the <...> values, then
+# `fly launch --copy-config` (first time) or `fly deploy`. Secrets are NOT set
+# here - use `fly secrets set KEY=value` (SECRET_KEY_BASE, RAILS_MASTER_KEY,
+# DATABASE_URL) so they live in Fly's vault, never in this committed file. See
+# docs/ops/deployment.md.
+
+app = "<your-app-name>"
+primary_region = "<region>"   # a Fly region code, e.g. "iad", "fra", "syd"
+
+[build]
+  dockerfile = "Dockerfile"
+
+# Non-secret config only. Real secrets go through `fly secrets set`.
+[env]
+  RAILS_ENV = "production"
+  RAILS_LOG_TO_STDOUT = "true"
+  RAILS_SERVE_STATIC_FILES = "true"
+
+# Run migrations as a deliberate release step, not on boot. Fly runs this in a
+# temporary machine before the new version is promoted.
+[deploy]
+  release_command = "bin/rails db:migrate"
+
+[http_service]
+  internal_port = 3000
+  force_https = true
+  auto_stop_machines = true
+  auto_start_machines = true
+  min_machines_running = 0
+
+  [[http_service.checks]]
+    method = "get"
+    path = "<health-check-path>"   # e.g. "/up" (Rails 7.1+ ships this)
+    interval = "15s"
+    timeout = "2s"

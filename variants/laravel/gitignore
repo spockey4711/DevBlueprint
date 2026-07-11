@@ -1,0 +1,49 @@
+# Dependencies (committed lockfile, vendored code is not)
+/vendor/
+/node_modules/
+
+# Build / compiled assets
+/public/build/
+/public/hot/
+/public/storage
+/bootstrap/cache/*.php
+
+# Laravel runtime state
+/storage/*.key
+/storage/app/*
+!/storage/app/.gitignore
+/storage/framework/cache/data/*
+/storage/framework/sessions/*
+/storage/framework/testing/*
+/storage/framework/views/*
+/storage/logs/*
+*.log
+
+# Tooling caches / reports
+/.phpunit.cache/
+/.phpunit.result.cache
+.phpunit.result.cache
+/.pint.cache
+/coverage/
+coverage.xml
+clover.xml
+
+# IDE / editor cruft
+/.idea/
+/.vscode/
+/.fleet/
+/.nova/
+/.zed/
+_ide_helper.php
+_ide_helper_models.php
+.phpstorm.meta.php
+.DS_Store
+
+# Env (keep the example)
+.env
+.env.backup
+.env.*
+!.env.example
+Homestead.json
+Homestead.yaml
+auth.json

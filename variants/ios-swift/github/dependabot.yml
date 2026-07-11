@@ -1,0 +1,22 @@
+# Dependency automation. Dependabot opens PRs for outdated dependencies so the
+# quality gate (not a human's memory) keeps the toolchain current. Grouped to
+# avoid a flood of single-package PRs. The swift ecosystem reads Package.swift /
+# Package.resolved; drop it if this project is an .xcodeproj without SPM deps.
+version: 2
+updates:
+  - package-ecosystem: swift
+    directory: "/"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      swift-packages:
+        patterns: ["*"]
+
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ["*"]

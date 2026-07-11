@@ -1,0 +1,41 @@
+# Build output
+build/
+out/
+target/
+bin/
+*.class
+
+# Gradle
+.gradle/
+gradle-app.setting
+!gradle-wrapper.jar
+!gradle-wrapper.properties
+.gradletasknamecache
+
+# Spring Boot
+*.log
+spring.log
+application-local.properties
+application-local.yml
+
+# Test / coverage reports
+.jacoco/
+jacoco.exec
+*.exec
+
+# IDE / editor cruft
+.idea/
+*.iml
+*.ipr
+*.iws
+.classpath
+.project
+.settings/
+.vscode/*
+!.vscode/extensions.json
+.DS_Store
+
+# Env (keep the example)
+.env
+.env.*
+!.env.example

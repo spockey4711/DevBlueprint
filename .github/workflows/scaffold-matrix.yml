@@ -1,0 +1,57 @@
+name: Scaffold matrix
+
+# Kit self-CI: scaffold every variant into a throwaway dir, wire it with the
+# variant's setup.sh, and run its quality gate - so a broken scaffold, setup.sh,
+# Makefile or quality gate (variant rot) is caught before a release ships it. The
+# per-variant work lives in scripts/scaffold-check.sh; this workflow only fans it
+# out across variants and provisions each one's toolchain.
+#
+# Each matrix job runs on a fresh, isolated GitHub-hosted runner (the throwaway
+# environment), which already ships Node, Rust and make - the toolchains the
+# gated variants (generic, rust, node-express) need, with rustup pinning itself
+# from the scaffolded rust-toolchain.toml. Variants that require you to create
+# the real app first (Next.js, SwiftPM, Gradle, Python sources) - and backend-go,
+# whose gate needs separately-pinned linters - are checked scaffold-only by
+# scaffold-check.sh, so no extra toolchain is provisioned here.
+
+on:
+  pull_request:
+  push:
+    branches: [master, develop]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  discover:
+    name: Discover variants
+    runs-on: ubuntu-latest
+    outputs:
+      variants: ${{ steps.list.outputs.variants }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: List variants
+        id: list
+        run: echo "variants=$(scripts/scaffold-check.sh --list-json)" >> "$GITHUB_OUTPUT"
+
+  scaffold:
+    name: ${{ matrix.variant }}
+    needs: discover
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        variant: ${{ fromJson(needs.discover.outputs.variants) }}
+    env:
+      # A gated variant whose toolchain is somehow missing is a hard failure, not
+      # a silent skip - otherwise a broken bootstrap would hide variant rot.
+      SCAFFOLD_CHECK_REQUIRE_GATE: "1"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Scaffold, wire and check
+        run: scripts/scaffold-check.sh "${{ matrix.variant }}"

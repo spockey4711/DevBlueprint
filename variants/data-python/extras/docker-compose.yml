@@ -1,0 +1,36 @@
+# Run the pipeline in a container locally, close to how a scheduler runs it in
+# production but wired for development. `docker compose run --build job` builds
+# the Dockerfile in this directory and runs the pipeline to completion.
+#
+# This is a batch job, not a web service: there is no exposed port and the
+# container exits when the run finishes. Secrets come from a local .env
+# (gitignored) via env_file - never hard-code them here. Need a local source
+# database or warehouse to develop against? Uncomment the `db` service and its
+# depends_on below.
+services:
+  job:
+    build: .
+    env_file:
+      - .env
+    environment:
+      APP_ENV: development
+    # A batch job runs once and exits - do NOT restart it in a loop.
+    restart: "no"
+    # depends_on:
+    #   db:
+    #     condition: service_healthy
+
+  # A local source/warehouse to develop the pipeline against. Uncomment and point
+  # DATABASE_URL in .env at it (e.g. postgres://pipeline:pipeline@db:5432/warehouse).
+  # db:
+  #   image: postgres:16
+  #   environment:
+  #     POSTGRES_USER: pipeline
+  #     POSTGRES_PASSWORD: pipeline
+  #     POSTGRES_DB: warehouse
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "pg_isready -U pipeline"]
+  #     interval: 5s
+  #     timeout: 5s
+  #     retries: 5
+  #   # No published port by default; add one only if you connect from the host.

@@ -1,0 +1,66 @@
+name: CI
+
+# The quality gate for every change: the env-schema contract, terraform fmt
+# (formatting), terraform validate (configuration + types), tflint (lint) and the
+# native terraform test framework - all on the provider versions pinned in
+# .terraform.lock.hcl. Must be
+# green before a PR can merge. Gates both integration branches: feature PRs into
+# `develop` and the periodic `develop` -> `master` release PR.
+
+on:
+  pull_request:
+    branches: [develop, master]
+  push:
+    branches: [develop, master]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    name: Format, validate, lint, test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Fast, toolchain-free contract check: .env.example must stay in lockstep
+      # with .env.schema (and a real .env, if present, must satisfy it).
+      - name: Validate env schema
+        run: sh scripts/check-env.sh
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          # Keep aligned with .tool-versions and the required_version constraint.
+          terraform_version: "1.10.5"
+          # Expose raw terraform exit codes/output to later steps.
+          terraform_wrapper: false
+
+      - name: Set up tflint
+        uses: terraform-linters/setup-tflint@v4
+        with:
+          tflint_version: v0.55.1
+
+      - name: Format check
+        run: terraform fmt -check -recursive
+
+      # Init without a backend so validate/test run offline, without remote-state
+      # credentials. Providers/modules resolve from the committed lock file.
+      - name: Init (no backend)
+        run: terraform init -backend=false -input=false
+
+      - name: Validate
+        run: terraform validate
+
+      - name: Lint (tflint)
+        run: |
+          tflint --init
+          tflint --recursive
+
+      - name: Tests
+        run: terraform test

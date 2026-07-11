@@ -1,0 +1,53 @@
+name: Coverage
+
+# Measures line coverage on every change and enforces a soft floor. The floor is
+# read from the COVERAGE_MIN repository variable (Settings > Secrets and variables
+# > Actions > Variables) and defaults to 0, i.e. report-only: coverage is always
+# visible in the job summary, and a team opts into a hard gate by raising
+# COVERAGE_MIN - no code change needed. This respects the variant's
+# "meaningful coverage, not a global percentage" guidance in
+# docs/engineering/quality-and-testing.md.
+
+on:
+  pull_request:
+    branches: [develop, master]
+  push:
+    branches: [develop, master]
+
+concurrency:
+  group: coverage-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  coverage:
+    name: Line coverage
+    runs-on: macos-14
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Test with coverage
+        run: swift test --enable-code-coverage
+
+      - name: Report coverage
+        # Best-effort: SwiftPM's coverage layout varies, so a parse miss reports 0
+        # and only trips the gate when COVERAGE_MIN is set above 0.
+        env:
+          MIN: ${{ vars.COVERAGE_MIN || '0' }}
+        run: |
+          bin=$(swift build --show-bin-path)
+          prof="$bin/codecov/default.profdata"
+          xctest=$(find "$bin" -maxdepth 2 -name '*.xctest' -print -quit)
+          binpath=""
+          [ -n "$xctest" ] && binpath=$(find "$xctest/Contents/MacOS" -maxdepth 1 -type f -perm +111 2>/dev/null | head -1)
+          pct=0
+          if [ -n "$binpath" ] && [ -f "$prof" ]; then
+            pct=$(xcrun llvm-cov report "$binpath" -instr-profile "$prof" 2>/dev/null | awk '/^TOTAL/ {gsub(/%/,"",$10); print $10}')
+            pct=${pct:-0}
+          fi
+          printf 'Line coverage: %s%% (floor %s%%)\n' "$pct" "$MIN"
+          printf '### Coverage\n\nLine coverage **%s%%** (floor %s%%).\n' "$pct" "$MIN" >> "$GITHUB_STEP_SUMMARY"
+          awk -v p="$pct" -v m="$MIN" 'BEGIN { if (p + 0 < m + 0) { printf "::error::line coverage %s%% is below the %s%% floor\n", p, m; exit 1 } }'

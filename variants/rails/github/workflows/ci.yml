@@ -1,0 +1,48 @@
+name: CI
+
+# The quality gate for every change: the env-schema contract, RuboCop (formatting
+# + style), a Brakeman security scan, and the tests - all on the Ruby pinned in
+# .ruby-version with gems from Gemfile.lock. Must be green before a PR can merge.
+# Gates both integration branches: feature PRs into `develop` and the periodic
+# `develop` -> `master` release PR.
+
+on:
+  pull_request:
+    branches: [develop, master]
+  push:
+    branches: [develop, master]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    name: Lint, scan, test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Fast, toolchain-free contract check: .env.example must stay in lockstep
+      # with .env.schema (and a real .env, if present, must satisfy it).
+      - name: Validate env schema
+        run: sh scripts/check-env.sh
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version-file: .ruby-version
+          bundler-cache: true
+
+      - name: Lint (RuboCop)
+        run: bundle exec rubocop
+
+      - name: Security scan (Brakeman)
+        run: bundle exec brakeman --quiet --no-pager
+
+      - name: Tests
+        run: bundle exec rails test

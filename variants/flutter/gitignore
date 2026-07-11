@@ -1,0 +1,58 @@
+# Dart / Flutter tool output
+.dart_tool/
+.packages
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
+pubspec.lock.bak
+
+# Note: commit pubspec.lock for an application (reproducible builds). Delete the
+# line below if this is instead a reusable package/plugin.
+# pubspec.lock
+
+# FVM local SDK cache (keep .fvmrc, ignore the downloaded SDK)
+.fvm/
+
+# Coverage
+coverage/
+*.lcov
+
+# Generated code (build_runner, l10n, freezed, json_serializable)
+*.g.dart
+*.freezed.dart
+*.mocks.dart
+
+# IDE / tooling
+.idea/
+*.iml
+.vscode/*
+!.vscode/extensions.json
+
+# Android
+android/.gradle/
+android/local.properties
+android/key.properties
+android/app/upload-keystore.jks
+**/android/**/gradle-wrapper.jar
+*.keystore
+*.jks
+
+# iOS / macOS
+ios/Pods/
+ios/.symlinks/
+ios/Flutter/Flutter.framework
+ios/Flutter/Flutter.podspec
+**/*.xcuserstate
+macos/Pods/
+
+# Web / build artifacts
+*.class
+*.log
+
+# Env (keep the example)
+.env
+.env.*
+!.env.example
+
+# OS / editor cruft
+.DS_Store

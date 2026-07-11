@@ -6,7 +6,7 @@ pytest, uv for dependencies, GitHub Actions CI.
 ## Quality gate
 
 ```bash
-ruff check . && ruff format --check . && mypy . && pytest
+sh scripts/check-env.sh && ruff check . && ruff format --check . && mypy . && pytest
 ```
 
 ## What `devblueprint init --variant backend-python` adds
@@ -16,7 +16,14 @@ ruff check . && ruff format --check . && mypy . && pytest
 - `CLAUDE.md`, `CONTRIBUTING.md`, `CHANGELOG.md` filled in for this stack.
 - `scripts/wt.sh` + `scripts/wt.conf` (post-create runs `uv sync`).
 - `.github/workflows/ci.yml` (ruff + mypy + pytest).
+- `.github/dependabot.yml` (pip + github-actions updates) and `.tool-versions` (toolchain pin).
 - `.gitignore` for Python.
+- `docs/ops/deployment.md` (deploy runbook: managed/Docker/VPS + DB + env checklists) and
+  `.env.example` (committed template; real `.env*` stay ignored).
+- Ops artifacts: `Dockerfile` (uv-built venv -> slim `python:3.12-slim` running uvicorn as non-root)
+  + `.dockerignore` + `docker-compose.yml`, `deploy/` (Fly/Render/Terraform skeletons), and
+  `.env.schema` + `scripts/check-env.sh` (the env contract CI and the gate enforce). All skeletons -
+  fill the `<...>` placeholders.
 - `app/` and `tests/` skeleton.
 
 ## After init (wire the toolchain)

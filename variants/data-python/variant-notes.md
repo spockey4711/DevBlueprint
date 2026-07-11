@@ -10,3 +10,16 @@
   keep them in DVC or object storage, referenced by path/hash, and treat inputs as immutable.
 - mypy `strict` runs over `src` (typed library code); ruff owns lint + format. Set seeds for
   reproducibility and read paths/params from config, never hard-code secrets.
+- Ops artifacts ship as fillable skeletons, adapted for a batch/pipeline project (not a web
+  service): a `python:3.12-slim` non-root `Dockerfile` whose ENTRYPOINT runs the pipeline to
+  completion and exits - no exposed port - plus `.dockerignore` and a run-once `docker-compose.yml`.
+  Deployment is scheduled, not always-on: there is no `fly.toml`/`render.yaml`; `deploy/README.md`
+  points at a scheduler/registry/managed Batch service (cron, Airflow, AWS Batch, Cloud Run jobs)
+  and `deploy/terraform/` provisions the compute + object storage. `docs/ops/deployment.md` is a
+  runbook for those targets - job success/alerting replaces the health check a service would have.
+- The environment is a validated contract: `.env.schema` declares each variable (required/optional,
+  optional `pattern=`) - here the source/warehouse connection strings and object-store credentials,
+  all optional until real - and `make check` (plus CI) runs `scripts/check-env.sh` to keep
+  `.env.example` in lockstep with it and enforce required keys in any real `.env`. Pull every
+  credential from the environment or a secrets manager; never commit one. Declare new variables in
+  both the schema and `.env.example`, or the gate fails.

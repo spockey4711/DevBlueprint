@@ -1,0 +1,64 @@
+name: Coverage
+
+# Measures line coverage on every change and enforces a soft floor. The floor is
+# read from the COVERAGE_MIN repository variable (Settings > Secrets and variables
+# > Actions > Variables) and defaults to 0, i.e. report-only: coverage is always
+# visible in the job summary, and a team opts into a hard gate by raising
+# COVERAGE_MIN - no code change needed. This respects the variant's
+# "meaningful coverage, not a global percentage" guidance in
+# docs/engineering/quality-and-testing.md.
+
+on:
+  pull_request:
+    branches: [develop, master]
+  push:
+    branches: [develop, master]
+
+concurrency:
+  group: coverage-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  coverage:
+    name: Line coverage
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.4"
+          tools: composer
+          # pcov drives coverage without the overhead of Xdebug.
+          coverage: pcov
+
+      - name: Install dependencies
+        run: composer install --no-interaction --no-progress --prefer-dist
+
+      - name: Test with coverage
+        # Pest's --min fails the run when total coverage is below the floor and
+        # always prints the coverage table. When Pest is not installed yet (a
+        # fresh scaffold) the floor is skipped so the job stays green.
+        env:
+          MIN: ${{ vars.COVERAGE_MIN || '0' }}
+        run: |
+          if [ ! -x vendor/bin/pest ]; then
+            echo "Pest not installed - run 'composer require --dev pestphp/pest' to enable coverage."
+            exit 0
+          fi
+          vendor/bin/pest --coverage --min="$MIN" | tee coverage.txt
+
+      - name: Coverage summary
+        if: always()
+        run: |
+          [ -f coverage.txt ] || exit 0
+          pct=$(grep -oE 'Total:[[:space:]]*[0-9.]+ %' coverage.txt | grep -oE '[0-9.]+ %' | head -1)
+          [ -z "$pct" ] && exit 0
+          printf '### Coverage\n\nLine coverage **%s** (floor %s%%).\n' "$pct" "${MIN:-0}" >> "$GITHUB_STEP_SUMMARY"
+        env:
+          MIN: ${{ vars.COVERAGE_MIN || '0' }}

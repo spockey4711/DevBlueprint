@@ -1,0 +1,29 @@
+# Fly.io deployment config (skeleton). Fill in the <...> values, then
+# `fly launch --copy-config` (first time) or `fly deploy`. Secrets are NOT set
+# here - use `fly secrets set KEY=value` so they live in Fly's vault, never in
+# this committed file. See docs/ops/deployment.md.
+
+app = "<your-app-name>"
+primary_region = "<region>"   # a Fly region code, e.g. "iad", "fra", "syd"
+
+[build]
+  dockerfile = "Dockerfile"
+
+# Non-secret config only. Real secrets (SPRING_DATASOURCE_PASSWORD, JWT_SECRET)
+# go through `fly secrets set`.
+[env]
+  SPRING_PROFILES_ACTIVE = "production"
+  SERVER_PORT = "8080"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = true
+  auto_start_machines = true
+  min_machines_running = 0
+
+  [[http_service.checks]]
+    method = "get"
+    path = "<health-check-path>"   # e.g. "/actuator/health"
+    interval = "15s"
+    timeout = "2s"

@@ -30,10 +30,16 @@ Trigger: a request like "do task P0-3 from the backlog".
    quality-and-testing doc).
 5. **Push** the branch to `origin`.
 6. **Open a PR into `develop`** describing what changed and why, referencing the task
-   (`Refs: P0-3`). See [Pull requests](#pull-requests). Never self-merge.
+   (`Refs: P0-3`). Tick the task's box in `docs/project/backlog.md` in the same PR - as soon as
+   the work is done and only the merge remains, mark it `- [x]` (do not wait for the merge). See
+   [Pull requests](#pull-requests). Never self-merge.
 7. **Hand the PR off for review and merge into `develop`.** The main clone never moved, so
    there is nothing to switch back. Once the PR is merged, `wt gc` removes the now-merged
    worktree and its branch.
+
+Backlog markers: `- [ ]` not started, `- [x]` done, `- [~]` merged but a follow-up step still
+remains. A task is never left `- [ ]` once its PR has merged - use `- [~]` only when something
+still has to happen after the merge, otherwise `- [x]`.
 
 Promoting the accumulated work from `develop` to `master` is a separate, periodic step - see
 [Releases](#releases-promoting-develop-to-master).
@@ -58,6 +64,18 @@ Two long-lived branches with short-lived feature branches integrating on `develo
 - **One directory per branch.** The main clone stays permanently on `master`; every feature
   branch lives in its own worktree branched off `develop`. Never `git checkout` a feature
   branch in the main clone. See [Worktrees](#worktrees).
+
+### Enforcing the protection
+
+The rules above ("protected", "PRs only") describe intent; a host enforces them. Run
+`scripts/protect-branches.sh` to apply GitHub branch protection to the long-lived branches
+via `gh api`: it requires PRs and approving reviews and blocks direct pushes, force-pushes and
+branch deletion. It reads the branch names from `scripts/wt.conf`, so it protects the right
+branches for both the two-branch and single-branch layouts. When a `CODEOWNERS` file is present
+(scaffold it with `--community`, then replace the `@OWNER` placeholder), it also requires
+code-owner review. The script is opt-in and idempotent - re-run it after changing reviewers or
+branches. See `scripts/protect-branches.sh --help` for the options (`--reviews`, `--admins`,
+`--dry-run`).
 
 ### Solo / lightweight variant
 

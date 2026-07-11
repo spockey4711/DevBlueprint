@@ -1,2 +1,6 @@
 .DS_Store
 .wakatime-project
+
+# npm packaging artifacts (npx channel)
+node_modules/
+devblueprint-*.tgz

@@ -1,0 +1,25 @@
+# Local PostgreSQL for development. Stack-agnostic: it runs the database only, so
+# it composes with any base variant. Bring it up with `docker compose up -d db`.
+#
+# The credentials below are for LOCAL development only. In any shared or production
+# environment, supply them from the environment (or a secrets manager) instead of
+# hard-coding them here.
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-app}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-app}
+      POSTGRES_DB: ${POSTGRES_DB:-app}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-app}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  pgdata:

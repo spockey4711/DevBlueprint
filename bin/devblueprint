@@ -3,22 +3,57 @@
 # gate + AI-assistant guidance) from the shared core and a stack variant.
 #
 # Usage:
-#   devblueprint list
-#   devblueprint init --target <dir> --name <name> --variant <variant> \
-#       [--base <branch>] [--main <branch>] [--community] [--contact <method>] [--force]
+#   devblueprint list [--json]
+#   devblueprint init --target <dir> --variant <variant> [--name <name>] \
+#       [--from <intake.yml>] [--extends <baseline>] [--base <branch>] [--main <branch>] \
+#       [--deploy <target>] [--flavor <list>] [--agents <list>] [--community] \
+#       [--contact <method>] [--force] [--dry-run]
+#   devblueprint init --target <dir> --package <name>:<variant> [--package ...] [init flags]
+#       (monorepo: one repo, many packages, aggregated CI + per-package quality gates)
+#   devblueprint plan --target <dir> --from <intake.yml> [init flags]
 #   devblueprint update --target <dir> [--variant <variant>] [--dry-run]
-#   devblueprint doctor --target <dir>
-#   devblueprint version
+#   devblueprint diff --target <dir> [--variant <variant>]
+#   devblueprint doctor --target <dir> [--strict] [--run-gate] [--fix] [--variant <variant>] [--json]
+#   devblueprint detect --target <dir>
+#   devblueprint upgrade [--channel stable|next] [--version <ver>] [--check] [--force]
+#   devblueprint version [--json]
 #   devblueprint help
 #
 # The blueprint is documentation-first: `init` copies the tech-agnostic core docs
 # and the chosen variant's overlay, fills in CLAUDE.md / CONTRIBUTING.md, drops in
 # the worktree script, the variant's github/ tree (CI workflow + any .github meta),
 # its root-level extras/, and .gitignore. It never overwrites existing
-# files unless --force is given. `update` re-syncs only the core-owned files
-# (the agnostic engineering docs, wt.sh, and the GitHub PR/issue templates) into
-# an existing project, so old projects can pick up core changes without touching
-# their CLAUDE.md or code.
+# files unless --force is given. `init --from <intake.yml>` seeds those answers from
+# an intake file (see docs/agent/intake-schema.md); explicit flags still win, so a
+# conversation can override a single answer. An intake file may declare
+# `extends: <baseline>` (or `init --extends <baseline>` on the CLI) to inherit an
+# org baseline - a shared intake file of company defaults (branches, contact,
+# agents, ...) that projects layer their own answers over, turning the kit from a
+# solo tool into a team standardizer. Resolution is strict precedence: explicit CLI
+# flags win, then the project's intake keys, then the baseline (chained through its
+# own `extends`), then the built-in defaults. `plan` (equivalently `init --dry-run`)
+# prints exactly what init would write without touching disk, so an agent can confirm
+# with the user first. `--agents claude,cursor,codex` emits instruction files for
+# other coding agents (AGENTS.md for Codex, a Cursor project rule, Copilot
+# instructions) from the same canonical guidance as CLAUDE.md, recording the choice
+# in the .devblueprint stamp so `update` re-renders them in step. `--flavor
+# postgres,docker` layers orthogonal add-on overlays (a database, container, auth,
+# ...) from variants/_flavors/ onto the chosen base variant at init - each flavor
+# drops in its own files (config + a docs/flavors/<name>.md note) and is recorded in
+# the stamp. `update` re-syncs
+# only the core-owned files (the agnostic engineering docs, wt.sh, the GitHub
+# PR/issue templates, and any selected agent files) into an existing project, so old
+# projects can pick up core changes without touching their CLAUDE.md or code. It
+# preserves local edits to those managed files with a three-way merge - base (the
+# .devblueprint-base/ cache of the last synced kit copy) vs. ours (the project's
+# file) vs. theirs (the current kit) - instead of overwriting, and reports a
+# conflict (leaving both sides marked) when the two sides cannot be reconciled.
+# `diff` is the read-only precursor to `update`: it reports which core-owned files in
+# a project have drifted from the current kit (in sync, drifted, or missing), using
+# the .devblueprint stamp as the base, without writing anything. `detect` inspects an
+# existing repo's stack fingerprints (package.json,
+# go.mod, Cargo.toml, Package.swift, pyproject.toml) and recommends the variant to
+# scaffold from, so adopting the workflow in an existing project needs no guesswork.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -27,7 +62,27 @@ CORE="$ROOT/core"
 # variants dir without touching the developer's working tree; defaults to the
 # kit's own variants/.
 VARIANTS="${DEVBLUEPRINT_VARIANTS:-$ROOT/variants}"
+# Orthogonal add-on overlays (db, container, auth, ...) layered onto a base variant
+# at init with --flavor. Kept under an underscore-prefixed dir inside VARIANTS so it
+# rides the same DEVBLUEPRINT_VARIANTS override and is naturally skipped by
+# list_variants (which requires a manifest.env the _flavors/ dir does not have).
+FLAVORS_DIR="$VARIANTS/_flavors"
 VERSION_FILE="$ROOT/VERSION"
+# GitHub slug the kit is published from; used by `upgrade` to resolve release
+# tags and download tarballs. Mirrors install.sh's REPO (owned there; kept in
+# sync by hand).
+REPO="spockey4711/DevBlueprint"
+# Kit-local channel state written by `upgrade` (channel + pin + installed
+# version), so a bare `upgrade` re-follows the recorded channel and a pinned kit
+# stays frozen. Lives next to VERSION; never shipped in a release tarball.
+CHANNEL_FILE="$ROOT/.channel"
+# Directory inside a scaffolded project where `update` caches the pristine kit
+# copy of every managed file as of the last sync. It is the merge base for
+# `update`'s three-way merge (base = this cache, ours = the project's file,
+# theirs = the current kit), so local edits survive an update instead of being
+# overwritten. Committed with the project so a teammate who pulls shares the same
+# base.
+DB_BASE_DIR=".devblueprint-base"
 
 die() { echo "devblueprint: $*" >&2; exit 1; }
 info() { printf '  %s\n' "$*"; }
@@ -45,19 +100,44 @@ kit_version() {
 
 # --- helpers ---------------------------------------------------------------
 
-# render <template-file> <dest-file> : substitute {{TOKENS}} from the current
-# environment (PROJECT_NAME, MAIN_BRANCH, BASE_BRANCH, WT_CMD, QUALITY_GATE,
-# COPY_LANGUAGE_NOTE, VARIANT_NOTES, CONTACT) using bash parameter expansion
-# (literal, no escaping pitfalls). Respects FORCE for overwrite safety.
+# json_esc <string> : escape <string> for embedding inside a JSON string value
+# (the surrounding quotes are added by the caller). Hand-rolled so the machine
+# output stays dependency-free (no jq). Backslash must be replaced first, then the
+# double quote and the control characters that JSON forbids raw. Data we emit
+# (variant titles, quality-gate pipelines like `test -z "$(gofumpt -l .)"`, paths)
+# can carry quotes and backslashes, so this is not optional.
+json_esc() {
+  local s="$1"
+  s="${s//\\/\\\\}"
+  s="${s//\"/\\\"}"
+  s="${s//$'\t'/\\t}"
+  s="${s//$'\r'/\\r}"
+  s="${s//$'\n'/\\n}"
+  printf '%s' "$s"
+}
+
+# json_str_or_null <string> : a JSON string literal for <string>, or the literal
+# null when it is empty. Used for optional fields (e.g. a project's scaffold
+# version, absent before the .devblueprint stamp existed).
+json_str_or_null() {
+  if [ -z "$1" ]; then printf 'null'; else printf '"%s"' "$(json_esc "$1")"; fi
+}
+
+# render_content <template-file> : emit the rendered template on stdout -
+# substitute {{TOKENS}} from the current environment (PROJECT_NAME, MAIN_BRANCH,
+# BASE_BRANCH, WT_CMD, QUALITY_GATE, COPY_LANGUAGE_NOTE, VARIANT_NOTES, CONTACT)
+# using bash parameter expansion (literal, no escaping pitfalls), and select the
+# right workflow block. No disk writes and no overwrite guard, so callers decide
+# how to place the result: init's render() writes it once (overwrite-safe), while
+# update re-renders into a temp file and pipes it through sync_file.
 #
-# Templates may also carry conditional blocks delimited by their own lines:
+# Templates may carry conditional blocks delimited by their own lines:
 #   {{#TWO_BRANCH}} ... {{/TWO_BRANCH}}      (kept for develop -> master flow)
 #   {{#SINGLE_BRANCH}} ... {{/SINGLE_BRANCH}} (kept for trunk flow, base == main)
 # select_workflow_block strips whichever block does not match the chosen workflow
 # before token substitution runs.
-render() {
-  local tmpl="$1" dest="$2" content
-  place_guard "$dest" || return 0
+render_content() {
+  local tmpl="$1" content
   content="$(select_workflow_block < "$tmpl")"
   content="${content//\{\{PROJECT_NAME\}\}/$PROJECT_NAME}"
   content="${content//\{\{MAIN_BRANCH\}\}/$MAIN_BRANCH}"
@@ -67,9 +147,69 @@ render() {
   content="${content//\{\{COPY_LANGUAGE_NOTE\}\}/$COPY_LANGUAGE_NOTE}"
   content="${content//\{\{VARIANT_NOTES\}\}/$VARIANT_NOTES}"
   content="${content//\{\{CONTACT\}\}/$CONTACT}"
+  printf '%s\n' "$content"
+}
+
+# render <template-file> <dest-file> : write the rendered template to dest with
+# overwrite safety (skips an existing file unless FORCE). Honors DRY_RUN.
+render() {
+  local tmpl="$1" dest="$2"
+  place_guard "$dest" || return 0
+  if [ "${DRY_RUN:-0}" -eq 1 ]; then info "would write $rel_dest"; return 0; fi
   mkdir -p "$(dirname "$dest")"
-  printf '%s\n' "$content" > "$dest"
+  render_content "$tmpl" > "$dest"
   info "wrote $rel_dest"
+}
+
+# agent_slug <name> : a filesystem-safe, lowercase-kebab form of <name>, used for
+# the per-project Cursor rule filename (.cursor/rules/<slug>.mdc). Lowercases,
+# maps every non-alphanumeric run to a single hyphen, and trims leading/trailing
+# hyphens, so "Acme App!" -> "acme-app".
+agent_slug() {
+  local s
+  s="$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]' | tr -c 'a-z0-9' '-' | tr -s '-')"
+  s="${s#-}"; s="${s%-}"
+  printf '%s' "$s"
+}
+
+# agent_dest <agent> : echo "<template>|<relative-dest>" for a non-Claude agent,
+# or nothing for an unknown/claude agent. The single source of truth for the
+# agent -> template + path mapping shared by init (which emits) and update (which
+# re-renders). Cursor's filename depends on the project name, so it is resolved
+# from the current PROJECT_NAME. CLAUDE.md is handled directly by init (it is the
+# canonical, user-owned copy) and is not part of this table.
+agent_dest() {
+  case "$1" in
+    codex)   printf '%s|%s' "$CORE/templates/agents/AGENTS.md.tmpl" "AGENTS.md" ;;
+    cursor)  printf '%s|%s' "$CORE/templates/agents/cursor.mdc.tmpl" ".cursor/rules/$(agent_slug "$PROJECT_NAME").mdc" ;;
+    copilot) printf '%s|%s' "$CORE/templates/agents/copilot-instructions.md.tmpl" ".github/copilot-instructions.md" ;;
+  esac
+}
+
+# resolve_agents <comma-list> : validate, dedupe and canonicalize the --agents
+# selection, echoing a space-separated list in a stable order. `claude` is always
+# included - CLAUDE.md is the canonical source the other files derive from and a
+# doctor-required foundation file, so it can never be switched off. Unknown agent
+# names are a hard error so typos surface instead of silently doing nothing.
+resolve_agents() {
+  local raw="$1" a out="claude" seen_codex=0 seen_cursor=0 seen_copilot=0
+  local -a parts
+  IFS=',' read -ra parts <<< "$raw"
+  for a in "${parts[@]}"; do
+    a="${a//[[:space:]]/}"
+    [ -n "$a" ] || continue
+    case "$a" in
+      claude)  ;;
+      codex)   seen_codex=1 ;;
+      cursor)  seen_cursor=1 ;;
+      copilot) seen_copilot=1 ;;
+      *) die "unknown agent '$a' (known: claude, codex, cursor, copilot)" ;;
+    esac
+  done
+  [ "$seen_codex" -eq 1 ]   && out="$out codex"
+  [ "$seen_cursor" -eq 1 ]  && out="$out cursor"
+  [ "$seen_copilot" -eq 1 ] && out="$out copilot"
+  printf '%s' "$out"
 }
 
 # select_workflow_block : filter stdin, keeping the {{#TWO_BRANCH}} block for a
@@ -99,8 +239,21 @@ place_guard() {
 # copy <src> <dest> : copy a single file with overwrite safety.
 copy() {
   place_guard "$2" || return 0
+  if [ "${DRY_RUN:-0}" -eq 1 ]; then info "would write $rel_dest"; return 0; fi
   mkdir -p "$(dirname "$2")"
   cp "$1" "$2"
+  info "wrote $rel_dest"
+}
+
+# emit_stdin <dest> : write stdin to dest with the same overwrite safety and
+# dry-run reporting as copy(). Lets the inline heredocs (CHANGELOG, .devblueprint
+# stamp, backlog stub) flow through one guarded writer instead of open-coding the
+# place_guard / DRY_RUN dance at each call site.
+emit_stdin() {
+  place_guard "$1" || { cat >/dev/null; return 0; }
+  if [ "${DRY_RUN:-0}" -eq 1 ]; then cat >/dev/null; info "would write $rel_dest"; return 0; fi
+  mkdir -p "$(dirname "$1")"
+  cat > "$1"
   info "wrote $rel_dest"
 }
 
@@ -123,6 +276,7 @@ copy_tree() {
 # variant conventions overlay). Always appends; the base file was just written.
 append_if() {
   [ -f "$1" ] || return 0
+  if [ "${DRY_RUN:-0}" -eq 1 ]; then info "would append ${1##*/} -> ${2#"$TARGET"/}"; return 0; fi
   cat "$1" >> "$2"
   info "appended ${1##*/} -> ${2#"$TARGET"/}"
 }
@@ -150,6 +304,134 @@ sync_file() {
   info "${verb}d $rel"
 }
 
+# record_base <src> <rel> : snapshot <src> as the merge base for the managed file
+# <rel>, under the project's .devblueprint-base/ cache, so the next `update` can
+# tell the user's local edits apart from upstream kit changes. Reads TARGET; a
+# no-op in dry-run (nothing is written to disk during a preview).
+record_base() {
+  local src="$1" base="$TARGET/$DB_BASE_DIR/$2"
+  [ "${DRY_RUN:-0}" -eq 1 ] && return 0
+  mkdir -p "$(dirname "$base")"
+  cp "$src" "$base"
+}
+
+# merge_file <src> <rel> : reconcile one managed file during `update`, preserving
+# local edits with a three-way merge instead of overwriting. <src> is the current
+# kit's copy (theirs) and <rel> the path relative to the target (ours is
+# $TARGET/<rel>). The merge base is the kit copy cached in .devblueprint-base/ at
+# the last sync - or, when that cache is absent but the project's stamp still
+# matches the current kit, the current kit itself (the kit has not moved, so any
+# drift is provably a local edit). With a base in hand the outcomes are: create a
+# missing file, leave an in-sync one, fast-forward an unedited file to the kit,
+# keep local edits when the kit has nothing new, three-way merge when both sides
+# changed, and - when a merge cannot be reconciled or no base is recoverable -
+# never clobber: keep the local file and flag it. Reads TARGET/DRY_RUN/STAMPED/
+# CURRENT and bumps CHANGED/MERGED/CONFLICTS/PRESERVED via bash's dynamic scoping
+# (the same pattern sync_file and diff_file use). A missing <src> is a no-op.
+merge_file() {
+  local src="$1" rel="$2" dest="$TARGET/$2" base="$TARGET/$DB_BASE_DIR/$2"
+  [ -f "$src" ] || return 0
+
+  # New file: nothing to preserve, so just create it and seed the base.
+  if [ ! -e "$dest" ]; then
+    CHANGED=$((CHANGED + 1))
+    if [ "$DRY_RUN" -eq 1 ]; then info "would create $rel"; return 0; fi
+    mkdir -p "$(dirname "$dest")"
+    cp "$src" "$dest"
+    record_base "$src" "$rel"
+    info "created $rel"
+    return 0
+  fi
+
+  # Already identical to the kit: keep the base fresh and move on.
+  if cmp -s "$src" "$dest"; then
+    info "unchanged $rel"
+    record_base "$src" "$rel"
+    return 0
+  fi
+
+  # The project file differs from the kit. Resolve the merge base.
+  local basefile=""
+  if [ -f "$base" ]; then
+    basefile="$base"
+  elif [ -n "$STAMPED" ] && [ "$STAMPED" = "$CURRENT" ]; then
+    # No cached base yet, but the kit has not advanced since this project was
+    # stamped, so the current kit copy *is* the base and the drift is purely local.
+    basefile="$src"
+  fi
+
+  if [ -z "$basefile" ]; then
+    # No recoverable base (an older project updated for the first time, jumping
+    # kit versions with local edits). Never clobber: keep the local file, seed the
+    # base so future updates can merge, and flag it for a manual look.
+    PRESERVED=$((PRESERVED + 1))
+    if [ "$DRY_RUN" -eq 1 ]; then info "would keep $rel (local edits, no merge base)"; return 0; fi
+    record_base "$src" "$rel"
+    info "kept $rel (local edits, no merge base - compare with: devblueprint diff)"
+    return 0
+  fi
+
+  # Local file matches the base: no local edits, safe to fast-forward to the kit.
+  if cmp -s "$basefile" "$dest"; then
+    CHANGED=$((CHANGED + 1))
+    if [ "$DRY_RUN" -eq 1 ]; then info "would update $rel"; return 0; fi
+    cp "$src" "$dest"
+    record_base "$src" "$rel"
+    info "updated $rel"
+    return 0
+  fi
+
+  # Base matches the kit: the kit has nothing new here, so keep the local edits.
+  if cmp -s "$basefile" "$src"; then
+    info "unchanged $rel (kept local edits)"
+    return 0
+  fi
+
+  # Both sides changed: three-way merge base -> ours + theirs. This needs git;
+  # without it we cannot merge, so preserve the local file rather than risk
+  # clobbering it (a failed `git merge-file` would otherwise leave empty output).
+  if ! command -v git >/dev/null 2>&1; then
+    PRESERVED=$((PRESERVED + 1))
+    if [ "$DRY_RUN" -eq 1 ]; then info "would keep $rel (local edits; git unavailable to merge)"; return 0; fi
+    record_base "$src" "$rel"
+    info "kept $rel (local edits; git unavailable to merge - resolve manually)"
+    return 0
+  fi
+
+  local merged rc=0
+  merged="$(mktemp)"
+  git merge-file -p \
+    -L "$rel (local edits)" \
+    -L "base (devblueprint ${STAMPED:-unknown})" \
+    -L "$rel (devblueprint $CURRENT)" \
+    "$dest" "$basefile" "$src" > "$merged" 2>/dev/null || rc=$?
+
+  if [ "$rc" -eq 0 ]; then
+    MERGED=$((MERGED + 1)); CHANGED=$((CHANGED + 1))
+    if [ "$DRY_RUN" -eq 1 ]; then info "would merge $rel (local edits + kit update)"; rm -f "$merged"; return 0; fi
+    cp "$merged" "$dest"
+    record_base "$src" "$rel"
+    info "merged $rel (local edits + kit update)"
+  elif [ "$rc" -gt 0 ] && [ "$rc" -lt 128 ]; then
+    # git merge-file returns the conflict count (>= 1) here.
+    CONFLICTS=$((CONFLICTS + 1))
+    if [ "$DRY_RUN" -eq 1 ]; then info "would conflict $rel (needs a manual merge)"; rm -f "$merged"; return 0; fi
+    cp "$merged" "$dest"
+    record_base "$src" "$rel"
+    info "CONFLICT $rel (kept both sides with markers - resolve, then commit)"
+  else
+    # git errored (rc >= 128, e.g. a signal or an internal failure): never clobber,
+    # keep the local file and flag it.
+    PRESERVED=$((PRESERVED + 1))
+    if [ "$DRY_RUN" -ne 1 ]; then
+      record_base "$src" "$rel"
+      info "kept $rel (could not merge automatically - resolve manually)"
+    fi
+  fi
+  rm -f "$merged"
+  return 0
+}
+
 list_variants() {
   local d name
   for d in "$VARIANTS"/*/; do
@@ -160,35 +442,429 @@ list_variants() {
   done
 }
 
+# list_variants_json : the same set of variants as list_variants, emitted as a
+# single JSON object {"variants":[{name,title,gate}, ...]} so an agent can pick a
+# variant (and learn its quality gate) without scraping the aligned human table.
+list_variants_json() {
+  local d name title gate out="" sep=""
+  for d in "$VARIANTS"/*/; do
+    [ -f "$d/manifest.env" ] || continue
+    name="$(basename "$d")"
+    # shellcheck source=/dev/null
+    title="$( . "$d/manifest.env"; printf '%s' "${VARIANT_TITLE:-}" )"
+    # shellcheck source=/dev/null
+    gate="$( . "$d/manifest.env"; printf '%s' "${QUALITY_GATE:-}" )"
+    out="${out}${sep}{\"name\":\"$(json_esc "$name")\",\"title\":\"$(json_esc "$title")\",\"gate\":\"$(json_esc "$gate")\"}"
+    sep=","
+  done
+  printf '{"variants":[%s],"flavors":[%s]}\n' "$out" "$(list_flavors_json)"
+}
+
+# flavor_field <flavor> <VAR> : print one key from a flavor's flavor.env, sourced in
+# a subshell so it never clobbers the caller's globals (same pattern as
+# manifest_field for variants).
+flavor_field() {
+  # shellcheck source=/dev/null
+  ( . "$FLAVORS_DIR/$1/flavor.env"; local __k="$2"; printf '%s' "${!__k:-}" )
+}
+
+# list_flavors : one aligned "<name> <title>" line per add-on flavor (a directory
+# under _flavors/ carrying a flavor.env). Empty output when no flavors are present.
+list_flavors() {
+  local d name
+  [ -d "$FLAVORS_DIR" ] || return 0
+  for d in "$FLAVORS_DIR"/*/; do
+    [ -f "$d/flavor.env" ] || continue
+    name="$(basename "$d")"
+    printf '  %-16s %s\n' "$name" "$(flavor_field "$name" FLAVOR_TITLE)"
+  done
+}
+
+# list_flavors_json : the flavors as a JSON array body [{name,title}, ...] (no
+# surrounding key), so list_variants_json can splice it into its object and an agent
+# can discover the orthogonal add-ons alongside the base variants.
+list_flavors_json() {
+  local d name title out="" sep=""
+  [ -d "$FLAVORS_DIR" ] || { printf ''; return 0; }
+  for d in "$FLAVORS_DIR"/*/; do
+    [ -f "$d/flavor.env" ] || continue
+    name="$(basename "$d")"
+    title="$(flavor_field "$name" FLAVOR_TITLE)"
+    out="${out}${sep}{\"name\":\"$(json_esc "$name")\",\"title\":\"$(json_esc "$title")\"}"
+    sep=","
+  done
+  printf '%s' "$out"
+}
+
+# resolve_flavors <comma-list> : validate, dedupe and canonicalize a --flavor
+# selection, echoing a space-separated list in the user's first-seen order. Each
+# name must be a directory with a flavor.env under _flavors/; an unknown name is a
+# hard error that lists what is available (so a typo surfaces instead of silently
+# doing nothing). An empty selection echoes nothing.
+resolve_flavors() {
+  local raw="$1" f out=""
+  # No selection: echo nothing. Guarding here also keeps the empty-array expansion
+  # below from tripping `set -u` on bash 3.2 (macOS).
+  [ -n "${raw//[[:space:]]/}" ] || { printf ''; return 0; }
+  local -a parts
+  IFS=',' read -ra parts <<< "$raw"
+  for f in "${parts[@]}"; do
+    f="${f//[[:space:]]/}"
+    [ -n "$f" ] || continue
+    [ -f "$FLAVORS_DIR/$f/flavor.env" ] || die "unknown flavor '$f' (see: devblueprint list)"
+    # Dedupe: skip a name already collected (the same overlay twice is a no-op).
+    case " $out " in *" $f "*) continue ;; esac
+    out="${out:+$out }$f"
+  done
+  printf '%s' "$out"
+}
+
+# apply_flavors : layer each resolved flavor's overlay onto TARGET, after the base
+# variant is fully scaffolded. A flavor ships an overlay/ tree copied verbatim into
+# the project root (config files plus its docs/flavors/<name>.md note) and an
+# optional gitignore.append merged into .gitignore. Every write goes through the
+# same guarded helpers as the base scaffold, so overwrite safety (place_guard/FORCE)
+# and DRY_RUN reporting stay consistent - a flavor never clobbers a base file unless
+# --force is given. Reads FLAVORS/TARGET/DRY_RUN/FORCE.
+apply_flavors() {
+  local f fdir
+  [ -n "$FLAVORS" ] || return 0
+  echo
+  echo "Flavors: ${FLAVORS// /, }"
+  for f in $FLAVORS; do
+    fdir="$FLAVORS_DIR/$f"
+    copy_tree "$fdir/overlay" "$TARGET"
+    append_if "$fdir/gitignore.append" "$TARGET/.gitignore"
+  done
+}
+
+# abspath <path> : absolute form of <path> without requiring it to exist (unlike
+# `cd && pwd`). Used by init/plan to resolve --target for display in dry-run mode,
+# where the directory must not be created.
+abspath() {
+  case "$1" in
+    /*) printf '%s' "$1" ;;
+    *)  printf '%s/%s' "$(pwd)" "$1" ;;
+  esac
+}
+
+# apply_intake_file <file> : read a .devblueprint-intake.yml intake file and set
+# the IN_* globals (IN_NAME, IN_VARIANT, IN_MAIN, IN_BASE, IN_COMMUNITY,
+# IN_CONTACT, IN_DEPLOY, IN_FLAVORS, IN_AGENTS) for every key it declares - and
+# only those, so a more specific file layered on top overrides a baseline without
+# wiping the keys it stays silent about. The schema is a flat map of `key: value`
+# pairs - not general YAML - so a tiny hand-rolled reader is enough and keeps the
+# kit dependency-free. Blank lines and `#` comments (whole-line or trailing
+# ` #...`) are ignored; values may be single- or double-quoted. The `extends` key
+# is accepted here (add_config_file drives the baseline inheritance it names) but
+# not applied. Unknown keys are a hard error so typos surface instead of silently
+# doing nothing. See docs/agent/intake-schema.md.
+apply_intake_file() {
+  local file="$1" line key val
+  while IFS= read -r line || [ -n "$line" ]; do
+    line="${line#"${line%%[![:space:]]*}"}"        # ltrim
+    case "$line" in ''|'#'*) continue ;; esac       # skip blank / comment lines
+    line="${line%% #*}"                             # strip trailing " #..." comment
+    case "$line" in *:*) : ;; *) die "invalid intake line (expected 'key: value'): $line" ;; esac
+    key="${line%%:*}"; val="${line#*:}"
+    key="${key//[[:space:]]/}"                       # keys carry no spaces
+    val="${val#"${val%%[![:space:]]*}"}"             # ltrim value
+    val="${val%"${val##*[![:space:]]}"}"             # rtrim value
+    case "$val" in
+      \"*\") val="${val#\"}"; val="${val%\"}" ;;
+      \'*\') val="${val#\'}"; val="${val%\'}" ;;
+    esac
+    case "$key" in
+      name)      IN_NAME="$val" ;;
+      variant)   IN_VARIANT="$val" ;;
+      main)      IN_MAIN="$val" ;;
+      base)      IN_BASE="$val" ;;
+      community) IN_COMMUNITY="$val" ;;
+      contact)   IN_CONTACT="$val" ;;
+      deploy)    IN_DEPLOY="$val" ;;
+      flavors)   IN_FLAVORS="$val" ;;
+      agents)    IN_AGENTS="$val" ;;
+      extends)   : ;;   # handled by collect_config_files, not a value key
+      *) die "unknown intake key '$key' in $file (see docs/agent/intake-schema.md)" ;;
+    esac
+  done < "$file"
+}
+
+# read_extends <file> : echo the value of the `extends` key in an intake/baseline
+# file (empty when absent). A focused parser rather than a full apply so the
+# baseline chain can be resolved before any file's other keys are applied - the
+# baseline must land under the file that extends it. Trimming and quote handling
+# mirror apply_intake_file so `extends: "org/base.yml"` and a bare `extends: base`
+# both read cleanly.
+read_extends() {
+  local file="$1" line val
+  while IFS= read -r line || [ -n "$line" ]; do
+    line="${line#"${line%%[![:space:]]*}"}"
+    case "$line" in extends:*) : ;; *) continue ;; esac
+    line="${line%% #*}"
+    val="${line#*:}"
+    val="${val#"${val%%[![:space:]]*}"}"
+    val="${val%"${val##*[![:space:]]}"}"
+    case "$val" in
+      \"*\") val="${val#\"}"; val="${val%\"}" ;;
+      \'*\') val="${val#\'}"; val="${val%\'}" ;;
+    esac
+    printf '%s' "$val"
+    return 0
+  done < "$file"
+}
+
+# canon_file <path> : absolute, symlink-free path to an existing file, so the
+# extends cycle guard compares files by identity rather than by the textual path
+# each reference happened to use. Returns non-zero when the containing directory
+# does not exist.
+canon_file() {
+  local d b
+  d="$(cd "$(dirname "$1")" 2>/dev/null && pwd)" || return 1
+  b="$(basename "$1")"
+  printf '%s/%s' "$d" "$b"
+}
+
+# baseline_search_dirs : the directories a bare `extends: <name>` baseline is
+# looked up in, highest priority first. DEVBLUEPRINT_BASELINE_DIR is an explicit
+# override (the test suite points it at a throwaway dir; an org can point it at a
+# checked-out standards repo); the XDG and dotfile locations are where a user
+# drops shared baselines by hand.
+baseline_search_dirs() {
+  [ -n "${DEVBLUEPRINT_BASELINE_DIR:-}" ] && printf '%s\n' "$DEVBLUEPRINT_BASELINE_DIR"
+  printf '%s\n' "${XDG_CONFIG_HOME:-$HOME/.config}/devblueprint/baselines"
+  printf '%s\n' "$HOME/.devblueprint/baselines"
+}
+
+# find_named_baseline <name> : the path to the first `<name>.yml`/`<name>.yaml`
+# found across baseline_search_dirs, or empty (non-zero) when none matches.
+find_named_baseline() {
+  local name="$1" d f
+  while IFS= read -r d; do
+    [ -n "$d" ] || continue
+    for f in "$d/$name.yml" "$d/$name.yaml"; do
+      [ -f "$f" ] && { printf '%s' "$f"; return 0; }
+    done
+  done < <(baseline_search_dirs)
+  return 1
+}
+
+# resolve_baseline_path <ref> <base-dir> : turn an `extends` reference into an
+# existing baseline file, echoed as a canonical path. A ref with a slash, a
+# leading ~, or a .yml/.yaml suffix is a filesystem path (absolute, or relative to
+# <base-dir> - the directory of the file that declared the extends); anything else
+# is a bare name resolved through baseline_search_dirs. Returns non-zero when no
+# such file exists so the caller can report an actionable error.
+resolve_baseline_path() {
+  local ref="$1" base_dir="$2" p=""
+  # A leading ~/ is expanded by hand (it is data here, not a shell word, so the
+  # shell never expands it for us).
+  [ "${ref#\~/}" != "$ref" ] && ref="$HOME/${ref#\~/}"
+  case "$ref" in
+    /*)           p="$ref" ;;
+    */*)          p="$base_dir/$ref" ;;              # contains a slash -> relative path
+    *.yml|*.yaml) p="$base_dir/$ref" ;;              # bare filename with extension -> relative
+    *)            p="$(find_named_baseline "$ref")" || return 1 ;;  # bare name -> search dirs
+  esac
+  [ -n "$p" ] && [ -f "$p" ] || return 1
+  canon_file "$p"
+}
+
+# add_config_file <file> <override-extends> : append <file> and, ahead of it, the
+# baseline chain it extends to CONFIG_FILES (base-first, so applying the list in
+# order yields the right precedence: deepest baseline lowest, this file highest).
+# <override-extends> replaces the file's own `extends` key when non-empty (the CLI
+# --extends winning over an intake file's declaration). CONFIG_SEEN guards against
+# an extends cycle. Reads/writes the CONFIG_FILES array and CONFIG_SEEN string.
+add_config_file() {
+  local file="$1" override="$2" abs ext bdir bpath
+  abs="$(canon_file "$file")" || die "config file not found: $file"
+  case " $CONFIG_SEEN " in *" $abs "*) die "circular 'extends' detected at $file" ;; esac
+  CONFIG_SEEN="$CONFIG_SEEN $abs"
+  if [ -n "$override" ]; then ext="$override"; else ext="$(read_extends "$file")"; fi
+  if [ -n "$ext" ]; then
+    bdir="$(dirname "$abs")"
+    bpath="$(resolve_baseline_path "$ext" "$bdir")" \
+      || die "baseline not found: '$ext' (extended from $(basename "$file"); see docs/agent/intake-schema.md)"
+    add_config_file "$bpath" ""
+  fi
+  CONFIG_FILES+=("$abs")
+}
+
+# load_config <intake-file> <cli-extends> : resolve the full answer set into the
+# IN_* globals, layering an org baseline (chained through `extends`) under a
+# project's intake file. Either argument may be empty: with only an intake file it
+# behaves like the old single-file read (plus any `extends:` inside it); with only
+# --extends it seeds answers straight from a baseline; with both, --extends wins as
+# the intake file's baseline. Precedence within the IN_* layer is baseline-then-
+# project; the CLI flags cmd_init already parsed still override the result.
+load_config() {
+  local from="$1" ext_cli="$2" f bpath
+  IN_NAME="" IN_VARIANT="" IN_MAIN="" IN_BASE="" IN_COMMUNITY="" IN_CONTACT="" \
+    IN_DEPLOY="" IN_FLAVORS="" IN_AGENTS=""
+  CONFIG_FILES=(); CONFIG_SEEN=""
+  if [ -n "$from" ]; then
+    [ -f "$from" ] || die "intake file not found: $from"
+    add_config_file "$from" "$ext_cli"
+  elif [ -n "$ext_cli" ]; then
+    bpath="$(resolve_baseline_path "$ext_cli" "$(pwd)")" \
+      || die "baseline not found: '$ext_cli' (see docs/agent/intake-schema.md)"
+    add_config_file "$bpath" ""
+  fi
+  [ "${#CONFIG_FILES[@]}" -gt 0 ] || return 0
+  for f in "${CONFIG_FILES[@]}"; do apply_intake_file "$f"; done
+}
+
 # --- commands --------------------------------------------------------------
 
 cmd_list() {
-  echo "Available variants:"
-  list_variants
-}
-
-cmd_init() {
-  TARGET="" PROJECT_NAME="" VARIANT="" MAIN_BRANCH="master" BASE_BRANCH="develop" FORCE=0
-  COMMUNITY=0 CONTACT=""
+  local json=0
   while [ "$#" -gt 0 ]; do
     case "$1" in
-      --target) TARGET="$2"; shift 2 ;;
-      --name) PROJECT_NAME="$2"; shift 2 ;;
-      --variant) VARIANT="$2"; shift 2 ;;
-      --main) MAIN_BRANCH="$2"; shift 2 ;;
-      --base) BASE_BRANCH="$2"; shift 2 ;;
-      --community) COMMUNITY=1; shift ;;
-      --contact) CONTACT="$2"; shift 2 ;;
-      --force) FORCE=1; shift ;;
+      --json) json=1; shift ;;
       *) die "unknown option: $1" ;;
     esac
   done
+  if [ "$json" -eq 1 ]; then
+    list_variants_json
+    return 0
+  fi
+  echo "Available variants:"
+  list_variants
+  local flavors
+  flavors="$(list_flavors)"
+  if [ -n "$flavors" ]; then
+    echo
+    echo "Add-on flavors (--flavor <a,b>, layered onto a base variant):"
+    printf '%s\n' "$flavors"
+  fi
+}
+
+# changelog_body <variant-title> : the initial CHANGELOG.md a fresh scaffold ships.
+# Factored out of cmd_init so `doctor --fix` can rebuild a missing or corrupted
+# CHANGELOG byte-for-byte identically instead of duplicating the text.
+changelog_body() {
+  cat <<EOF
+# Changelog
+
+All notable changes are documented here, following
+[Keep a Changelog](https://keepachangelog.com/) and [SemVer](https://semver.org/).
+
+## [Unreleased]
+
+- Project scaffolded from DevBlueprint ($1).
+EOF
+}
+
+# stamp_body <variant> <agents-csv> <flavors-csv> : the .devblueprint scaffold stamp
+# body (kit version + variant + selected agents + any add-on flavors). Shared by
+# cmd_init and `doctor --fix` so a rebuilt stamp matches init exactly. The flavors
+# line is emitted only when <flavors-csv> is non-empty, mirroring init's original
+# conditional heredoc.
+stamp_body() {
+  local variant="$1" agents_csv="$2" flavors_csv="$3"
+  cat <<EOF
+# DevBlueprint scaffold stamp - read by \`devblueprint update\`.
+# Records the kit version, variant, selected agents, and any add-on flavors this
+# project was scaffolded from.
+version=$(kit_version)
+variant=$variant
+agents=$agents_csv${flavors_csv:+
+flavors=$flavors_csv}
+EOF
+}
+
+cmd_init() {
+  # Values start empty so we can tell "given on the CLI" from "unset" and layer
+  # intake-file values and defaults underneath (flags win). community_flag stays
+  # "" until --community or an intake `community:` key sets it, so its default-off
+  # is distinguishable from an explicit choice.
+  local from="" extends_cli="" community_flag="" deploy="" agents="" flavors_raw=""
+  # PACKAGES holds space-separated <name>:<variant> specs; any --package turns init
+  # into monorepo mode (multiple packages in one repo, aggregated CI, per-package
+  # gates) and is mutually exclusive with the single-variant --variant.
+  PACKAGES=""
+  TARGET="" PROJECT_NAME="" VARIANT="" MAIN_BRANCH="" BASE_BRANCH="" CONTACT="" FORCE=0 DRY_RUN=0
+  while [ "$#" -gt 0 ]; do
+    case "$1" in
+      --from) from="$2"; shift 2 ;;
+      --extends) extends_cli="$2"; shift 2 ;;
+      --target) TARGET="$2"; shift 2 ;;
+      --name) PROJECT_NAME="$2"; shift 2 ;;
+      --variant) VARIANT="$2"; shift 2 ;;
+      --package) PACKAGES="$PACKAGES $2"; shift 2 ;;
+      --packages) PACKAGES="$PACKAGES ${2//,/ }"; shift 2 ;;
+      --main) MAIN_BRANCH="$2"; shift 2 ;;
+      --base) BASE_BRANCH="$2"; shift 2 ;;
+      --deploy) deploy="$2"; shift 2 ;;
+      --agents) agents="$2"; shift 2 ;;
+      # --flavor is repeatable and each value may itself be a comma list, so accumulate
+      # into one comma-separated string that resolve_flavors splits and validates.
+      --flavor|--flavors) flavors_raw="${flavors_raw:+$flavors_raw,}$2"; shift 2 ;;
+      --community) community_flag=1; shift ;;
+      --contact) CONTACT="$2"; shift 2 ;;
+      --force) FORCE=1; shift ;;
+      --dry-run) DRY_RUN=1; shift ;;
+      *) die "unknown option: $1" ;;
+    esac
+  done
+
+  # Intake file (and any org baseline it extends) fills every answer the CLI did
+  # not give - explicit flags still win. load_config layers the baseline under the
+  # project's intake file into the IN_* globals; --target is never among them (it
+  # says *where* to scaffold, not *what*, so it stays a CLI-only argument).
+  if [ -n "$from" ] || [ -n "$extends_cli" ]; then
+    load_config "$from" "$extends_cli"
+    [ -n "$PROJECT_NAME" ] || PROJECT_NAME="$IN_NAME"
+    [ -n "$VARIANT" ]      || VARIANT="$IN_VARIANT"
+    [ -n "$MAIN_BRANCH" ]  || MAIN_BRANCH="$IN_MAIN"
+    [ -n "$BASE_BRANCH" ]  || BASE_BRANCH="$IN_BASE"
+    [ -n "$CONTACT" ]      || CONTACT="$IN_CONTACT"
+    [ -n "$deploy" ]       || deploy="$IN_DEPLOY"
+    [ -n "$flavors_raw" ]  || flavors_raw="$IN_FLAVORS"
+    [ -n "$agents" ]       || agents="$IN_AGENTS"
+    if [ -z "$community_flag" ] && [ -n "$IN_COMMUNITY" ]; then
+      case "$IN_COMMUNITY" in
+        true|yes|on|1)  community_flag=1 ;;
+        false|no|off|0) community_flag=0 ;;
+        *) die "invalid community value '$IN_COMMUNITY' (expected true or false)" ;;
+      esac
+    fi
+  fi
+
+  # Defaults last (lowest precedence).
+  [ -n "$MAIN_BRANCH" ] || MAIN_BRANCH="master"
+  [ -n "$BASE_BRANCH" ] || BASE_BRANCH="develop"
+  COMMUNITY="${community_flag:-0}"
+  DEPLOY_TARGET="$deploy"
+
+  # --agents picks which coding-agent instruction files to emit (default: just
+  # CLAUDE.md). resolve_agents validates the list and always keeps claude in it.
+  [ -n "$agents" ] || agents="claude"
+  AGENTS="$(resolve_agents "$agents")"
+
+  # --flavor layers orthogonal add-on overlays (db, container, auth, ...) onto the
+  # base variant. Resolve it here so an unknown name fails fast, before anything is
+  # written. FLAVORS is space-separated (empty when none given).
+  FLAVORS="$(resolve_flavors "$flavors_raw")"
+
   # {{CONTACT}} appears only in the optional community templates, but render()
-  # substitutes it unconditionally, so it must always be defined. When the caller
-  # gives no --contact, leave a visible placeholder for the maintainer to fill in.
+  # substitutes it unconditionally, so it must always be defined. When neither the
+  # CLI nor the intake file gives one, leave a visible placeholder to fill in.
   [ -n "$CONTACT" ] || CONTACT="INSERT CONTACT METHOD"
 
   [ -n "$TARGET" ] || die "missing --target <dir>"
+
+  # Monorepo mode: one or more --package <name>:<variant> given. Shared docs and
+  # workflow tooling land once at the repo root; each package carries its stack
+  # overlay and its own gate, tied together by an aggregated CI + `make check`.
+  if [ -n "$PACKAGES" ]; then
+    [ -z "$VARIANT" ] || die "--variant and --package are mutually exclusive (a monorepo picks a variant per package)"
+    [ -z "$FLAVORS" ] || die "--flavor and --package are mutually exclusive (flavors layer onto a single base variant)"
+    cmd_init_monorepo
+    return 0
+  fi
+
   [ -n "$VARIANT" ] || die "missing --variant <variant> (see: devblueprint list)"
   local vdir="$VARIANTS/$VARIANT"
   [ -d "$vdir" ] || die "unknown variant '$VARIANT' (see: devblueprint list)"
@@ -201,9 +877,19 @@ cmd_init() {
   VARIANT_NOTES=""
   [ -f "$vdir/variant-notes.md" ] && VARIANT_NOTES="$(cat "$vdir/variant-notes.md")"
 
-  TARGET="$(mkdir -p "$TARGET" && cd "$TARGET" && pwd)"
-  echo "Scaffolding '$PROJECT_NAME' ($VARIANT_TITLE) into $TARGET"
+  # In dry-run (plan) mode never create the target directory - just resolve its
+  # absolute path for display.
+  if [ "$DRY_RUN" -eq 1 ]; then
+    TARGET="$(abspath "$TARGET")"
+    echo "Plan: init would scaffold '$PROJECT_NAME' ($VARIANT_TITLE) into $TARGET"
+  else
+    TARGET="$(mkdir -p "$TARGET" && cd "$TARGET" && pwd)"
+    echo "Scaffolding '$PROJECT_NAME' ($VARIANT_TITLE) into $TARGET"
+  fi
   echo "  branches: $BASE_BRANCH -> $MAIN_BRANCH   gate: $QUALITY_GATE"
+  echo "  agents: ${AGENTS// /, }"
+  [ -n "$FLAVORS" ] && echo "  flavors: ${FLAVORS// /, }"
+  [ -n "$DEPLOY_TARGET" ] && echo "  deploy target: $DEPLOY_TARGET (recorded; runbook lands in a later wave)"
   echo
 
   # 1. Engineering docs: core (agnostic) + variant overlay.
@@ -214,47 +900,39 @@ cmd_init() {
   append_if "$vdir/docs/conventions.append.md" "$eng/conventions.md"
   copy "$vdir/docs/quality-and-testing.md" "$eng/quality-and-testing.md"
 
-  # 2. AI-assistant guidance + contributing (assembled from templates).
-  render "$CORE/templates/CLAUDE.md.tmpl"       "$TARGET/CLAUDE.md"
+  # 2. AI-assistant guidance + contributing (assembled from templates). CLAUDE.md
+  # is always emitted (canonical source, doctor-required); the other selected
+  # agents get their own instruction file rendered from the same guidance.
+  local agent tmpl_dest
+  for agent in $AGENTS; do
+    if [ "$agent" = claude ]; then
+      render "$CORE/templates/CLAUDE.md.tmpl" "$TARGET/CLAUDE.md"
+      continue
+    fi
+    tmpl_dest="$(agent_dest "$agent")"
+    render "${tmpl_dest%%|*}" "$TARGET/${tmpl_dest#*|}"
+  done
   render "$CORE/templates/CONTRIBUTING.md.tmpl" "$TARGET/CONTRIBUTING.md"
 
   # 3. Fresh changelog.
-  if place_guard "$TARGET/CHANGELOG.md"; then
-    cat > "$TARGET/CHANGELOG.md" <<EOF
-# Changelog
-
-All notable changes are documented here, following
-[Keep a Changelog](https://keepachangelog.com/) and [SemVer](https://semver.org/).
-
-## [Unreleased]
-
-- Project scaffolded from DevBlueprint ($VARIANT_TITLE).
-EOF
-    info "wrote CHANGELOG.md"
-  fi
+  changelog_body "$VARIANT_TITLE" | emit_stdin "$TARGET/CHANGELOG.md"
 
   # 3b. Scaffold stamp: records the kit version and variant this project was
   # generated from, so `devblueprint update` can tell whether the core docs and
   # scripts are stale. Shell-sourceable key=value; do not hand-edit the version.
-  if place_guard "$TARGET/.devblueprint"; then
-    cat > "$TARGET/.devblueprint" <<EOF
-# DevBlueprint scaffold stamp - read by \`devblueprint update\`.
-# Records the kit version and variant this project was scaffolded from.
-version=$(kit_version)
-variant=$VARIANT
-EOF
-    info "wrote .devblueprint"
-  fi
+  stamp_body "$VARIANT" "${AGENTS// /,}" "${FLAVORS// /,}" | emit_stdin "$TARGET/.devblueprint"
 
   # 4. Worktree tooling. Keep wt.conf's branches in sync with the chosen
   # workflow (e.g. --base master for a single-branch trunk), but only when we
   # actually wrote the file, so an existing wt.conf is never rewritten.
   copy "$ROOT/scripts/wt.sh" "$TARGET/scripts/wt.sh"
   chmod +x "$TARGET/scripts/wt.sh" 2>/dev/null || true
+  copy "$ROOT/scripts/protect-branches.sh" "$TARGET/scripts/protect-branches.sh"
+  chmod +x "$TARGET/scripts/protect-branches.sh" 2>/dev/null || true
   local wtconf="$TARGET/scripts/wt.conf" wrote_conf=0
   [ -e "$wtconf" ] || wrote_conf=1
   copy "$vdir/wt.conf" "$wtconf"
-  if [ "$wrote_conf" -eq 1 ] || [ "$FORCE" -eq 1 ]; then
+  if [ "$DRY_RUN" -eq 0 ] && { [ "$wrote_conf" -eq 1 ] || [ "$FORCE" -eq 1 ]; }; then
     local tmp
     tmp="$(mktemp)"
     awk -v mb="$MAIN_BRANCH" -v bb="$BASE_BRANCH" '
@@ -264,13 +942,16 @@ EOF
     ' "$wtconf" > "$tmp" && mv "$tmp" "$wtconf"
   fi
 
-  # 5. The variant's github/ tree (CI workflow + any .github metadata) and its
-  # root-level extras/, both copied recursively so a variant can ship new config
-  # by dropping a file in - no CLI change. gitignore keeps a by-name copy because
-  # it is renamed from the un-dotted source, and Makefile is a named top-level
-  # file. extras/ lands before the core hygiene below, so a variant that ships its
-  # own .editorconfig via extras/ wins over the agnostic core one.
+  # 5. The variant's github/ tree (CI workflow + any .github metadata), its
+  # gitlab/ tree (the provider-agnostic .gitlab-ci.yml twin) and its root-level
+  # extras/, all copied recursively so a variant can ship new config by dropping a
+  # file in - no CLI change. gitlab/ lands at the project root, so a variant's
+  # gitlab/.gitlab-ci.yml becomes .gitlab-ci.yml. gitignore keeps a by-name copy
+  # because it is renamed from the un-dotted source, and Makefile is a named
+  # top-level file. extras/ lands before the core hygiene below, so a variant that
+  # ships its own .editorconfig via extras/ wins over the agnostic core one.
   copy_tree "$vdir/github" "$TARGET/.github"
+  copy_tree "$vdir/gitlab" "$TARGET"
   copy "$vdir/gitignore" "$TARGET/.gitignore"
   [ -f "$vdir/Makefile" ] && copy "$vdir/Makefile" "$TARGET/Makefile"
   copy_tree "$vdir/extras" "$TARGET"
@@ -294,36 +975,53 @@ EOF
   fi
 
   # 5c. Optional community-health files (opt-in with --community): a security
-  # policy and a Contributor Covenant code of conduct. Off by default because a
-  # solo or private project rarely needs them; --contact fills the reporting
-  # address in both.
+  # policy, a Contributor Covenant code of conduct, and a CODEOWNERS review-routing
+  # file. Off by default because a solo or private project rarely needs them;
+  # --contact fills the reporting address in the first two, and CODEOWNERS carries
+  # a fill-in @OWNER handle (scripts/protect-branches.sh can then enforce it).
   if [ "$COMMUNITY" -eq 1 ]; then
     render "$CORE/templates/SECURITY.md.tmpl"        "$TARGET/SECURITY.md"
     render "$CORE/templates/CODE_OF_CONDUCT.md.tmpl" "$TARGET/CODE_OF_CONDUCT.md"
+    render "$CORE/templates/CODEOWNERS.tmpl"         "$TARGET/.github/CODEOWNERS"
   fi
 
   # 6. Source/test skeleton + a backlog stub.
   local dir
   for dir in $SRC_DIRS; do
-    mkdir -p "$TARGET/$dir"
-    [ -e "$TARGET/$dir/.gitkeep" ] || touch "$TARGET/$dir/.gitkeep"
+    if [ "$DRY_RUN" -eq 1 ]; then
+      info "would create $dir/"
+    else
+      mkdir -p "$TARGET/$dir"
+      [ -e "$TARGET/$dir/.gitkeep" ] || touch "$TARGET/$dir/.gitkeep"
+    fi
   done
-  if place_guard "$TARGET/docs/project/backlog.md"; then
-    mkdir -p "$TARGET/docs/project"
-    cat > "$TARGET/docs/project/backlog.md" <<'EOF'
+  emit_stdin "$TARGET/docs/project/backlog.md" <<'EOF'
 # Backlog
 
 The prioritized task list - the source of truth for what to build next. Reference an id in
-commits and PRs (e.g. `Refs: P0-1`).
+commits and PRs (e.g. `Refs: P0-1`). Task markers: `- [ ]` todo, `- [x]` done, `- [~]` merged
+with a follow-up still pending (see the task lifecycle in `docs/engineering/git-workflow.md`).
 
 ## P0 - foundation
 
 - [ ] P0-1: ...
 EOF
-    info "wrote docs/project/backlog.md"
-  fi
+
+  # 7. Flavor overlays: orthogonal add-ons (db, container, auth, ...) layered on top
+  # of the finished base scaffold, so their files land last and a flavor can ship
+  # anything a variant can (config + a docs/flavors/<name>.md note).
+  apply_flavors
 
   echo
+  if [ "$DRY_RUN" -eq 1 ]; then
+    echo "Plan only - nothing was written. Apply it with:"
+    if [ -n "$from" ]; then
+      echo "  devblueprint init --target $TARGET --from $from${extends_cli:+ --extends $extends_cli}"
+    else
+      echo "  devblueprint init --target $TARGET --variant $VARIANT${extends_cli:+ --extends $extends_cli}${FLAVORS:+ --flavor ${FLAVORS// /,}}"
+    fi
+    return 0
+  fi
   echo "Done. Next steps:"
   echo "  1. cd $TARGET"
   if [ -f "$TARGET/setup.sh" ]; then
@@ -337,18 +1035,379 @@ EOF
     echo "  3. git init && git branch -M $MAIN_BRANCH && git switch -c $BASE_BRANCH"
   fi
   echo "  4. Start a task in its own worktree:  $WT_CMD new feat/first-task"
+  if [ -n "$FLAVORS" ]; then
+    echo "  5. Wire the add-ons - see docs/flavors/ for each flavor's setup note."
+  fi
+}
+
+# manifest_field <variant> <VAR> : print one key from a variant's manifest.env,
+# read in a subshell so sourcing it never clobbers the caller's render globals
+# (cmd_init_monorepo sets its own VARIANT_TITLE/QUALITY_GATE for the root docs).
+manifest_field() {
+  # shellcheck source=/dev/null
+  ( . "$VARIANTS/$1/manifest.env"; local __k="$2"; printf '%s' "${!__k}" )
+}
+
+# write_monorepo_makefile <dest> : the root Makefile whose `check` target runs each
+# package's own quality gate in turn (cd into the package, run its gate). A literal
+# `$` in a gate - e.g. the `$(...)` in the Go gate - is doubled so make hands it to
+# the shell unexpanded instead of treating it as a make variable.
+write_monorepo_makefile() {
+  local spec name variant gate d='$' recipes=""
+  # Build the recipe body in the current shell (not a pipeline subshell) so the
+  # loop's assignments are visible and shellcheck stays clean; the gate's value is
+  # inserted literally, so its already-doubled `$$` is not re-expanded.
+  for spec in $PACKAGES; do
+    name="${spec%%:*}"; variant="${spec#*:}"
+    gate="$(manifest_field "$variant" QUALITY_GATE)"
+    gate="${gate//$d/$d$d}"
+    recipes+=$'\t'"@echo \"==> $name\""$'\n'
+    recipes+=$'\t'"cd packages/$name && $gate"$'\n'
+  done
+  emit_stdin "$1" <<EOF
+# Aggregated quality gate for the monorepo.
+# \`make check\` runs every package's own gate; per-package standards
+# live in each packages/<name>/docs/engineering/quality-and-testing.md.
+.PHONY: check
+
+check:
+$recipes
+EOF
+}
+
+# write_monorepo_ci <dest> : an aggregated GitHub Actions workflow - one matrix job
+# per package that checks out, runs the package's setup.sh when present, then its
+# quality gate. This reuses each variant's own setup + gate instead of duplicating
+# toolchain logic at the workspace level; the per-variant github/ trees are not
+# copied because their workflows assume a single-stack repo root. Each gate is
+# emitted as a single-quoted YAML scalar (any embedded quote doubled).
+write_monorepo_ci() {
+  local spec name variant gate branches q="'" include=""
+  branches="\"$BASE_BRANCH\""
+  [ "$BASE_BRANCH" = "$MAIN_BRANCH" ] || branches="$branches, \"$MAIN_BRANCH\""
+  # Assemble the matrix entries in the current shell; each gate is a single-quoted
+  # YAML scalar (any embedded quote doubled). The workflow's own `${{ ... }}`
+  # expressions are escaped in the heredoc so bash leaves them for Actions.
+  for spec in $PACKAGES; do
+    name="${spec%%:*}"; variant="${spec#*:}"
+    gate="$(manifest_field "$variant" QUALITY_GATE)"
+    gate="${gate//$q/$q$q}"
+    include+="          - package: $name"$'\n'
+    include+="            gate: $q$gate$q"$'\n'
+  done
+  emit_stdin "$1" <<EOF
+name: CI
+on:
+  push:
+    branches: [ $branches ]
+  pull_request:
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+$include    steps:
+      - uses: actions/checkout@v4
+      - name: \${{ matrix.package }} quality gate
+        working-directory: packages/\${{ matrix.package }}
+        run: |
+          if [ -f setup.sh ]; then ./setup.sh; fi
+          \${{ matrix.gate }}
+EOF
+}
+
+# scaffold_package <name> <variant> : lay down one package's stack overlay under
+# packages/<name>/. The shared core docs and workflow tooling live once at the repo
+# root; a package carries only what is specific to its stack - its quality-and-testing
+# doc, .gitignore, Makefile, setup.sh, config extras, source skeleton, and a stamp
+# recording its own variant so a future update/doctor can walk the packages.
+scaffold_package() {
+  local name="$1" variant="$2"
+  local vdir="$VARIANTS/$variant"
+  local pkg="$TARGET/packages/$name" rel="packages/$name" src_dirs dir
+
+  copy "$vdir/docs/quality-and-testing.md" "$pkg/docs/engineering/quality-and-testing.md"
+  copy "$vdir/gitignore" "$pkg/.gitignore"
+  [ -f "$vdir/Makefile" ] && copy "$vdir/Makefile" "$pkg/Makefile"
+  copy_tree "$vdir/extras" "$pkg"
+  if [ -f "$vdir/setup.sh" ]; then
+    copy "$vdir/setup.sh" "$pkg/setup.sh"
+    chmod +x "$pkg/setup.sh" 2>/dev/null || true
+  fi
+
+  emit_stdin "$pkg/.devblueprint" <<EOF
+# DevBlueprint per-package stamp - one package of a monorepo (see the repo-root stamp).
+version=$(kit_version)
+variant=$variant
+package=$name
+EOF
+
+  src_dirs="$(manifest_field "$variant" SRC_DIRS)"
+  for dir in $src_dirs; do
+    if [ "$DRY_RUN" -eq 1 ]; then
+      info "would create $rel/$dir/"
+    else
+      mkdir -p "$pkg/$dir"
+      [ -e "$pkg/$dir/.gitkeep" ] || touch "$pkg/$dir/.gitkeep"
+    fi
+  done
+}
+
+# cmd_init_monorepo : the multi-variant init path. Reached from cmd_init once one or
+# more --package <name>:<variant> are given (mutually exclusive with --variant). It
+# writes the shared root (core docs, CLAUDE.md/CONTRIBUTING.md rendered against
+# workspace-level values, worktree tooling, hygiene, an aggregated CI + Makefile)
+# once, then scaffolds each package's stack overlay under packages/<name>/. Runs
+# with the same globals cmd_init resolved (TARGET, AGENTS, branches, FORCE, DRY_RUN,
+# COMMUNITY, CONTACT) plus PACKAGES.
+cmd_init_monorepo() {
+  local spec name variant seen="" count=0 names_csv=""
+
+  # Validate every spec up front so a bad --package fails before anything is written.
+  for spec in $PACKAGES; do
+    name="${spec%%:*}"; variant="${spec#*:}"
+    if [ "$name" = "$spec" ] || [ -z "$name" ] || [ -z "$variant" ]; then
+      die "invalid --package '$spec' (expected <name>:<variant>)"
+    fi
+    [ -d "$VARIANTS/$variant" ] || die "unknown variant '$variant' in --package '$spec' (see: devblueprint list)"
+    case " $seen " in *" $name "*) die "duplicate package name '$name' in --package list" ;; esac
+    seen="$seen $name"
+    count=$((count + 1))
+    names_csv="${names_csv:+$names_csv, }$name"
+  done
+
+  [ -n "$PROJECT_NAME" ] || PROJECT_NAME="$(basename "$TARGET")"
+
+  # A monorepo has no single variant, so the shared root docs render against
+  # workspace-level values: the aggregated `make check` gate and the language-
+  # agnostic worktree script. The per-package stacks live in the variant notes.
+  VARIANT_TITLE="Monorepo ($count packages)"
+  QUALITY_GATE="make check"
+  WT_CMD="./scripts/wt.sh"
+  COPY_LANGUAGE_NOTE="Localize user-facing copy in a dedicated layer, never as scattered string literals."
+
+  local nl=$'\n' overview
+  overview="This is a monorepo. Each package under \`packages/\` is its own stack with its own quality gate:$nl"
+  for spec in $PACKAGES; do
+    overview="$overview$nl- \`packages/${spec%%:*}\` - $(manifest_field "${spec#*:}" VARIANT_TITLE)"
+  done
+  overview="$overview${nl}${nl}Run a package's gate from its own directory; the root \`make check\` runs every package's gate in turn."
+  VARIANT_NOTES="$overview"
+
+  if [ "$DRY_RUN" -eq 1 ]; then
+    TARGET="$(abspath "$TARGET")"
+    echo "Plan: init would scaffold monorepo '$PROJECT_NAME' ($count packages) into $TARGET"
+  else
+    TARGET="$(mkdir -p "$TARGET" && cd "$TARGET" && pwd)"
+    echo "Scaffolding monorepo '$PROJECT_NAME' ($count packages) into $TARGET"
+  fi
+  echo "  branches: $BASE_BRANCH -> $MAIN_BRANCH   gate: aggregated (make check)"
+  echo "  agents: ${AGENTS// /, }"
+  for spec in $PACKAGES; do
+    echo "  package: ${spec%%:*} -> $(manifest_field "${spec#*:}" VARIANT_TITLE)"
+  done
+  echo
+
+  # 1. Shared engineering docs (core, agnostic) - once at the root. No variant
+  # conventions overlay here; per-stack standards live in each package's
+  # quality-and-testing doc.
+  local eng="$TARGET/docs/engineering"
+  copy "$CORE/git-workflow.md"          "$eng/git-workflow.md"
+  copy "$CORE/engineering-standards.md" "$eng/engineering-standards.md"
+  copy "$CORE/conventions.md"           "$eng/conventions.md"
+
+  # 2. AI-assistant guidance + contributing (shared, once) - same agent loop as the
+  # single-variant path, rendered against the workspace-level values set above.
+  local agent tmpl_dest
+  for agent in $AGENTS; do
+    if [ "$agent" = claude ]; then
+      render "$CORE/templates/CLAUDE.md.tmpl" "$TARGET/CLAUDE.md"
+      continue
+    fi
+    tmpl_dest="$(agent_dest "$agent")"
+    render "${tmpl_dest%%|*}" "$TARGET/${tmpl_dest#*|}"
+  done
+  render "$CORE/templates/CONTRIBUTING.md.tmpl" "$TARGET/CONTRIBUTING.md"
+
+  # 3. Fresh changelog.
+  emit_stdin "$TARGET/CHANGELOG.md" <<EOF
+# Changelog
+
+All notable changes are documented here, following
+[Keep a Changelog](https://keepachangelog.com/) and [SemVer](https://semver.org/).
+
+## [Unreleased]
+
+- Monorepo scaffolded from DevBlueprint ($count packages: $names_csv).
+EOF
+
+  # 3b. Root scaffold stamp: records the monorepo package map so a future
+  # update/doctor can walk the packages. Each package also carries its own stamp.
+  emit_stdin "$TARGET/.devblueprint" <<EOF
+# DevBlueprint scaffold stamp - read by \`devblueprint update\`.
+# A monorepo: the package map lives here; each packages/<name>/ has its own stamp.
+version=$(kit_version)
+monorepo=true
+packages=$(printf '%s' "$PACKAGES" | xargs | tr ' ' ',')
+agents=${AGENTS// /,}
+EOF
+
+  # 4. Worktree tooling (generic, language-agnostic wt.conf) + branch sync, mirroring
+  # the single-variant path but with the stack-neutral generic wt.conf.
+  copy "$ROOT/scripts/wt.sh" "$TARGET/scripts/wt.sh"
+  chmod +x "$TARGET/scripts/wt.sh" 2>/dev/null || true
+  copy "$ROOT/scripts/protect-branches.sh" "$TARGET/scripts/protect-branches.sh"
+  chmod +x "$TARGET/scripts/protect-branches.sh" 2>/dev/null || true
+  local wtconf="$TARGET/scripts/wt.conf" wrote_conf=0
+  [ -e "$wtconf" ] || wrote_conf=1
+  copy "$VARIANTS/generic/wt.conf" "$wtconf"
+  if [ "$DRY_RUN" -eq 0 ] && { [ "$wrote_conf" -eq 1 ] || [ "$FORCE" -eq 1 ]; }; then
+    local tmp
+    tmp="$(mktemp)"
+    awk -v mb="$MAIN_BRANCH" -v bb="$BASE_BRANCH" '
+      /^MAIN_BRANCH=/ { print "MAIN_BRANCH=\"" mb "\""; next }
+      /^BASE_BRANCH=/ { print "BASE_BRANCH=\"" bb "\""; next }
+      { print }
+    ' "$wtconf" > "$tmp" && mv "$tmp" "$wtconf"
+  fi
+
+  # 5. Aggregated CI (one job per package) + root hygiene. The per-variant github/
+  # trees are deliberately not copied - their workflows assume a single-stack root.
+  write_monorepo_ci "$TARGET/.github/workflows/ci.yml"
+  copy "$VARIANTS/generic/gitignore" "$TARGET/.gitignore"
+
+  # 5a. Stack-agnostic repo hygiene shared by every variant.
+  copy "$CORE/.editorconfig"  "$TARGET/.editorconfig"
+  copy "$CORE/.gitattributes" "$TARGET/.gitattributes"
+
+  # 5a-ii. GitHub meta: PR template + issue templates (core-owned, stack-agnostic).
+  copy "$CORE/github/pull_request_template.md"          "$TARGET/.github/pull_request_template.md"
+  copy "$CORE/github/ISSUE_TEMPLATE/bug_report.md"      "$TARGET/.github/ISSUE_TEMPLATE/bug_report.md"
+  copy "$CORE/github/ISSUE_TEMPLATE/feature_request.md" "$TARGET/.github/ISSUE_TEMPLATE/feature_request.md"
+  copy "$CORE/github/ISSUE_TEMPLATE/config.yml"         "$TARGET/.github/ISSUE_TEMPLATE/config.yml"
+
+  # 5b. Aggregated quality gate: root `make check` runs each package's own gate.
+  write_monorepo_makefile "$TARGET/Makefile"
+
+  # 5c. Optional community-health files (opt-in with --community).
+  if [ "$COMMUNITY" -eq 1 ]; then
+    render "$CORE/templates/SECURITY.md.tmpl"        "$TARGET/SECURITY.md"
+    render "$CORE/templates/CODE_OF_CONDUCT.md.tmpl" "$TARGET/CODE_OF_CONDUCT.md"
+    render "$CORE/templates/CODEOWNERS.tmpl"         "$TARGET/.github/CODEOWNERS"
+  fi
+
+  # 6. Shared backlog stub.
+  emit_stdin "$TARGET/docs/project/backlog.md" <<'EOF'
+# Backlog
+
+The prioritized task list - the source of truth for what to build next. Reference an id in
+commits and PRs (e.g. `Refs: P0-1`).
+
+## P0 - foundation
+
+- [ ] P0-1: ...
+EOF
+
+  # 7. Per-package stack overlays.
+  for spec in $PACKAGES; do
+    scaffold_package "${spec%%:*}" "${spec#*:}"
+  done
+
+  echo
+  if [ "$DRY_RUN" -eq 1 ]; then
+    echo "Plan only - nothing was written. Apply it with:"
+    printf '  devblueprint init --target %s' "$TARGET"
+    for spec in $PACKAGES; do printf ' --package %s' "$spec"; done
+    printf '\n'
+    return 0
+  fi
+  echo "Done. Next steps:"
+  echo "  1. cd $TARGET"
+  echo "  2. Set up each package:"
+  for spec in $PACKAGES; do
+    name="${spec%%:*}"
+    if [ -f "$TARGET/packages/$name/setup.sh" ]; then
+      echo "       (cd packages/$name && ./setup.sh)"
+    else
+      echo "       packages/$name - wire the toolchain (see its docs/engineering/quality-and-testing.md)"
+    fi
+  done
+  if [ "$BASE_BRANCH" = "$MAIN_BRANCH" ]; then
+    echo "  3. git init && git branch -M $MAIN_BRANCH"
+  else
+    echo "  3. git init && git branch -M $MAIN_BRANCH && git switch -c $BASE_BRANCH"
+  fi
+  echo "  4. make check   (runs every package's gate)"
+  echo "  5. Start a task in its own worktree:  ./scripts/wt.sh new feat/first-task"
+}
+
+# cmd_plan : preview mode. Exactly `init --dry-run` so the plan can never drift
+# from what init actually writes - it runs the real init code path with every
+# disk mutation short-circuited to a "would ..." line.
+cmd_plan() {
+  cmd_init --dry-run "$@"
+}
+
+# report_check <status> <name> <message> : record one doctor check. In the
+# default human mode it prints the badge + message exactly as doctor always has;
+# under --json it appends a {"name","status","message"} object to CHECKS_JSON
+# instead of printing. status is one of ok|miss|note|fail|gate. Both JSON and
+# CHECKS_JSON are locals of cmd_doctor, visible here by bash's dynamic scoping.
+report_check() {
+  local status="$1" name="$2" msg="$3"
+  if [ "$JSON" -eq 1 ]; then
+    local sep=""
+    [ -n "$CHECKS_JSON" ] && sep=","
+    CHECKS_JSON="${CHECKS_JSON}${sep}{\"name\":\"$(json_esc "$name")\",\"status\":\"$status\",\"message\":\"$(json_esc "$msg")\"}"
+    return 0
+  fi
+  local badge
+  case "$status" in
+    ok)   badge="ok" ;;
+    miss) badge="MISS" ;;
+    note) badge="note" ;;
+    fail) badge="FAIL" ;;
+    gate) badge="gate" ;;
+    *)    badge="$status" ;;
+  esac
+  # %-4s pads "ok" to the badge column so every message lines up (the badge words
+  # are all <= 4 chars); two trailing spaces separate badge from message.
+  printf '  %-4s  %s\n' "$badge" "$msg"
 }
 
 cmd_doctor() {
-  local target=""
+  local target="" strict=0 run_gate=0 fix=0 VARIANT="" JSON=0 CHECKS_JSON=""
   while [ "$#" -gt 0 ]; do
     case "$1" in
       --target) target="$2"; shift 2 ;;
+      --strict) strict=1; shift ;;
+      --run-gate) run_gate=1; shift ;;
+      # --fix rebuilds a missing or corrupted (empty) foundation file from the kit
+      # instead of only reporting it; --variant supplies the stack when the project's
+      # own .devblueprint stamp is the missing/corrupted file, so variant-owned files
+      # can still be restored (mirrors `update --variant`).
+      --fix) fix=1; shift ;;
+      --variant) VARIANT="$2"; shift 2 ;;
+      --json) JSON=1; shift ;;
       *) die "unknown option: $1" ;;
     esac
   done
   [ -n "$target" ] || die "missing --target <dir>"
-  local missing=0 f
+  [ -z "$VARIANT" ] || [ -f "$VARIANTS/$VARIANT/manifest.env" ] || die "unknown variant '$VARIANT' (see: devblueprint list)"
+  # failures accumulates every hard problem (missing/corrupted files that could not
+  # be repaired + strict escalations + a failing quality gate); doctor exits
+  # non-zero when it is non-empty. repaired counts files --fix restored.
+  local missing=0 failures=0 repaired=0 f problem
+  # Context repair_file needs, kept local so fix_context's assignments (made through
+  # bash's dynamic scoping) never leak into the global environment.
+  local FIX_VARIANT="" FIX_VDIR="" FIX_AGENTS="" FIX_FLAVORS=""
+  local PROJECT_NAME="" MAIN_BRANCH="" BASE_BRANCH="" WT_CMD="" QUALITY_GATE="" \
+        COPY_LANGUAGE_NOTE="" VARIANT_NOTES="" VARIANT_TITLE="" SRC_DIRS="" CONTACT=""
+  # With --fix, reconstruct that context once, up front, from the project itself plus
+  # any --variant override.
+  [ "$fix" -eq 1 ] && fix_context "$target"
   for f in CLAUDE.md CONTRIBUTING.md CHANGELOG.md .gitignore .devblueprint \
            .editorconfig .gitattributes \
            scripts/wt.sh scripts/wt.conf .github/workflows/ci.yml \
@@ -358,34 +1417,384 @@ cmd_doctor() {
            docs/engineering/git-workflow.md docs/engineering/conventions.md \
            docs/engineering/quality-and-testing.md \
            docs/engineering/engineering-standards.md; do
-    if [ -e "$target/$f" ]; then
-      printf '  ok    %s\n' "$f"
+    # A foundation file is healthy only when it exists and is non-empty; an empty
+    # file is a corruption doctor treats like a missing one (a truncated write or a
+    # failed generation leaves a zero-byte file).
+    if [ -e "$target/$f" ] && [ -s "$target/$f" ]; then
+      report_check ok "$f" "$f"
+      continue
+    fi
+    if [ -e "$target/$f" ]; then problem="empty"; else problem="missing"; fi
+    if [ "$fix" -eq 1 ] && repair_file "$target" "$f" && [ -s "$target/$f" ]; then
+      report_check ok "$f" "$f (repaired: was $problem)"; repaired=$((repaired + 1))
     else
-      printf '  MISS  %s\n' "$f"; missing=$((missing + 1))
+      report_check miss "$f" "$f ($problem)"; missing=$((missing + 1))
     fi
   done
+  failures=$((failures + missing))
 
-  # The pre-commit hook is wired by ./setup.sh (not by init), so report it as
-  # advisory: note whether the quality gate is enforced locally, but never fail
-  # doctor over it - a freshly scaffolded project has not run setup.sh yet.
+  # The pre-commit hook is wired by ./setup.sh (not by init), so it is advisory
+  # by default - a freshly scaffolded project has not run setup.sh yet. Under
+  # --strict the missing hook becomes a hard failure: strict mode expects a
+  # fully wired project, not a bare scaffold.
   if [ -f "$target/.githooks/pre-commit" ] || [ -f "$target/.pre-commit-config.yaml" ] \
      || [ -f "$target/.husky/pre-commit" ]; then
-    printf '  ok    pre-commit hook wired\n'
+    report_check ok pre-commit-hook "pre-commit hook wired"
+  elif [ "$strict" -eq 1 ]; then
+    report_check fail pre-commit-hook "pre-commit hook not wired - run ./setup.sh (strict)"
+    failures=$((failures + 1))
   else
-    printf '  note  pre-commit hook not wired yet - run ./setup.sh\n'
+    report_check note pre-commit-hook "pre-commit hook not wired yet - run ./setup.sh"
   fi
+
+  # --strict: report git state. Not being a git repo is a strict failure (a
+  # scaffolded-but-uninitialized project); a dirty tree is only reported, since
+  # uncommitted work in progress is normal and not doctor's concern.
+  if [ "$strict" -eq 1 ]; then
+    if git -C "$target" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+      local branch dirty
+      branch="$(git -C "$target" rev-parse --abbrev-ref HEAD 2>/dev/null || echo '(unknown)')"
+      if [ -n "$(git -C "$target" status --porcelain 2>/dev/null)" ]; then
+        dirty="dirty"
+      else
+        dirty="clean"
+      fi
+      report_check ok git-repo "git repo on $branch ($dirty)"
+    else
+      report_check fail git-repo "not a git repository - run git init (strict)"
+      failures=$((failures + 1))
+    fi
+  fi
+
+  # --run-gate: actually run the project's quality gate, resolved from the
+  # variant recorded in its .devblueprint stamp (falling back to `make check`
+  # when a Makefile is present). A failing gate fails doctor.
+  if [ "$run_gate" -eq 1 ]; then
+    local gate
+    gate="$(resolve_gate "$target")"
+    if [ -z "$gate" ]; then
+      report_check note quality-gate "no quality gate resolved (no variant stamp or Makefile) - skipped"
+    elif [ ! -d "$target" ]; then
+      report_check fail quality-gate "cannot run gate: target is not a directory"
+      failures=$((failures + 1))
+    else
+      report_check gate quality-gate-command "running: $gate"
+      if ( cd "$target" && eval "$gate" ); then
+        report_check ok quality-gate "quality gate passed"
+      else
+        report_check fail quality-gate "quality gate failed"
+        failures=$((failures + 1))
+      fi
+    fi
+  fi
+
+  if [ "$JSON" -eq 1 ]; then
+    local ok stamped
+    stamped="$(stamp_version "$target")"
+    [ "$failures" -eq 0 ] && ok=true || ok=false
+    printf '{"ok":%s,"target":"%s","scaffoldVersion":%s,"kitVersion":"%s","failures":%d,"fixed":%d,"checks":[%s]}\n' \
+      "$ok" "$(json_esc "$target")" "$(json_str_or_null "$stamped")" \
+      "$(json_esc "$(kit_version)")" "$failures" "$repaired" "$CHECKS_JSON"
+    [ "$failures" -eq 0 ] || exit 1
+    return 0
+  fi
+
   echo
-  if [ "$missing" -eq 0 ]; then
+  [ "$repaired" -gt 0 ] && echo "doctor: repaired $repaired file(s)"
+  if [ "$failures" -eq 0 ]; then
     local stamped
     stamped="$(stamp_version "$target")"
     echo "doctor: all foundation files present (scaffolded from DevBlueprint ${stamped:-unknown}; current $(kit_version))"
   else
-    die "$missing file(s) missing"
+    die "$failures check(s) failed"
   fi
 }
 
+# fix_context <target> : reconstruct everything repair_file needs to rebuild a
+# foundation file, from the project itself plus an optional --variant override - the
+# same reconstruction update/sync_agent_files perform. Sets FIX_VARIANT/FIX_VDIR (the
+# variant dir, empty when no valid variant is known), the stamp-derived
+# FIX_AGENTS/FIX_FLAVORS used to rebuild .devblueprint, and the render tokens
+# (PROJECT_NAME, branches, and the variant-manifest values VARIANT_TITLE/WT_CMD/
+# QUALITY_GATE/COPY_LANGUAGE_NOTE/VARIANT_NOTES) that CLAUDE.md, CONTRIBUTING.md and
+# CHANGELOG are rendered from. An empty FIX_VDIR tells repair_file it can only rebuild
+# the variant-independent core copies.
+fix_context() {
+  local target="$1"
+  FIX_VARIANT="${VARIANT:-$(stamp_variant "$target")}"
+  FIX_VDIR=""
+  FIX_AGENTS="$(stamp_agents "$target")"; [ -n "$FIX_AGENTS" ] || FIX_AGENTS="claude"
+  FIX_FLAVORS="$(stamp_flavors "$target")"
+  PROJECT_NAME="$(project_name_of "$target")"
+  MAIN_BRANCH="$(wtconf_branch "$target" MAIN_BRANCH)"; [ -n "$MAIN_BRANCH" ] || MAIN_BRANCH="master"
+  BASE_BRANCH="$(wtconf_branch "$target" BASE_BRANCH)"; [ -n "$BASE_BRANCH" ] || BASE_BRANCH="$MAIN_BRANCH"
+  VARIANT_TITLE="" WT_CMD="" QUALITY_GATE="" COPY_LANGUAGE_NOTE="" VARIANT_NOTES="" SRC_DIRS="" CONTACT=""
+  if [ -n "$FIX_VARIANT" ] && [ -f "$VARIANTS/$FIX_VARIANT/manifest.env" ]; then
+    FIX_VDIR="$VARIANTS/$FIX_VARIANT"
+    # shellcheck source=/dev/null
+    . "$FIX_VDIR/manifest.env"
+    [ -f "$FIX_VDIR/variant-notes.md" ] && VARIANT_NOTES="$(cat "$FIX_VDIR/variant-notes.md")"
+  fi
+  # {{CONTACT}} is substituted unconditionally by render_content, so give it the same
+  # visible placeholder init uses when no contact is known.
+  [ -n "$CONTACT" ] || CONTACT="INSERT CONTACT METHOD"
+}
+
+# repair_file <target> <rel> : rewrite one foundation file <rel> under <target> from
+# the kit, used by `doctor --fix` to restore a missing or corrupted (empty) file. It
+# mirrors exactly how cmd_init produced each file, reading the repair context
+# fix_context set up (FIX_VDIR + the render tokens). Returns 0 when the file is
+# rewritten and 1 when its source cannot be resolved - notably a variant-owned file
+# with no known variant (empty FIX_VDIR) - so the caller can still report it unfixed.
+# Overwrites unconditionally: repair is a deliberate rewrite, not init's
+# overwrite-safe placement. The source paths are kept identical to cmd_init's so the
+# two stay in step.
+repair_file() {
+  local target="$1" rel="$2" dest="$1/$2" src=""
+  # 1. Variant-independent core copies - restorable with no variant context.
+  case "$rel" in
+    .editorconfig)                             src="$CORE/.editorconfig" ;;
+    .gitattributes)                            src="$CORE/.gitattributes" ;;
+    scripts/wt.sh)                             src="$ROOT/scripts/wt.sh" ;;
+    .github/pull_request_template.md)          src="$CORE/github/pull_request_template.md" ;;
+    .github/ISSUE_TEMPLATE/bug_report.md)      src="$CORE/github/ISSUE_TEMPLATE/bug_report.md" ;;
+    .github/ISSUE_TEMPLATE/feature_request.md) src="$CORE/github/ISSUE_TEMPLATE/feature_request.md" ;;
+    docs/engineering/git-workflow.md)          src="$CORE/git-workflow.md" ;;
+    docs/engineering/engineering-standards.md) src="$CORE/engineering-standards.md" ;;
+  esac
+  if [ -n "$src" ]; then
+    [ -f "$src" ] || return 1
+    mkdir -p "$(dirname "$dest")"
+    cp "$src" "$dest"
+    [ "$rel" = scripts/wt.sh ] && chmod +x "$dest" 2>/dev/null
+    return 0
+  fi
+
+  # 2. Everything else depends on the variant (a variant-owned copy, or a template
+  # rendered against the variant manifest). Without a resolved variant we cannot
+  # rebuild it faithfully, so report it unfixed.
+  [ -n "$FIX_VDIR" ] || return 1
+  case "$rel" in
+    CLAUDE.md)
+      mkdir -p "$(dirname "$dest")"
+      render_content "$CORE/templates/CLAUDE.md.tmpl" > "$dest"; return 0 ;;
+    CONTRIBUTING.md)
+      render_content "$CORE/templates/CONTRIBUTING.md.tmpl" > "$dest"; return 0 ;;
+    CHANGELOG.md)
+      changelog_body "$VARIANT_TITLE" > "$dest"; return 0 ;;
+    .devblueprint)
+      stamp_body "$FIX_VARIANT" "$FIX_AGENTS" "$FIX_FLAVORS" > "$dest"; return 0 ;;
+    docs/engineering/conventions.md)
+      # Core base plus the variant's conventions overlay, exactly like cmd_init.
+      [ -f "$CORE/conventions.md" ] || return 1
+      mkdir -p "$(dirname "$dest")"
+      cp "$CORE/conventions.md" "$dest"
+      [ -f "$FIX_VDIR/docs/conventions.append.md" ] && cat "$FIX_VDIR/docs/conventions.append.md" >> "$dest"
+      return 0 ;;
+    .gitignore)                              src="$FIX_VDIR/gitignore" ;;
+    # A rebuilt wt.conf carries the variant's default branches: the project's own
+    # branch names lived only in the file we are restoring, so there is nothing left
+    # to read them from.
+    scripts/wt.conf)                         src="$FIX_VDIR/wt.conf" ;;
+    .github/workflows/ci.yml)                src="$FIX_VDIR/github/workflows/ci.yml" ;;
+    docs/engineering/quality-and-testing.md) src="$FIX_VDIR/docs/quality-and-testing.md" ;;
+  esac
+  [ -n "$src" ] && [ -f "$src" ] || return 1
+  mkdir -p "$(dirname "$dest")"
+  cp "$src" "$dest"
+  return 0
+}
+
+# resolve_gate <target> : the quality-gate command for a scaffolded project.
+# Reads the variant from the project's .devblueprint stamp and sources that
+# variant's manifest for QUALITY_GATE; falls back to `make check` when a
+# Makefile is present but the variant is unknown. Empty if nothing resolves.
+resolve_gate() {
+  local target="$1" variant gate=""
+  variant="$(stamp_variant "$target")"
+  if [ -n "$variant" ] && [ -f "$VARIANTS/$variant/manifest.env" ]; then
+    # shellcheck source=/dev/null
+    gate="$( . "$VARIANTS/$variant/manifest.env"; printf '%s' "${QUALITY_GATE:-}" )"
+  fi
+  if [ -z "$gate" ] && [ -f "$target/Makefile" ]; then
+    gate="make check"
+  fi
+  printf '%s' "$gate"
+}
+
+# stamp_variant <target> : the variant recorded in a project's .devblueprint
+# stamp, or empty if there is no stamp.
+stamp_variant() {
+  local stamp="$1/.devblueprint"
+  [ -f "$stamp" ] || return 0
+  sed -n 's/^variant=//p' "$stamp" | head -n1
+}
+
+# stamp_agents <target> : the comma-separated agents recorded in a project's
+# .devblueprint stamp (e.g. "claude,cursor,codex"), or empty when the stamp is
+# absent or predates the --agents feature. update reads it to know which agent
+# instruction files to re-render.
+stamp_agents() {
+  local stamp="$1/.devblueprint"
+  [ -f "$stamp" ] || return 0
+  sed -n 's/^agents=//p' "$stamp" | head -n1
+}
+
+# stamp_flavors <target> : the comma-separated add-on flavors recorded in a
+# project's .devblueprint stamp (e.g. "postgres,docker"), or empty when the stamp
+# is absent or the project was scaffolded without --flavor. `doctor --fix` reads it
+# to rebuild the stamp with its flavors line intact.
+stamp_flavors() {
+  local stamp="$1/.devblueprint"
+  [ -f "$stamp" ] || return 0
+  sed -n 's/^flavors=//p' "$stamp" | head -n1
+}
+
+# fingerprint_variant <target> : echo one "variant<TAB>reason" line per stack
+# fingerprint file found directly under <target>. A repo can match more than once
+# (a polyglot monorepo), so the caller decides which to recommend; no output means
+# nothing was recognized (-> generic). Two files map to two variants each, resolved
+# by a dependency probe: package.json is web-nextjs when it lists a "next"
+# dependency and node-express otherwise; pyproject.toml is data-python when it names
+# a data-science library and backend-python otherwise.
+fingerprint_variant() {
+  local t="$1"
+  if [ -f "$t/package.json" ]; then
+    if grep -Eq '"next"[[:space:]]*:' "$t/package.json"; then
+      printf 'web-nextjs\tpackage.json (next dependency)\n'
+    else
+      printf 'node-express\tpackage.json\n'
+    fi
+  fi
+  [ -f "$t/go.mod" ]        && printf 'backend-go\tgo.mod\n'
+  [ -f "$t/Cargo.toml" ]    && printf 'rust\tCargo.toml\n'
+  [ -f "$t/Package.swift" ] && printf 'ios-swift\tPackage.swift\n'
+  if [ -f "$t/pyproject.toml" ]; then
+    if grep -Eiq '(pandas|numpy|scikit-?learn|jupyter|matplotlib|polars|torch|tensorflow|seaborn)' "$t/pyproject.toml"; then
+      printf 'data-python\tpyproject.toml (data-science dependencies)\n'
+    else
+      printf 'backend-python\tpyproject.toml\n'
+    fi
+  fi
+}
+
+# variant_title <variant> : the human title from a variant's manifest, or empty if
+# the variant is unknown (e.g. the generic fallback always resolves).
+variant_title() {
+  [ -f "$VARIANTS/$1/manifest.env" ] || return 0
+  # shellcheck source=/dev/null
+  ( . "$VARIANTS/$1/manifest.env"; printf '%s' "${VARIANT_TITLE:-}" )
+}
+
+# cmd_detect : inspect an existing repo's stack fingerprints and recommend the
+# variant to scaffold from. Read-only - it never writes; it just prints the
+# matching variant and the exact `init` line to run. Falls back to `generic` when
+# no fingerprint matches, so the recommendation is always actionable.
+cmd_detect() {
+  local target=""
+  while [ "$#" -gt 0 ]; do
+    case "$1" in
+      --target) target="$2"; shift 2 ;;
+      *) die "unknown option: $1" ;;
+    esac
+  done
+  [ -n "$target" ] || die "missing --target <dir>"
+  [ -d "$target" ] || die "target '$target' does not exist"
+  target="$(cd "$target" && pwd)"
+
+  echo "Inspecting $target for stack fingerprints"
+  echo
+
+  local matches variant reason count=0 recommend=""
+  matches="$(fingerprint_variant "$target")"
+  while IFS="$(printf '\t')" read -r variant reason; do
+    [ -n "$variant" ] || continue
+    count=$((count + 1))
+    [ -n "$recommend" ] || recommend="$variant"
+    printf '  found  %s -> %s\n' "$reason" "$variant"
+  done <<EOF
+$matches
+EOF
+
+  echo
+  if [ "$count" -eq 0 ]; then
+    recommend="generic"
+    echo "No stack fingerprints found - defaulting to the generic variant."
+  elif [ "$count" -gt 1 ]; then
+    echo "Multiple stacks detected - recommending the first; pass --variant to override."
+  fi
+
+  local title
+  title="$(variant_title "$recommend")"
+  printf 'Recommended variant: %s%s\n' "$recommend" "${title:+ ($title)}"
+  echo
+  echo "Scaffold it with:"
+  echo "  devblueprint init --target $target --variant $recommend"
+}
+
+# wtconf_branch <target> <key> : read MAIN_BRANCH or BASE_BRANCH from a project's
+# scripts/wt.conf (its own record of its branch names), or empty if the file or
+# key is absent. Grep-based rather than sourcing, so update never executes code
+# from the project it is updating.
+wtconf_branch() {
+  local conf="$1/scripts/wt.conf" key="$2"
+  [ -f "$conf" ] || return 0
+  sed -n "s/^$key=\"\\(.*\\)\"\$/\\1/p" "$conf" | head -n1
+}
+
+# project_name_of <target> : the project's display name, taken from CLAUDE.md's H1
+# title (the canonical source, written at init) and falling back to the target
+# basename. Used to reconstruct {{PROJECT_NAME}} when update re-renders agent files.
+project_name_of() {
+  local h1=""
+  [ -f "$1/CLAUDE.md" ] && h1="$(sed -n 's/^# //p' "$1/CLAUDE.md" | head -n1)"
+  if [ -n "$h1" ]; then printf '%s' "$h1"; else basename "$1"; fi
+}
+
+# sync_agent_files : re-render the non-Claude agent instruction files recorded in
+# the project's .devblueprint stamp from the current core templates, so a project
+# picks up wording changes exactly as it does for the agnostic docs. The render
+# tokens are reconstructed from the project itself - branches from scripts/wt.conf,
+# project name from CLAUDE.md, and the variant tokens from the stamped (or
+# --variant) variant's manifest. CLAUDE.md is never touched: it is the user-owned
+# canonical copy. The agent files are the opposite: pure rendered artifacts derived
+# from that canonical guidance, with no init-time merge base of their own, so they
+# are re-rendered through sync_file (overwrite) rather than three-way merged - edits
+# belong in CLAUDE.md, and a drifted agent file heals on the next update. Reads
+# TARGET/VARIANT/DRY_RUN.
+sync_agent_files() {
+  local list variant a tmpl_dest tmp
+  local PROJECT_NAME MAIN_BRANCH BASE_BRANCH WT_CMD QUALITY_GATE COPY_LANGUAGE_NOTE \
+        VARIANT_NOTES VARIANT_TITLE SRC_DIRS CONTACT=""
+  list="$(stamp_agents "$TARGET")"
+  [ -n "$list" ] || return 0
+  variant="${VARIANT:-$(stamp_variant "$TARGET")}"
+  if [ -z "$variant" ] || [ ! -f "$VARIANTS/$variant/manifest.env" ]; then
+    info "skip agent files (variant unknown; pass --variant to re-render them)"
+    return 0
+  fi
+  # shellcheck source=/dev/null
+  . "$VARIANTS/$variant/manifest.env"   # WT_CMD, QUALITY_GATE, COPY_LANGUAGE_NOTE
+  VARIANT_NOTES=""
+  [ -f "$VARIANTS/$variant/variant-notes.md" ] && VARIANT_NOTES="$(cat "$VARIANTS/$variant/variant-notes.md")"
+  MAIN_BRANCH="$(wtconf_branch "$TARGET" MAIN_BRANCH)"; [ -n "$MAIN_BRANCH" ] || MAIN_BRANCH="master"
+  BASE_BRANCH="$(wtconf_branch "$TARGET" BASE_BRANCH)"; [ -n "$BASE_BRANCH" ] || BASE_BRANCH="$MAIN_BRANCH"
+  PROJECT_NAME="$(project_name_of "$TARGET")"
+  local -a want
+  IFS=',' read -ra want <<< "$list"
+  for a in "${want[@]}"; do
+    [ "$a" = claude ] && continue
+    tmpl_dest="$(agent_dest "$a")"
+    [ -n "$tmpl_dest" ] || continue
+    tmp="$(mktemp)"
+    render_content "${tmpl_dest%%|*}" > "$tmp"
+    sync_file "$tmp" "$TARGET/${tmpl_dest#*|}"
+    rm -f "$tmp"
+  done
+}
+
 cmd_update() {
-  TARGET="" VARIANT="" DRY_RUN=0 CHANGED=0
+  TARGET="" VARIANT="" DRY_RUN=0 CHANGED=0 MERGED=0 CONFLICTS=0 PRESERVED=0
   while [ "$#" -gt 0 ]; do
     case "$1" in
       --target) TARGET="$2"; shift 2 ;;
@@ -409,29 +1818,40 @@ cmd_update() {
     [ -d "$vdir" ] || die "unknown variant '$VARIANT' (see: devblueprint list)"
   fi
 
+  # The merge base is anchored on the project's stamped kit version vs. the current
+  # one: when they match, an absent base cache can be reconstructed from the current
+  # kit (any drift is provably local). merge_file reads both.
+  local STAMPED CURRENT
+  STAMPED="$(stamp_version "$TARGET")"
+  CURRENT="$(kit_version)"
+
   if [ "$DRY_RUN" -eq 1 ]; then
     echo "Dry run: re-syncing DevBlueprint core files into $TARGET"
   else
     echo "Re-syncing DevBlueprint core files into $TARGET"
   fi
   echo "  preserved: CLAUDE.md, CONTRIBUTING.md, wt.conf, CI, .gitignore, your code"
+  echo "  local edits to managed files are merged, not overwritten"
   echo
 
-  # Core-owned, project-independent files: always safe to overwrite because they
-  # carry no per-project or per-variant content.
-  local eng="$TARGET/docs/engineering"
-  sync_file "$CORE/git-workflow.md"          "$eng/git-workflow.md"
-  sync_file "$CORE/engineering-standards.md" "$eng/engineering-standards.md"
-  sync_file "$CORE/.editorconfig"            "$TARGET/.editorconfig"
-  sync_file "$CORE/.gitattributes"           "$TARGET/.gitattributes"
-  sync_file "$ROOT/scripts/wt.sh"            "$TARGET/scripts/wt.sh"
+  # Core-owned managed files. Each is reconciled with a three-way merge against the
+  # .devblueprint-base/ cache, so a project's local edits survive the re-sync.
+  merge_file "$CORE/git-workflow.md"          "docs/engineering/git-workflow.md"
+  merge_file "$CORE/engineering-standards.md" "docs/engineering/engineering-standards.md"
+  merge_file "$CORE/.editorconfig"            ".editorconfig"
+  merge_file "$CORE/.gitattributes"           ".gitattributes"
+  merge_file "$ROOT/scripts/wt.sh"            "scripts/wt.sh"
   if [ -f "$TARGET/scripts/wt.sh" ]; then
     chmod +x "$TARGET/scripts/wt.sh" 2>/dev/null || true
   fi
-  sync_file "$CORE/github/pull_request_template.md"        "$TARGET/.github/pull_request_template.md"
-  sync_file "$CORE/github/ISSUE_TEMPLATE/bug_report.md"    "$TARGET/.github/ISSUE_TEMPLATE/bug_report.md"
-  sync_file "$CORE/github/ISSUE_TEMPLATE/feature_request.md" "$TARGET/.github/ISSUE_TEMPLATE/feature_request.md"
-  sync_file "$CORE/github/ISSUE_TEMPLATE/config.yml"       "$TARGET/.github/ISSUE_TEMPLATE/config.yml"
+  merge_file "$ROOT/scripts/protect-branches.sh" "scripts/protect-branches.sh"
+  if [ -f "$TARGET/scripts/protect-branches.sh" ]; then
+    chmod +x "$TARGET/scripts/protect-branches.sh" 2>/dev/null || true
+  fi
+  merge_file "$CORE/github/pull_request_template.md"          ".github/pull_request_template.md"
+  merge_file "$CORE/github/ISSUE_TEMPLATE/bug_report.md"      ".github/ISSUE_TEMPLATE/bug_report.md"
+  merge_file "$CORE/github/ISSUE_TEMPLATE/feature_request.md" ".github/ISSUE_TEMPLATE/feature_request.md"
+  merge_file "$CORE/github/ISSUE_TEMPLATE/config.yml"         ".github/ISSUE_TEMPLATE/config.yml"
 
   # conventions.md is core base + a variant overlay, and quality-and-testing.md is
   # variant-owned, so refreshing them needs the variant. Only touch them when the
@@ -441,20 +1861,150 @@ cmd_update() {
     tmp="$(mktemp)"
     cat "$CORE/conventions.md" > "$tmp"
     [ -f "$vdir/docs/conventions.append.md" ] && cat "$vdir/docs/conventions.append.md" >> "$tmp"
-    sync_file "$tmp" "$eng/conventions.md"
+    merge_file "$tmp" "docs/engineering/conventions.md"
     rm -f "$tmp"
-    sync_file "$vdir/docs/quality-and-testing.md" "$eng/quality-and-testing.md"
+    merge_file "$vdir/docs/quality-and-testing.md" "docs/engineering/quality-and-testing.md"
   else
     info "skip conventions.md, quality-and-testing.md (variant overlay; pass --variant to refresh)"
   fi
 
+  # Multi-agent instruction files chosen at init (recorded in .devblueprint):
+  # re-render them so wording changes propagate. A no-op for projects that never
+  # selected any (older scaffolds, or the default claude-only setup).
+  sync_agent_files
+
   echo
   if [ "$DRY_RUN" -eq 1 ]; then
-    echo "Dry run complete - $CHANGED file(s) would change, nothing written."
-  elif [ "$CHANGED" -eq 0 ]; then
+    local msg="Dry run complete - $CHANGED file(s) would change"
+    [ "$MERGED" -gt 0 ]    && msg="$msg (incl. $MERGED merged with local edits)"
+    [ "$CONFLICTS" -gt 0 ] && msg="$msg, $CONFLICTS would need a manual merge"
+    echo "$msg, nothing written."
+    return 0
+  fi
+  if [ "$CONFLICTS" -gt 0 ]; then
+    echo "Updated $CHANGED file(s); $CONFLICTS file(s) could not be merged cleanly."
+    echo "  Resolve the <<<<<<< / >>>>>>> conflict markers, then commit."
+    echo "  See what drifted with: devblueprint diff --target $TARGET"
+    return 1
+  fi
+  if [ "$CHANGED" -eq 0 ] && [ "$PRESERVED" -eq 0 ]; then
     echo "Already up to date."
   else
-    echo "Updated $CHANGED file(s). Review the diff before committing."
+    if [ "$MERGED" -gt 0 ]; then
+      echo "Updated $CHANGED file(s) (merged local edits in $MERGED). Review the diff before committing."
+    else
+      echo "Updated $CHANGED file(s). Review the diff before committing."
+    fi
+    [ "$PRESERVED" -gt 0 ] && echo "  Kept $PRESERVED file(s) with local edits and no merge base - reconcile manually if needed."
+  fi
+  return 0
+}
+
+# diff_file <src> <dest-rel> : compare one managed file in the project against the
+# current kit's copy and classify it as in-sync, drifted, or missing. <src> is the
+# kit's version; <dest-rel> is the path relative to the target. Bumps SYNCED /
+# DRIFTED / MISSING and reads target - all locals of cmd_diff, visible here by
+# bash's dynamic scoping (the same pattern report_check uses). A missing <src>
+# (nothing to compare against) is a no-op.
+diff_file() {
+  local src="$1" rel="$2" dest="$target/$2" status
+  [ -f "$src" ] || return 0
+  if [ ! -e "$dest" ]; then
+    status=missing; MISSING=$((MISSING + 1))
+  elif cmp -s "$src" "$dest"; then
+    status=ok; SYNCED=$((SYNCED + 1))
+  else
+    status=drifted; DRIFTED=$((DRIFTED + 1))
+  fi
+  # %-8s pads the badge column ("drifted" is the widest at 7 chars) so paths align.
+  printf '  %-8s%s\n' "$status" "$rel"
+}
+
+# cmd_diff : report where a scaffolded project has drifted from the current kit
+# for the core-owned (managed) files - the read-only precursor to `update`. It
+# never writes; it compares each managed file in the project against the kit's
+# current copy and classifies it as in sync, drifted, or missing. The .devblueprint
+# stamp is the base: its version says whether the kit has advanced since the project
+# was scaffolded (so drift may be an upstream change to pull with `update`) or
+# matches (so any drift is a local edit), and its recorded variant resolves the two
+# variant-overlaid docs without needing --variant (which still overrides).
+cmd_diff() {
+  local target="" variant="" SYNCED=0 DRIFTED=0 MISSING=0
+  while [ "$#" -gt 0 ]; do
+    case "$1" in
+      --target) target="$2"; shift 2 ;;
+      --variant) variant="$2"; shift 2 ;;
+      *) die "unknown option: $1" ;;
+    esac
+  done
+  [ -n "$target" ] || die "missing --target <dir>"
+  [ -d "$target" ] || die "target '$target' does not exist"
+  target="$(cd "$target" && pwd)"
+  # Refuse to run outside a scaffolded project (same guard as update) so we never
+  # report an unrelated directory as one big pile of "missing" managed files.
+  if [ ! -d "$target/docs/engineering" ] && [ ! -f "$target/CLAUDE.md" ]; then
+    die "'$target' does not look like a DevBlueprint project (no docs/engineering/ or CLAUDE.md)"
+  fi
+
+  # Resolve the variant for the overlaid docs: explicit --variant wins, else the
+  # one recorded in the stamp. Empty -> the two overlay files are skipped.
+  [ -n "$variant" ] || variant="$(stamp_variant "$target")"
+  local vdir=""
+  if [ -n "$variant" ]; then
+    vdir="$VARIANTS/$variant"
+    [ -d "$vdir" ] || die "unknown variant '$variant' (see: devblueprint list)"
+  fi
+
+  local stamped current
+  stamped="$(stamp_version "$target")"
+  current="$(kit_version)"
+  echo "Comparing $target against the current kit (devblueprint $current)"
+  if [ -z "$stamped" ]; then
+    echo "  scaffolded from: unknown (no .devblueprint stamp; drift is measured against the current kit)"
+  elif [ "$stamped" = "$current" ]; then
+    echo "  scaffolded from: $stamped (up to date; any drift below is a local edit)"
+  else
+    echo "  scaffolded from: $stamped (kit has advanced to $current; drift may be an upstream update)"
+  fi
+  [ -n "$variant" ] && echo "  variant: $variant"
+  echo
+
+  # Core-owned files - the same set `update` re-syncs.
+  diff_file "$CORE/git-workflow.md"          "docs/engineering/git-workflow.md"
+  diff_file "$CORE/engineering-standards.md" "docs/engineering/engineering-standards.md"
+  diff_file "$CORE/.editorconfig"            ".editorconfig"
+  diff_file "$CORE/.gitattributes"           ".gitattributes"
+  diff_file "$ROOT/scripts/wt.sh"            "scripts/wt.sh"
+  diff_file "$ROOT/scripts/protect-branches.sh" "scripts/protect-branches.sh"
+  diff_file "$CORE/github/pull_request_template.md"          ".github/pull_request_template.md"
+  diff_file "$CORE/github/ISSUE_TEMPLATE/bug_report.md"      ".github/ISSUE_TEMPLATE/bug_report.md"
+  diff_file "$CORE/github/ISSUE_TEMPLATE/feature_request.md" ".github/ISSUE_TEMPLATE/feature_request.md"
+  diff_file "$CORE/github/ISSUE_TEMPLATE/config.yml"         ".github/ISSUE_TEMPLATE/config.yml"
+
+  # Variant-overlaid docs: conventions.md is core base + variant append, and
+  # quality-and-testing.md is variant-owned. Rebuild the expected content exactly
+  # as init/update do, then compare. Skipped when no variant resolved.
+  if [ -n "$vdir" ]; then
+    local tmp
+    tmp="$(mktemp)"
+    cat "$CORE/conventions.md" > "$tmp"
+    [ -f "$vdir/docs/conventions.append.md" ] && cat "$vdir/docs/conventions.append.md" >> "$tmp"
+    diff_file "$tmp" "docs/engineering/conventions.md"
+    rm -f "$tmp"
+    diff_file "$vdir/docs/quality-and-testing.md" "docs/engineering/quality-and-testing.md"
+  else
+    info "skip conventions.md, quality-and-testing.md (variant overlay; pass --variant or add a stamp to compare)"
+  fi
+
+  echo
+  local total=$((SYNCED + DRIFTED + MISSING))
+  printf 'Summary: %d of %d managed file(s) in sync' "$SYNCED" "$total"
+  [ "$DRIFTED" -gt 0 ] && printf ', %d drifted' "$DRIFTED"
+  [ "$MISSING" -gt 0 ] && printf ', %d missing' "$MISSING"
+  printf '\n'
+  echo "  (managed files only; CLAUDE.md, wt.conf, CI and your code are never tracked)"
+  if [ "$DRIFTED" -gt 0 ] || [ "$MISSING" -gt 0 ]; then
+    echo "  Re-sync core-owned files with: devblueprint update --target $target${variant:+ --variant $variant}"
   fi
 }
 
@@ -467,11 +2017,221 @@ stamp_version() {
 }
 
 cmd_version() {
-  echo "devblueprint $(kit_version)"
+  local json=0
+  while [ "$#" -gt 0 ]; do
+    case "$1" in
+      --json) json=1; shift ;;
+      *) die "unknown option: $1" ;;
+    esac
+  done
+  if [ "$json" -eq 1 ]; then
+    printf '{"version":"%s"}\n' "$(json_esc "$(kit_version)")"
+  else
+    echo "devblueprint $(kit_version)"
+  fi
+}
+
+# --- upgrade helpers -------------------------------------------------------
+
+# fetch_url <url> : print the contents of <url> to stdout, curl preferred with a
+# wget fallback. Mirrors install.sh's downloader (owned there); duplicated because
+# P4-2 owns only bin/devblueprint + test/. Non-zero exit on transport failure.
+fetch_url() {
+  if command -v curl >/dev/null 2>&1; then
+    curl -fsSL "$1"
+  elif command -v wget >/dev/null 2>&1; then
+    wget -qO- "$1"
+  else
+    die "need curl or wget to reach $1"
+  fi
+}
+
+# latest_release_tag : the newest GitHub release tag (e.g. v0.1.0), or empty when
+# the repo has none yet. $DEVBLUEPRINT_LATEST_TAG overrides the network lookup so
+# the test suite (and offline runs) never call GitHub. The API returns JSON; we
+# pull "tag_name" with sed to stay jq-free like the rest of the kit.
+latest_release_tag() {
+  if [ -n "${DEVBLUEPRINT_LATEST_TAG:-}" ]; then
+    printf '%s' "$DEVBLUEPRINT_LATEST_TAG"
+    return 0
+  fi
+  fetch_url "https://api.github.com/repos/$REPO/releases/latest" 2>/dev/null \
+    | sed -n 's/.*"tag_name"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -n1
+}
+
+# remote_version <ref> : the VERSION a given git ref ships, without downloading
+# the whole kit. $DEVBLUEPRINT_UPGRADE_SRC (a local kit dir, like install.sh's
+# DEVBLUEPRINT_SRC) short-circuits the network for tests and offline use. Trimmed
+# the same way as kit_version. Empty when the ref or its VERSION cannot be read.
+remote_version() {
+  local ref="$1"
+  if [ -n "${DEVBLUEPRINT_UPGRADE_SRC:-}" ]; then
+    [ -f "$DEVBLUEPRINT_UPGRADE_SRC/VERSION" ] && tr -d '[:space:]' < "$DEVBLUEPRINT_UPGRADE_SRC/VERSION"
+    return 0
+  fi
+  fetch_url "https://raw.githubusercontent.com/$REPO/$ref/VERSION" 2>/dev/null | tr -d '[:space:]'
+}
+
+# fetch_kit <kind> <ref> <dest> : populate <dest> with the kit at <ref>. <kind> is
+# "tag" or "head" and selects GitHub's tags/ vs heads/ archive path.
+# $DEVBLUEPRINT_UPGRADE_SRC copies a local kit instead of downloading (tests /
+# offline), exactly as install.sh's DEVBLUEPRINT_SRC does.
+fetch_kit() {
+  local kind="$1" ref="$2" dest="$3" url
+  if [ -n "${DEVBLUEPRINT_UPGRADE_SRC:-}" ]; then
+    [ -d "$DEVBLUEPRINT_UPGRADE_SRC" ] || die "DEVBLUEPRINT_UPGRADE_SRC=$DEVBLUEPRINT_UPGRADE_SRC is not a directory"
+    tar -C "$DEVBLUEPRINT_UPGRADE_SRC" -cf - . | tar -C "$dest" -xf -
+    return 0
+  fi
+  command -v tar >/dev/null 2>&1 || die "need tar to unpack DevBlueprint"
+  case "$kind" in
+    tag)  url="https://github.com/$REPO/archive/refs/tags/$ref.tar.gz" ;;
+    *)    url="https://github.com/$REPO/archive/refs/heads/$ref.tar.gz" ;;
+  esac
+  # --strip-components=1 drops the GitHub "DevBlueprint-<ref>/" top-level dir.
+  fetch_url "$url" | tar -xz --strip-components=1 -C "$dest" \
+    || die "download or extraction failed (is ref '$ref' valid?)"
+}
+
+# channel_state : load the recorded channel + pin from $CHANNEL_FILE into
+# CH_CHANNEL / CH_PIN, defaulting to the reproducible `stable` channel and no pin
+# when the kit has never been upgraded. Read with the same sed idiom as the
+# .devblueprint scaffold stamp.
+channel_state() {
+  CH_CHANNEL="stable" CH_PIN=""
+  [ -f "$CHANNEL_FILE" ] || return 0
+  local c p
+  c="$(sed -n 's/^channel=//p' "$CHANNEL_FILE" | head -n1)"
+  p="$(sed -n 's/^pin=//p' "$CHANNEL_FILE" | head -n1)"
+  [ -n "$c" ] && CH_CHANNEL="$c"
+  CH_PIN="$p"
+}
+
+# write_channel_state <channel> <pin> <version> : record what upgrade resolved so
+# a later bare `upgrade` re-follows the same channel (and a pin stays frozen).
+write_channel_state() {
+  cat > "$CHANNEL_FILE" <<EOF
+# DevBlueprint kit channel - written by \`devblueprint upgrade\`.
+channel=$1
+pin=$2
+version=$3
+EOF
+}
+
+# normalize_tag <ver> : a bare semver like 0.1.0 becomes the release tag v0.1.0;
+# an already-prefixed v0.1.0 (or any other ref) is passed through unchanged.
+normalize_tag() {
+  case "$1" in
+    [0-9]*) printf 'v%s' "$1" ;;
+    *)      printf '%s' "$1" ;;
+  esac
+}
+
+# cmd_upgrade : self-update the installed kit in place. Resolves a target ref from
+# an explicit pin (--version), an explicit/recorded channel (stable=latest release
+# tag, next=master), fetches it into a staging dir, and swaps it over $ROOT. The
+# chosen channel/pin is recorded in $CHANNEL_FILE so `update` targets stay
+# reproducible. Refuses installs it must not touch (git clone, npm, Homebrew).
+cmd_upgrade() {
+  local channel="" version="" check=0 force=0
+  while [ "$#" -gt 0 ]; do
+    case "$1" in
+      --channel) channel="$2"; shift 2 ;;
+      --version) version="$2"; shift 2 ;;
+      --check | --dry-run) check=1; shift ;;
+      --force) force=1; shift ;;
+      *) die "unknown option: $1" ;;
+    esac
+  done
+
+  # Guards: only the curl|sh / git-clone-then-run install is ours to replace.
+  # Package-manager installs upgrade through their own tooling; a dev clone is
+  # managed by git. Refuse the rest so we never clobber someone's checkout.
+  [ -d "$ROOT/.git" ] && die "'$ROOT' is a git clone - upgrade it with git (pull), not upgrade"
+  case "$ROOT" in
+    */node_modules/*) die "installed via npm - upgrade with 'npm i -g devblueprint' or 'npx devblueprint@latest'" ;;
+    */Cellar/*)       die "installed via Homebrew - upgrade with 'brew upgrade devblueprint'" ;;
+  esac
+
+  # Resolve the desired channel/pin. Precedence: --version pins (freezes);
+  # --channel follows a channel and clears any pin; otherwise the recorded state;
+  # otherwise the `stable` default.
+  channel_state
+  local chan pin
+  if [ -n "$version" ]; then
+    chan="$CH_CHANNEL"; pin="$version"
+  elif [ -n "$channel" ]; then
+    chan="$channel"; pin=""
+  else
+    chan="$CH_CHANNEL"; pin="$CH_PIN"
+  fi
+  case "$chan" in stable | next) : ;; *) die "invalid channel '$chan' (expected stable or next)" ;; esac
+
+  # Map channel/pin to a concrete git ref + archive kind.
+  local kind ref
+  if [ -n "$pin" ]; then
+    kind="tag"; ref="$(normalize_tag "$pin")"
+  elif [ "$chan" = "next" ]; then
+    kind="head"; ref="master"
+  else
+    ref="$(latest_release_tag)"
+    [ -n "$ref" ] || die "no stable release found for $REPO - try: devblueprint upgrade --channel next"
+    kind="tag"
+  fi
+
+  local current target
+  current="$(kit_version)"
+  target="$(remote_version "$ref")"
+  [ -n "$target" ] || die "could not read the version for ref '$ref'"
+
+  echo "Channel: $chan${pin:+ (pinned $pin)}   ref: $ref"
+  echo "  installed: $current   available: $target"
+
+  if [ "$check" -eq 1 ]; then
+    if [ "$current" = "$target" ] && [ "$force" -eq 0 ]; then
+      echo "Up to date."
+    else
+      echo "Run 'devblueprint upgrade' to apply."
+    fi
+    return 0
+  fi
+
+  # Already current: record the (possibly changed) channel/pin so the choice
+  # persists, but skip the download+swap unless forced.
+  if [ "$current" = "$target" ] && [ "$force" -eq 0 ]; then
+    write_channel_state "$chan" "$pin" "$target"
+    echo "Already up to date ($current)."
+    return 0
+  fi
+
+  # Stage the new kit, validate it, then swap it over $ROOT one top-level entry at
+  # a time. Removing the old bin/devblueprint unlinks the file the running process
+  # is executing, but its open inode stays valid until exit (POSIX), so replacing
+  # ourselves mid-run is safe - the same rm-then-extract shape install.sh uses.
+  local staging
+  staging="$(mktemp -d)"
+  # shellcheck disable=SC2064
+  trap "rm -rf '$staging'" EXIT
+  fetch_kit "$kind" "$ref" "$staging"
+  [ -x "$staging/bin/devblueprint" ] || die "fetched kit is missing bin/devblueprint (ref '$ref')"
+
+  local entry base
+  for entry in "$staging"/* "$staging"/.[!.]*; do
+    [ -e "$entry" ] || continue          # unmatched glob under set -u stays literal
+    base="$(basename "$entry")"
+    case "$base" in
+      .git | .channel) continue ;;       # never import VCS metadata or our own state
+    esac
+    rm -rf "${ROOT:?}/$base"
+    cp -R "$entry" "$ROOT/$base"
+  done
+
+  write_channel_state "$chan" "$pin" "$target"
+  echo "Upgraded $current -> $target."
 }
 
 usage() {
-  sed -n '5,12p' "$0" | sed 's/^# \{0,1\}//'
+  sed -n '5,20p' "$0" | sed 's/^# \{0,1\}//'
 }
 
 main() {
@@ -480,11 +2240,15 @@ main() {
   case "$cmd" in
     list) cmd_list "$@" ;;
     init) cmd_init "$@" ;;
+    plan) cmd_plan "$@" ;;
     update) cmd_update "$@" ;;
+    diff) cmd_diff "$@" ;;
     doctor) cmd_doctor "$@" ;;
-    version | --version | -V) cmd_version ;;
+    detect) cmd_detect "$@" ;;
+    upgrade) cmd_upgrade "$@" ;;
+    version | --version | -V) cmd_version "$@" ;;
     help | -h | --help | "") usage ;;
-    *) die "unknown command '$cmd' (try: list, init, update, doctor, version, help)" ;;
+    *) die "unknown command '$cmd' (try: list, init, plan, update, diff, doctor, detect, upgrade, version, help)" ;;
   esac
 }
 

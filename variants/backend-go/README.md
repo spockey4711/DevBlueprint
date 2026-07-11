@@ -22,6 +22,11 @@ Or, with the shipped Makefile: `make check`.
 - `.github/workflows/ci.yml` (gofumpt + go vet + golangci-lint + build + race tests).
 - `.github/dependabot.yml` (gomod + github-actions updates) and `.tool-versions` (toolchain pin).
 - `.gitignore` for Go binaries, coverage and build artifacts.
+- `docs/ops/deployment.md` (deploy runbook: managed/Docker/VPS + DB + env checklists) and
+  `.env.example` (committed template; real `.env*` stay ignored).
+- Ops artifacts: `Dockerfile` (static binary -> distroless) + `.dockerignore` + `docker-compose.yml`,
+  `deploy/` (Fly/Render/Terraform skeletons), and `.env.schema` + `scripts/check-env.sh` (the env
+  contract `make check` and CI enforce). All skeletons - fill the `<...>` placeholders.
 - `cmd/`, `internal/`, `pkg/` scaffold.
 
 ## After init (wire the toolchain)

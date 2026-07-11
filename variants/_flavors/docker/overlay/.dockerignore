@@ -1,0 +1,28 @@
+# Keep the build context small and free of secrets and local cruft. Tune per stack.
+.git
+.gitignore
+.github
+.devblueprint
+.devblueprint-base
+
+# Dependencies / build output (covers the common variants)
+node_modules
+.venv
+venv
+target
+build
+dist
+*.egg-info
+
+# Local env and secrets - never bake these into an image
+.env
+.env.*
+!.env.example
+
+# Editor / OS cruft
+.DS_Store
+.idea
+.vscode
+
+# Docs and tests are usually not needed at runtime
+docs

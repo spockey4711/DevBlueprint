@@ -1,0 +1,7 @@
+
+# --- auth flavor: secrets and keys (never commit) ---
+*.pem
+*.key
+*.p12
+.env.local
+secrets/

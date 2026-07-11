@@ -1,0 +1,96 @@
+# Quality and testing
+
+**Purpose:** the quality bar and how it is enforced for this Flutter project. Concrete overlay of
+the blueprint's [shared quality shape](engineering-standards.md).
+
+## The quality gate (must be green to merge)
+
+Run locally before pushing (`make check`); CI runs the identical set on every PR:
+
+```bash
+dart format --output=none --set-exit-if-changed .   # formatting is canonical
+flutter analyze                                     # lint + static types - zero warnings
+flutter test                                        # unit + widget tests
+```
+
+`flutter analyze` is both lint and type check: Dart is statically typed, so there is no separate
+typecheck step. `very_good_analysis` plus the analyzer `strict-*` language modes make it strict -
+every warning fails the gate.
+
+## Testing strategy
+
+Test what has logic or can silently break; do not chase coverage on trivial presentational widgets.
+
+- **Unit (`flutter test`):** plain-Dart logic moved out of widgets - repositories, use-cases,
+  mappers, validators, formatters. Deterministic; inject clocks/RNG rather than reading wall time.
+- **Widget tests:** pump a widget with `WidgetTester`, drive interactions, assert on the rendered
+  tree (`find.text`, `find.byType`). Cover the states that matter: loading, empty, error, success.
+- **Golden tests (optional):** pixel-compare stable, design-critical widgets; keep goldens small
+  and regenerate deliberately.
+- **Integration (`integration_test/`):** exercise real end-to-end flows on a device/emulator for
+  the critical paths, not every screen.
+
+Keep widgets thin: once a build method carries real logic, extract it into a testable Dart class and
+test that directly rather than through the widget tester.
+
+Target: meaningful coverage of the logic under `lib/src/` and the critical user flows, not a global
+percentage or every `const` widget.
+
+## Tooling
+
+- **dart format** - the canonical formatter; `--set-exit-if-changed` turns "unformatted" into a
+  gate failure. Never hand-format.
+- **flutter analyze** - static analysis (lint + types) driven by `analysis_options.yaml`.
+  `very_good_analysis` is the ruleset; `strict-casts` / `strict-inference` / `strict-raw-types`
+  tighten the type system. Zero warnings.
+- **flutter test** - unit, widget and golden tests under `test/`; add `--coverage` to emit
+  `coverage/lcov.info`.
+- **pre-commit** - the `pre-commit` framework runs `dart format` and `flutter analyze` on staged
+  Dart files so the gate holds on every commit.
+- **FVM / .tool-versions** - pin one Flutter SDK (Dart ships inside it) so local and CI match.
+- **CI** - `.github/workflows/ci.yml` runs the full gate on every PR into `develop`/`master`.
+
+## Release automation
+
+On every push to `master`, `release.yml` runs
+[release-please](https://github.com/googleapis/release-please), turning the
+Conventional-Commits history into releases and closing the loop on the changelog
+discipline above:
+
+- It maintains a standing **release PR** whose diff is the next SemVer bump plus
+  the generated `CHANGELOG.md` entries (`feat` -> minor, `fix`/`perf` -> patch,
+  `BREAKING CHANGE` -> major). Merging that PR tags the release and publishes a
+  GitHub Release.
+- `release-please-config.json` pins the release strategy to `dart`, so it also bumps
+  the version in `pubspec.yaml` in the release PR.
+- This automates the manual "move `[Unreleased]`, tag, publish" steps in the git
+  workflow: let the merged commits drive `CHANGELOG.md` instead of hand-editing it.
+
+## Provider-agnostic CI (GitLab)
+
+The kit is not GitHub-only. Each project also ships a `.gitlab-ci.yml` that mirrors
+the same gates, so it can live on either forge:
+
+- **`quality`** stage - runs the quality gate above.
+- **`security`** stage - GitLab's managed SAST, secret detection and dependency
+  scanning, the GitLab-native counterpart to the GitHub security gate.
+- **`deploy`** stage - the `deploy:preview` job (below).
+
+`workflow:` rules run the pipeline on merge requests and the protected branches
+without spawning duplicate pipelines. Delete `.gitlab-ci.yml` if the project is
+hosted on GitHub only.
+
+## Preview deploy
+
+A provider-neutral preview environment ships for both forges - `preview-deploy.yml`
+on GitHub and the `deploy:preview` job on GitLab. On every PR/MR it stands up an
+ephemeral environment and comments its URL, then tears it down when the PR/MR
+closes. The plumbing is wired; only the deploy step is a TODO, so point it at your
+host (Vercel, Netlify, GitHub/GitLab Pages, Fly, ...).
+
+## Definition of done
+
+1. It works on the target platforms and the feature behaves as specified.
+2. `dart format`, `flutter analyze` and `flutter test` are green; no unjustified `// ignore:`.
+3. Docs are updated and `CHANGELOG.md` has an entry.
+4. It is merged via a reviewed PR.

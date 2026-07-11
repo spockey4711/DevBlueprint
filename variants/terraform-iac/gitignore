@@ -1,0 +1,39 @@
+# Terraform state - never commit; it can contain secrets in plaintext.
+*.tfstate
+*.tfstate.*
+.terraform.tfstate.lock.info
+
+# Provider/module cache (fetched, not source). The dependency lock file
+# .terraform.lock.hcl IS committed so provider versions are reproducible.
+.terraform/
+
+# Plan output (may embed secret values) and crash logs.
+*.tfplan
+*.tfplan.*
+crash.log
+crash.*.log
+
+# Variable files often hold secrets and per-env values - ignore, keep the example.
+*.tfvars
+*.tfvars.json
+!example.tfvars
+!*.auto.tfvars.example
+
+# Local CLI overrides.
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+.terraformrc
+terraform.rc
+
+# Env (keep the example)
+.env
+.env.*
+!.env.example
+
+# OS / editor cruft
+*.log
+.DS_Store
+.idea/
+.vscode/

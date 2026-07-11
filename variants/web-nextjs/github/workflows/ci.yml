@@ -32,6 +32,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # Enforce the env contract before anything else - keeps .env.example in
+      # lockstep with .env.schema and validates required keys/patterns in any real .env.
+      - name: Validate env schema
+        run: sh scripts/check-env.sh
+
       # pnpm before setup-node so the Node cache can key off the pnpm store.
       - name: Set up pnpm
         uses: pnpm/action-setup@v4

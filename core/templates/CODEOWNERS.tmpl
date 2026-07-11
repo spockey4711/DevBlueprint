@@ -1,0 +1,23 @@
+# CODEOWNERS - who is required to review changes to matching paths.
+#
+# GitHub auto-requests these reviewers on every pull request that touches a
+# matching path. With branch protection's "Require review from Code Owners"
+# rule enabled, their approval becomes mandatory before a merge - turning the
+# review workflow from a convention into an enforced gate. Run
+# scripts/protect-branches.sh to switch that rule on.
+#
+# Syntax: <path-glob>  <owner> [<owner> ...]   where <owner> is a @user or an
+# @org/team handle. The LAST matching pattern wins, so order rules from general
+# to specific. Paths are gitignore-style globs, rooted at the repo unless they
+# start with a bare name.
+#
+# Replace @OWNER below with a real handle (e.g. @{{PROJECT_NAME}}/maintainers)
+# before enabling code-owner review, or GitHub will reject the file.
+
+# Default owner for everything in the repo.
+*                       @OWNER
+
+# Example: route specific areas to specialized reviewers. Uncomment and adjust.
+# /docs/                @OWNER
+# /.github/             @OWNER
+# /scripts/             @OWNER

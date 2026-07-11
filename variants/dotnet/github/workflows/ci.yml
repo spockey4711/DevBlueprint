@@ -1,0 +1,50 @@
+name: CI
+
+# The quality gate for every change: dotnet format (formatting + code style +
+# analyzers), a Release build, and the tests - all on the SDK pinned in
+# global.json. Must be green before a PR can merge. Gates both integration
+# branches: feature PRs into `develop` and the periodic `develop` -> `master`
+# release PR.
+
+on:
+  pull_request:
+    branches: [develop, master]
+  push:
+    branches: [develop, master]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    name: Format, build, test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Fast, toolchain-free contract check: .env.example must stay in lockstep
+      # with .env.schema (and a real .env, if present, must satisfy it).
+      - name: Validate env schema
+        run: sh scripts/check-env.sh
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Restore
+        run: dotnet restore
+
+      - name: Format check (whitespace, style, analyzers)
+        run: dotnet format --verify-no-changes --no-restore
+
+      - name: Build (Release)
+        run: dotnet build --configuration Release --no-restore
+
+      - name: Tests
+        run: dotnet test --configuration Release --no-build
