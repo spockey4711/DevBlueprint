@@ -1,9 +1,15 @@
 # Quality gate for a data-science Python project (uv-managed). `make check` runs
 # the whole gate; CI calls the same targets. Prefix with `uv run` so the pinned
 # environment is used.
-.PHONY: check lint format typecheck test notebooks clean
+.PHONY: check validate-env lint format typecheck test notebooks clean
 
-check: lint typecheck notebooks test
+check: validate-env lint typecheck notebooks test
+
+# Enforce the environment contract: .env.example must stay in lockstep with
+# .env.schema, and a real .env (if present) must satisfy every required key. This
+# is stack-agnostic and always on - fill in the schema, not this target.
+validate-env:
+	@sh scripts/check-env.sh
 
 lint:
 	uv run ruff check .

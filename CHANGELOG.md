@@ -124,6 +124,18 @@ All notable changes are documented here, following
   `scripts/check-env.sh` to keep `.env.example` in lockstep with the schema and validate required
   keys/patterns in any real `.env`. `APP_KEY` must be generated with `php artisan key:generate` and
   kept in the platform's secret store, never committed. Refs: P7-3.
+- Ops artifacts for the `data-python` variant, adapted for a batch/pipeline project (not a
+  long-running web service): a `python:3.12-slim`, non-root `Dockerfile` whose ENTRYPOINT runs the
+  pipeline to completion and exits (no exposed port) + `.dockerignore` + a run-once
+  `docker-compose.yml`, and a `.env.schema` promoted from `.env.example` (warehouse connection
+  strings and object-store credentials, all optional until real) enforced in the gate. Deployment is
+  scheduled, not always-on, so there is no `fly.toml`/`render.yaml`: `deploy/README.md` points at a
+  scheduler/registry/managed Batch service (cron, Airflow, AWS Batch, Cloud Run jobs) and
+  `deploy/terraform/` provisions the compute + object storage; `docs/ops/deployment.md` is a runbook
+  for those targets with job success/alerting in place of a health check. `make check` gains a
+  `validate-env` step and CI a `Validate env schema` step, both running `scripts/check-env.sh` to
+  keep `.env.example` in lockstep with the schema and validate required keys/patterns in any real
+  `.env`; the `doctor --run-gate` gate runs it too. Refs: P7-3.
 - Ops artifacts for the `generic` variant: a `Dockerfile` + `.dockerignore` + `docker-compose.yml`,
   `deploy/` skeletons for Fly/Render/Terraform, and a `.env.schema` promoted from `.env.example` and
   enforced in the gate - `make check` runs `scripts/check-env.sh` (a new `validate-env` step) to keep
