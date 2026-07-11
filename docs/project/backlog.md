@@ -270,7 +270,7 @@ unchanged - only their ordering into waves. The eight P6-2 variants are each the
 - [x] P7-4: (CLI) Org baseline / config inheritance - a company default that projects extend
   (`extends: org-baseline`), turning the kit from a solo tool into a team standardizer.
   **Owns:** `bin/devblueprint` (config resolution), `test/`.
-- [ ] P7-3: Ops artifacts beyond the runbook (builds on P3-4/P3-6): optional `Dockerfile`,
+- [x] P7-3: Ops artifacts beyond the runbook (builds on P3-4/P3-6): optional `Dockerfile`,
   `docker-compose.yml`, Fly/Vercel/Render config and Terraform snippets, plus `.env.example`
   promoted to a validated env schema checked in the gate. **Owns:** `variants/*/extras/`
   (one variant subtree per task). Mobile variants (android-kotlin, ios-swift, flutter) are
