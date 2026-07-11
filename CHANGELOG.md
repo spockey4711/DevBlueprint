@@ -26,6 +26,17 @@ All notable changes are documented here, following
   per-language `coverage.yml` that reports line coverage and enforces a soft floor from the
   `COVERAGE_MIN` repository variable (default `0` = report-only, so a fresh scaffold stays green).
   All files ship through the existing `github/` tree copy, so no CLI change was needed. Refs: P6-4.
+- New `dotnet` variant: a C# / .NET 10 backend built with the `dotnet` CLI (SDK pinned in
+  `global.json`), `dotnet format`, Roslyn analyzers with warnings-as-errors, and xUnit.
+  Self-contained under `variants/dotnet/` (manifest, `setup.sh`, Makefile, CI + dependabot,
+  `.tool-versions`, gitignore, wt.conf, and the conventions/quality docs), auto-discovered by
+  the CLI. Refs: P6-2c.
+- New `flutter` variant: a Flutter/Dart app stack (`dart format`, `flutter analyze` with
+  `very_good_analysis` + strict analyzer modes, `flutter test`) with a `lib/`+`lib/src/`+`test/`
+  +`integration_test/` scaffold, `Makefile` gate, CI (subosito/flutter-action), and `extras/`
+  (`.tool-versions` SDK pin + `.github/dependabot.yml` for pub + github-actions). `setup.sh` wires
+  `pubspec.yaml`, `analysis_options.yaml`, `.fvmrc`, a pre-commit config and a placeholder
+  `lib/main.dart` + widget test. Refs: P6-2a.
 - New `spring-java` variant: a Java 21 + Spring Boot backend built with the Gradle wrapper,
   Spotless (google-java-format), Checkstyle, and JUnit 5. Self-contained under
   `variants/spring-java/` (manifest, `setup.sh`, Makefile, CI + dependabot, `.tool-versions`,
