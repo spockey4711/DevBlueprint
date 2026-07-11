@@ -927,6 +927,8 @@ cmd_init() {
   # actually wrote the file, so an existing wt.conf is never rewritten.
   copy "$ROOT/scripts/wt.sh" "$TARGET/scripts/wt.sh"
   chmod +x "$TARGET/scripts/wt.sh" 2>/dev/null || true
+  copy "$ROOT/scripts/protect-branches.sh" "$TARGET/scripts/protect-branches.sh"
+  chmod +x "$TARGET/scripts/protect-branches.sh" 2>/dev/null || true
   local wtconf="$TARGET/scripts/wt.conf" wrote_conf=0
   [ -e "$wtconf" ] || wrote_conf=1
   copy "$vdir/wt.conf" "$wtconf"
@@ -973,12 +975,14 @@ cmd_init() {
   fi
 
   # 5c. Optional community-health files (opt-in with --community): a security
-  # policy and a Contributor Covenant code of conduct. Off by default because a
-  # solo or private project rarely needs them; --contact fills the reporting
-  # address in both.
+  # policy, a Contributor Covenant code of conduct, and a CODEOWNERS review-routing
+  # file. Off by default because a solo or private project rarely needs them;
+  # --contact fills the reporting address in the first two, and CODEOWNERS carries
+  # a fill-in @OWNER handle (scripts/protect-branches.sh can then enforce it).
   if [ "$COMMUNITY" -eq 1 ]; then
     render "$CORE/templates/SECURITY.md.tmpl"        "$TARGET/SECURITY.md"
     render "$CORE/templates/CODE_OF_CONDUCT.md.tmpl" "$TARGET/CODE_OF_CONDUCT.md"
+    render "$CORE/templates/CODEOWNERS.tmpl"         "$TARGET/.github/CODEOWNERS"
   fi
 
   # 6. Source/test skeleton + a backlog stub.
@@ -1254,6 +1258,8 @@ EOF
   # the single-variant path but with the stack-neutral generic wt.conf.
   copy "$ROOT/scripts/wt.sh" "$TARGET/scripts/wt.sh"
   chmod +x "$TARGET/scripts/wt.sh" 2>/dev/null || true
+  copy "$ROOT/scripts/protect-branches.sh" "$TARGET/scripts/protect-branches.sh"
+  chmod +x "$TARGET/scripts/protect-branches.sh" 2>/dev/null || true
   local wtconf="$TARGET/scripts/wt.conf" wrote_conf=0
   [ -e "$wtconf" ] || wrote_conf=1
   copy "$VARIANTS/generic/wt.conf" "$wtconf"
@@ -1289,6 +1295,7 @@ EOF
   if [ "$COMMUNITY" -eq 1 ]; then
     render "$CORE/templates/SECURITY.md.tmpl"        "$TARGET/SECURITY.md"
     render "$CORE/templates/CODE_OF_CONDUCT.md.tmpl" "$TARGET/CODE_OF_CONDUCT.md"
+    render "$CORE/templates/CODEOWNERS.tmpl"         "$TARGET/.github/CODEOWNERS"
   fi
 
   # 6. Shared backlog stub.
@@ -1837,6 +1844,10 @@ cmd_update() {
   if [ -f "$TARGET/scripts/wt.sh" ]; then
     chmod +x "$TARGET/scripts/wt.sh" 2>/dev/null || true
   fi
+  merge_file "$ROOT/scripts/protect-branches.sh" "scripts/protect-branches.sh"
+  if [ -f "$TARGET/scripts/protect-branches.sh" ]; then
+    chmod +x "$TARGET/scripts/protect-branches.sh" 2>/dev/null || true
+  fi
   merge_file "$CORE/github/pull_request_template.md"          ".github/pull_request_template.md"
   merge_file "$CORE/github/ISSUE_TEMPLATE/bug_report.md"      ".github/ISSUE_TEMPLATE/bug_report.md"
   merge_file "$CORE/github/ISSUE_TEMPLATE/feature_request.md" ".github/ISSUE_TEMPLATE/feature_request.md"
@@ -1964,6 +1975,7 @@ cmd_diff() {
   diff_file "$CORE/.editorconfig"            ".editorconfig"
   diff_file "$CORE/.gitattributes"           ".gitattributes"
   diff_file "$ROOT/scripts/wt.sh"            "scripts/wt.sh"
+  diff_file "$ROOT/scripts/protect-branches.sh" "scripts/protect-branches.sh"
   diff_file "$CORE/github/pull_request_template.md"          ".github/pull_request_template.md"
   diff_file "$CORE/github/ISSUE_TEMPLATE/bug_report.md"      ".github/ISSUE_TEMPLATE/bug_report.md"
   diff_file "$CORE/github/ISSUE_TEMPLATE/feature_request.md" ".github/ISSUE_TEMPLATE/feature_request.md"
