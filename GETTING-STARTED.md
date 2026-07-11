@@ -446,6 +446,11 @@ TODO: wire the test runner
 TODO: wire the build/compile step
 ```
 
+Prefer a button to a memorised command? Every project ships a `.vscode/tasks.json`, so in VS
+Code you can press `Cmd+Shift+B` (macOS) or `Ctrl+Shift+B` (Windows/Linux) to run the whole gate,
+or open **Terminal > Run Task...** to pick a single step (lint, tests, build). The task runs your
+variant's real gate - the same one CI runs - so it stays honest as you wire the checks in.
+
 ### 4. Commit
 
 Record the change with a short, structured message. The `docs:` prefix is a

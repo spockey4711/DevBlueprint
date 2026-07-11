@@ -7,6 +7,13 @@ All notable changes are documented here, following
 
 ### Added
 
+- Every variant now ships a `.vscode/tasks.json`, so a scaffolded project wires its quality gate
+  into VS Code's task menu out of the box: `Cmd/Ctrl+Shift+B` runs the full gate (the default
+  build task), and **Run Task...** exposes the individual steps (lint, type-check, tests, build)
+  the gate is made of. Variants with a Makefile call `make <target>` so the tasks track the
+  Makefile with no duplication; the Makefile-less variants (`backend-python`, `ios-swift`,
+  `web-nextjs`) call the manifest gate directly. A beginner runs the gate without memorising
+  commands. Refs: P10-4.
 - Every variant now ships a `.vscode/extensions.json` with recommended extensions for its stack
   (via the variant's `extras/` tree), so opening a scaffolded project in VS Code offers the right
   tooling - the language server, formatter and linter that back the quality gate - in one click.

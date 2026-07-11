@@ -1,0 +1,61 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Quality gate",
+      "detail": "Run the full quality gate - formatting, lint, types, tests and build. Do this before every commit and push.",
+      "type": "shell",
+      "command": "make check",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared",
+        "clear": true
+      },
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      }
+    },
+    {
+      "label": "Lint",
+      "detail": "Check code style and catch common mistakes.",
+      "type": "shell",
+      "command": "make lint",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared",
+        "clear": true
+      }
+    },
+    {
+      "label": "Security scan",
+      "detail": "Run the static security analysis.",
+      "type": "shell",
+      "command": "make security",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared",
+        "clear": true
+      }
+    },
+    {
+      "label": "Run tests",
+      "detail": "Run the test suite.",
+      "type": "shell",
+      "command": "make test",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared",
+        "clear": true
+      },
+      "group": {
+        "kind": "test",
+        "isDefault": true
+      }
+    }
+  ]
+}
