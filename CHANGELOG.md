@@ -19,6 +19,13 @@ All notable changes are documented here, following
 
 ### Added
 
+- `update` now three-way merges managed files instead of overwriting them, so local edits
+  survive a re-sync. It caches the last-synced kit copy of each file under
+  `.devblueprint-base/` as the merge base (base vs. the project's file vs. the current kit),
+  merges an upstream change together with a local edit, and reports a genuine overlap as a
+  conflict - keeping both sides with `<<<<<<<` / `>>>>>>>` markers and exiting non-zero.
+  When no base is recoverable (an older project updating for the first time) it never clobbers:
+  it keeps the local file and seeds the base for the next update. Refs: P5-5.
 - `init --agents <list>` wires the multi-agent instruction templates into the CLI: it emits
   `AGENTS.md` (Codex), a Cursor project rule (`.cursor/rules/<project>.mdc`), and Copilot
   instructions (`.github/copilot-instructions.md`) from the same canonical guidance as

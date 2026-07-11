@@ -126,6 +126,13 @@ deliberately never touches your `CLAUDE.md`, `wt.conf`, CI or code. Pass
 `--variant <name>` to also refresh the variant-overlaid `conventions.md` and
 `quality-and-testing.md`, and `--dry-run` to preview the changes first.
 
+Your local edits to those managed files are preserved with a three-way merge rather than
+overwritten. `update` keeps a `.devblueprint-base/` cache of the last-synced kit copy of each
+file as the merge base; when a re-sync brings both an upstream change and a local edit, the two
+are merged, and only a genuine overlap is reported as a conflict (both sides kept with standard
+`<<<<<<<` / `>>>>>>>` markers to resolve, and a non-zero exit so scripts notice). Commit the
+`.devblueprint-base/` cache so a teammate who pulls shares the same merge base.
+
 `diff` is the read-only precursor to `update`: it reports which core-owned files have drifted
 from the current kit - marking each in sync, `drifted`, or `missing` - so you can see what
 `update` would touch without writing anything. It reads the `.devblueprint` stamp as the base:
