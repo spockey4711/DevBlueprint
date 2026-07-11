@@ -102,7 +102,7 @@ Each task is a brand-new standalone file, so all four are independent with zero 
 - [ ] P12-1: (CLI) Beginner-friendly error messages - audit CLI output so every failure says
   what to do next (missing path, directory already exists, git not initialised), not just what
   broke.
-- [ ] P12-2: An agent "mentor" skill that narrates the workflow as you go ("you are on
+- [x] P12-2: An agent "mentor" skill that narrates the workflow as you go ("you are on
   develop; let us make a worktree, because ..."), so the process teaches itself. Agent files
   only. (builds on P11-3/P11-4 for the explanations)
 - [ ] P12-3: Cross-link the glossary and reference layer - first mention of each term in the
