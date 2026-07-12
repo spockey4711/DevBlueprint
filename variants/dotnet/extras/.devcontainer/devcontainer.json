@@ -1,0 +1,16 @@
+{
+  "name": "Backend service (C# / .NET) - DevBlueprint",
+  "image": "mcr.microsoft.com/devcontainers/dotnet:10.0",
+  "forwardPorts": [8080],
+  "postCreateCommand": "bash setup.sh",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-dotnettools.csharp",
+        "ms-dotnettools.csdevkit",
+        "EditorConfig.EditorConfig",
+        "github.vscode-github-actions"
+      ]
+    }
+  }
+}

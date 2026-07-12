@@ -6,7 +6,7 @@
 
 # Every shell script in the kit: the CLI, the worktree manager, the curl|sh
 # installer, and the variant setups.
-SHELL_FILES := bin/devblueprint scripts/wt.sh scripts/protect-branches.sh scripts/scaffold-check.sh install.sh $(wildcard variants/*/setup.sh)
+SHELL_FILES := bin/devblueprint scripts/wt.sh scripts/protect-branches.sh scripts/scaffold-check.sh scripts/beginner-artifacts-check.sh scripts/docs-check.sh scripts/docs-freshness.sh install.sh $(wildcard variants/*/setup.sh)
 
 # The npm launcher is the kit's only JavaScript (npm channel only).
 JS_FILES := packaging/npm/launch.cjs

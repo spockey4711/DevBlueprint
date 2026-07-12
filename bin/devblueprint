@@ -3,6 +3,8 @@
 # gate + AI-assistant guidance) from the shared core and a stack variant.
 #
 # Usage:
+#   devblueprint init            (no flags: guided interactive wizard)
+#   devblueprint update          (no flags: guided interactive drift check + re-sync)
 #   devblueprint list [--json]
 #   devblueprint init --target <dir> --variant <variant> [--name <name>] \
 #       [--from <intake.yml>] [--extends <baseline>] [--base <branch>] [--main <branch>] \
@@ -14,6 +16,7 @@
 #   devblueprint update --target <dir> [--variant <variant>] [--dry-run]
 #   devblueprint diff --target <dir> [--variant <variant>]
 #   devblueprint doctor --target <dir> [--strict] [--run-gate] [--fix] [--variant <variant>] [--json]
+#   devblueprint doctor --env [--json]
 #   devblueprint detect --target <dir>
 #   devblueprint upgrade [--channel stable|next] [--version <ver>] [--check] [--force]
 #   devblueprint version [--json]
@@ -84,8 +87,44 @@ CHANNEL_FILE="$ROOT/.channel"
 # base.
 DB_BASE_DIR=".devblueprint-base"
 
-die() { echo "devblueprint: $*" >&2; exit 1; }
+# die <message> [next-step] : print an error to stderr and exit non-zero. The
+# optional second argument is a beginner-facing "what to do next" hint, printed on
+# its own indented line so every failure tells the user how to recover, not just
+# what broke. Callers that already fold the recovery into <message> may omit it.
+die() {
+  printf 'devblueprint: %s\n' "$1" >&2
+  [ -n "${2:-}" ] && printf '  next: %s\n' "$2" >&2
+  exit 1
+}
 info() { printf '  %s\n' "$*"; }
+
+# ask <prompt> <default> : print <prompt> (with the default shown in brackets)
+# to stderr, read one line from stdin, and echo the answer on stdout - the
+# default when the user just presses Enter. The prompt goes to stderr so callers
+# can capture the answer with `x="$(ask ...)"` without swallowing the question.
+# An empty read (EOF, e.g. Ctrl-D) falls back to the default rather than tripping
+# `set -e`. Used by the interactive `init` wizard.
+ask() {
+  local prompt="$1" default="${2:-}" reply
+  if [ -n "$default" ]; then
+    printf '%s [%s]: ' "$prompt" "$default" >&2
+  else
+    printf '%s: ' "$prompt" >&2
+  fi
+  IFS= read -r reply || reply=""
+  [ -n "$reply" ] || reply="$default"
+  printf '%s' "$reply"
+}
+
+# confirm <prompt> : ask a yes/no question on stderr and return 0 for yes, 1 for
+# no. Pressing Enter (an empty line) means yes; an EOF (no input at all, read
+# fails) means no, so a non-interactive or aborted wizard never writes to disk.
+confirm() {
+  local reply
+  printf '%s [Y/n]: ' "$1" >&2
+  IFS= read -r reply || reply="n"
+  case "$reply" in ''|y|Y|yes|Yes|YES) return 0 ;; *) return 1 ;; esac
+}
 
 # kit_version : the kit's own version, the single source of truth in ./VERSION.
 # Stamped into every scaffold so `update` can tell a project's core files apart
@@ -678,8 +717,10 @@ resolve_baseline_path() {
 # an extends cycle. Reads/writes the CONFIG_FILES array and CONFIG_SEEN string.
 add_config_file() {
   local file="$1" override="$2" abs ext bdir bpath
-  abs="$(canon_file "$file")" || die "config file not found: $file"
-  case " $CONFIG_SEEN " in *" $abs "*) die "circular 'extends' detected at $file" ;; esac
+  abs="$(canon_file "$file")" || die "config file not found: $file" \
+    "check the path - this is an intake or baseline file pulled in via --from or an 'extends:' key"
+  case " $CONFIG_SEEN " in *" $abs "*) die "circular 'extends' detected at $file" \
+    "an 'extends:' chain loops back on itself - remove the extends line that points at an already-included file" ;; esac
   CONFIG_SEEN="$CONFIG_SEEN $abs"
   if [ -n "$override" ]; then ext="$override"; else ext="$(read_extends "$file")"; fi
   if [ -n "$ext" ]; then
@@ -704,7 +745,8 @@ load_config() {
     IN_DEPLOY="" IN_FLAVORS="" IN_AGENTS=""
   CONFIG_FILES=(); CONFIG_SEEN=""
   if [ -n "$from" ]; then
-    [ -f "$from" ] || die "intake file not found: $from"
+    [ -f "$from" ] || die "intake file not found: $from" \
+      "check the --from path - it should point at an intake YAML file (see docs/agent/intake-schema.md)"
     add_config_file "$from" "$ext_cli"
   elif [ -n "$ext_cli" ]; then
     bpath="$(resolve_baseline_path "$ext_cli" "$(pwd)")" \
@@ -722,7 +764,8 @@ cmd_list() {
   while [ "$#" -gt 0 ]; do
     case "$1" in
       --json) json=1; shift ;;
-      *) die "unknown option: $1" ;;
+      *) die "unknown option: $1" \
+           "run 'devblueprint help' to see the valid commands and their options" ;;
     esac
   done
   if [ "$json" -eq 1 ]; then
@@ -805,7 +848,8 @@ cmd_init() {
       --contact) CONTACT="$2"; shift 2 ;;
       --force) FORCE=1; shift ;;
       --dry-run) DRY_RUN=1; shift ;;
-      *) die "unknown option: $1" ;;
+      *) die "unknown option: $1" \
+           "run 'devblueprint help' to see the valid commands and their options" ;;
     esac
   done
 
@@ -853,7 +897,8 @@ cmd_init() {
   # CLI nor the intake file gives one, leave a visible placeholder to fill in.
   [ -n "$CONTACT" ] || CONTACT="INSERT CONTACT METHOD"
 
-  [ -n "$TARGET" ] || die "missing --target <dir>"
+  [ -n "$TARGET" ] || die "missing --target <dir>" \
+    "name the folder to scaffold into, e.g. devblueprint init --target ./my-app --variant node-express (see: devblueprint list). Or run 'devblueprint init' with no flags for a guided wizard."
 
   # Monorepo mode: one or more --package <name>:<variant> given. Shared docs and
   # workflow tooling land once at the repo root; each package carries its stack
@@ -1172,7 +1217,8 @@ cmd_init_monorepo() {
       die "invalid --package '$spec' (expected <name>:<variant>)"
     fi
     [ -d "$VARIANTS/$variant" ] || die "unknown variant '$variant' in --package '$spec' (see: devblueprint list)"
-    case " $seen " in *" $name "*) die "duplicate package name '$name' in --package list" ;; esac
+    case " $seen " in *" $name "*) die "duplicate package name '$name' in --package list" \
+      "each --package needs a unique <name>: prefix - rename one, e.g. --package api:node-express --package web:web-nextjs" ;; esac
     seen="$seen $name"
     count=$((count + 1))
     names_csv="${names_csv:+$names_csv, }$name"
@@ -1343,6 +1389,92 @@ EOF
   echo "  5. Start a task in its own worktree:  ./scripts/wt.sh new feat/first-task"
 }
 
+# variant_exists <name> : true when <name> is a real variant (a directory under
+# VARIANTS carrying a manifest.env). Used by the wizard to re-prompt on a typo.
+variant_exists() {
+  [ -n "$1" ] && [ -f "$VARIANTS/$1/manifest.env" ]
+}
+
+# cmd_wizard : the interactive `init` (run when `devblueprint init` is given no
+# flags). It asks a handful of plain-language questions - each prefaced with a
+# one-line explanation and a sensible default - collects them into the same
+# flags `init` takes, shows exactly what would be written by reusing the `plan`
+# (dry-run) output, and only then, on an explicit yes, scaffolds for real. So a
+# newcomer can create a project without knowing a single flag. Answers are read
+# from stdin, so a real terminal drives it live and a piped script drives it in
+# one shot; either way an early EOF falls back to the shown defaults and the
+# final confirm defaults to "no", so a missing answer can never scaffold by
+# surprise.
+cmd_wizard() {
+  echo "Welcome to DevBlueprint. This will set up a new project's engineering"
+  echo "scaffolding (git workflow + quality gate + AI-assistant guidance)."
+  echo "Press Enter to accept the default shown in [brackets]. Nothing is written"
+  echo "to disk until you confirm at the end."
+  echo
+
+  # 1. Project name. Becomes the title in CLAUDE.md and seeds the folder default.
+  echo "What is the project called? This is just a friendly name for the docs."
+  local name
+  name="$(ask "Project name" "my-project")"
+  echo
+
+  # 2. Target folder. The single most important answer, so we suggest a concrete
+  # path (~/Projects/<slug>, no spaces) the user can accept as-is. A leading ~/
+  # is expanded by hand - it is data here, not a shell word.
+  echo "Where should the project live? This folder will be created if it does not"
+  echo "exist yet. A path with no spaces under your home is a good default."
+  local target
+  target="$(ask "Target folder" "$HOME/Projects/$(agent_slug "$name")")"
+  # Expand a leading ~/ by hand (it is data here, not a shell word, so the shell
+  # never expands it for us - same idiom as resolve_baseline_path).
+  [ "${target#\~/}" != "$target" ] && target="$HOME/${target#\~/}"
+  [ -d "$target" ] && [ -n "$(ls -A "$target" 2>/dev/null)" ] \
+    && echo "  (note: $target already has files - existing ones are kept, never overwritten)"
+  echo
+
+  # 3. Variant. Show the catalogue and re-prompt until it is a real one.
+  echo "Which project type (variant) is this? Pick the stack that fits; 'generic'"
+  echo "is a safe, language-agnostic starting point. Available variants:"
+  list_variants
+  local variant
+  while :; do
+    variant="$(ask "Variant" "generic")"
+    variant_exists "$variant" && break
+    echo "  '$variant' is not a known variant - pick one of the names listed above."
+  done
+  echo
+
+  # 4. Branch workflow. Default to the recommended two-branch flow; option 2 is a
+  # single trunk (base == main), which cmd_init already understands.
+  echo "How should branches work?"
+  echo "  1) develop -> master  - feature work on develop, released to master (recommended)"
+  echo "  2) single branch      - simpler: everything lands on one main branch"
+  local flow base_branch main_branch
+  flow="$(ask "Choose 1 or 2" "1")"
+  case "$flow" in
+    2) main_branch="$(ask "Name of the single branch" "main")"; base_branch="$main_branch" ;;
+    *) main_branch="master"; base_branch="develop" ;;
+  esac
+  echo
+
+  # Assemble the exact flags init takes, then reuse the real init code path in
+  # dry-run to show precisely what would be written - the plan can never drift
+  # from the apply because it is the same function.
+  local -a args=(--target "$target" --variant "$variant" --name "$name"
+                 --base "$base_branch" --main "$main_branch")
+  echo "Here is exactly what would be written - nothing has touched disk yet:"
+  echo
+  cmd_init --dry-run "${args[@]}"
+  echo
+
+  if ! confirm "Create the project now?"; then
+    echo "Cancelled - nothing was written."
+    return 0
+  fi
+  echo
+  cmd_init "${args[@]}"
+}
+
 # cmd_plan : preview mode. Exactly `init --dry-run` so the plan can never drift
 # from what init actually writes - it runs the real init code path with every
 # disk mutation short-circuited to a "would ..." line.
@@ -1350,17 +1482,22 @@ cmd_plan() {
   cmd_init --dry-run "$@"
 }
 
-# report_check <status> <name> <message> : record one doctor check. In the
+# report_check <status> <name> <message> [fix] : record one doctor check. In the
 # default human mode it prints the badge + message exactly as doctor always has;
 # under --json it appends a {"name","status","message"} object to CHECKS_JSON
-# instead of printing. status is one of ok|miss|note|fail|gate. Both JSON and
-# CHECKS_JSON are locals of cmd_doctor, visible here by bash's dynamic scoping.
+# instead of printing. status is one of ok|miss|note|fail|gate. The optional
+# <fix> is a follow-up hint (e.g. a copy-paste install command for a missing
+# prerequisite): in human mode it prints on its own indented line beneath the
+# badge; under --json it becomes a "fix" field on the check. Both JSON and
+# CHECKS_JSON are locals of the calling doctor command, visible here by bash's
+# dynamic scoping.
 report_check() {
-  local status="$1" name="$2" msg="$3"
+  local status="$1" name="$2" msg="$3" fix="${4:-}"
   if [ "$JSON" -eq 1 ]; then
-    local sep=""
+    local sep="" fixjson=""
     [ -n "$CHECKS_JSON" ] && sep=","
-    CHECKS_JSON="${CHECKS_JSON}${sep}{\"name\":\"$(json_esc "$name")\",\"status\":\"$status\",\"message\":\"$(json_esc "$msg")\"}"
+    [ -n "$fix" ] && fixjson=",\"fix\":\"$(json_esc "$fix")\""
+    CHECKS_JSON="${CHECKS_JSON}${sep}{\"name\":\"$(json_esc "$name")\",\"status\":\"$status\",\"message\":\"$(json_esc "$msg")\"${fixjson}}"
     return 0
   fi
   local badge
@@ -1375,9 +1512,20 @@ report_check() {
   # %-4s pads "ok" to the badge column so every message lines up (the badge words
   # are all <= 4 chars); two trailing spaces separate badge from message.
   printf '  %-4s  %s\n' "$badge" "$msg"
+  # Align the fix line under the message column (badge is 2+4+2 = 8 chars wide).
+  # Kept as a full `if` so the empty-fix case does not return non-zero and trip
+  # `set -e` in callers that invoke report_check as their last statement.
+  if [ -n "$fix" ]; then printf '        %s\n' "$fix"; fi
 }
 
 cmd_doctor() {
+  # doctor --env is a host prerequisite check (git / Node / a working shell) with
+  # no --target - the first command a beginner runs, before a project even exists.
+  # Split it off before the project-doctor flag parsing below.
+  local a
+  for a in "$@"; do
+    case "$a" in --env) cmd_doctor_env "$@"; return ;; esac
+  done
   local target="" strict=0 run_gate=0 fix=0 VARIANT="" JSON=0 CHECKS_JSON=""
   while [ "$#" -gt 0 ]; do
     case "$1" in
@@ -1391,10 +1539,12 @@ cmd_doctor() {
       --fix) fix=1; shift ;;
       --variant) VARIANT="$2"; shift 2 ;;
       --json) JSON=1; shift ;;
-      *) die "unknown option: $1" ;;
+      *) die "unknown option: $1" \
+           "run 'devblueprint help' to see the valid commands and their options" ;;
     esac
   done
-  [ -n "$target" ] || die "missing --target <dir>"
+  [ -n "$target" ] || die "missing --target <dir>" \
+    "point --target at a scaffolded project to check, e.g. devblueprint doctor --target . (or 'devblueprint doctor --env' to check your machine's tools instead)"
   [ -z "$VARIANT" ] || [ -f "$VARIANTS/$VARIANT/manifest.env" ] || die "unknown variant '$VARIANT' (see: devblueprint list)"
   # failures accumulates every hard problem (missing/corrupted files that could not
   # be repaired + strict escalations + a failing quality gate); doctor exits
@@ -1461,7 +1611,8 @@ cmd_doctor() {
       fi
       report_check ok git-repo "git repo on $branch ($dirty)"
     else
-      report_check fail git-repo "not a git repository - run git init (strict)"
+      report_check fail git-repo "not a git repository (strict)" \
+        "run 'git init' inside $target to start tracking it with git, then commit the scaffolded files"
       failures=$((failures + 1))
     fi
   fi
@@ -1506,7 +1657,116 @@ cmd_doctor() {
     stamped="$(stamp_version "$target")"
     echo "doctor: all foundation files present (scaffolded from DevBlueprint ${stamped:-unknown}; current $(kit_version))"
   else
-    die "$failures check(s) failed"
+    die "$failures check(s) failed" \
+      "fix the FAIL/MISS lines above; 'devblueprint doctor --target $target --fix' can rebuild missing foundation files from the kit"
+  fi
+}
+
+# detect_os : the host OS as one of macos|windows|linux|unknown, used to pick the
+# right copy-paste install command in env_fix. WSL reports Linux and is treated as
+# Linux (its package manager is the distro's), which is what a beginner wants.
+detect_os() {
+  case "$(uname -s 2>/dev/null)" in
+    Darwin)                 echo macos ;;
+    Linux)                  echo linux ;;
+    MINGW* | MSYS* | CYGWIN*) echo windows ;;
+    *)                      echo unknown ;;
+  esac
+}
+
+# env_fix <tool> <os> : the copy-paste command that installs <tool> on <os>,
+# matching the per-OS prerequisite steps in GETTING-STARTED.md. On macOS the
+# commands need Homebrew, so when `brew` itself is absent the fix tells the user to
+# install it first. Empty when we cannot advise (an unrecognized OS), so the caller
+# just reports the tool missing without a bogus command.
+env_fix() {
+  local tool="$1" os="$2"
+  # macOS installs go through Homebrew; surface that dependency up front when brew
+  # is not yet on the PATH so `brew install ...` does not fail for a beginner.
+  local brew_prefix=""
+  if [ "$os" = "macos" ] && ! command -v brew >/dev/null 2>&1; then
+    brew_prefix="install Homebrew first (https://brew.sh), then: "
+  fi
+  case "$tool:$os" in
+    git:macos)     echo "install with: ${brew_prefix}brew install git" ;;
+    git:windows)   echo "install with: winget install --id Git.Git -e" ;;
+    git:linux)     echo "install with: sudo apt update && sudo apt install -y git" ;;
+    node:macos)    echo "install with: ${brew_prefix}brew install node" ;;
+    node:windows)  echo "install with: winget install --id OpenJS.NodeJS.LTS -e" ;;
+    node:linux)    echo "install with: curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash - && sudo apt install -y nodejs" ;;
+    shell:windows) echo "use Git Bash (bundled with Git for Windows) or WSL - see https://learn.microsoft.com/windows/wsl/install" ;;
+    shell:*)       echo "install a POSIX shell (bash) with your system's package manager" ;;
+    *)             echo "" ;;
+  esac
+}
+
+# cmd_doctor_env : prerequisite check for the host machine, not a scaffolded
+# project (so it takes no --target). Verifies the three things a beginner needs
+# before anything else - git, Node, and a working shell - and, when one is
+# missing, prints a copy-paste install command for the detected OS. Exits non-zero
+# if any prerequisite is missing, so it doubles as a gate the getting-started docs
+# can point at. --json mirrors the project doctor's machine-readable shape.
+cmd_doctor_env() {
+  local JSON=0 CHECKS_JSON=""
+  while [ "$#" -gt 0 ]; do
+    case "$1" in
+      --env)  shift ;;                 # consumed by the dispatch; tolerate here too
+      --json) JSON=1; shift ;;
+      *)      die "unknown option: $1 (doctor --env takes only --json)" ;;
+    esac
+  done
+
+  local os failures=0 v
+  os="$(detect_os)"
+
+  # git: the tool that records history; needed for every worktree and commit.
+  if command -v git >/dev/null 2>&1; then
+    v="$(git --version 2>/dev/null || echo 'git')"
+    report_check ok git "git found ($v)"
+  else
+    report_check miss git "git not found" "$(env_fix git "$os")"
+    failures=$((failures + 1))
+  fi
+
+  # Node: the runtime that lets the devblueprint command run (it ships npm too).
+  if command -v node >/dev/null 2>&1; then
+    v="$(node --version 2>/dev/null || echo 'node')"
+    report_check ok node "Node found ($v)"
+  else
+    report_check miss node "Node not found" "$(env_fix node "$os")"
+    failures=$((failures + 1))
+  fi
+
+  # A working shell: this script is already running in one, so the check is a
+  # sanity check that $SHELL resolves to a real interactive shell (or that bash/sh
+  # is at least on the PATH) - reassurance for a beginner more than a likely miss.
+  local shell_bin=""
+  if [ -n "${SHELL:-}" ] && [ -x "$SHELL" ]; then
+    shell_bin="$SHELL"
+  else
+    shell_bin="$(command -v bash 2>/dev/null || command -v sh 2>/dev/null || true)"
+  fi
+  if [ -n "$shell_bin" ]; then
+    report_check ok shell "shell found ($shell_bin)"
+  else
+    report_check miss shell "no working shell found" "$(env_fix shell "$os")"
+    failures=$((failures + 1))
+  fi
+
+  if [ "$JSON" -eq 1 ]; then
+    local ok
+    [ "$failures" -eq 0 ] && ok=true || ok=false
+    printf '{"ok":%s,"os":"%s","failures":%d,"checks":[%s]}\n' \
+      "$ok" "$(json_esc "$os")" "$failures" "$CHECKS_JSON"
+    [ "$failures" -eq 0 ] || exit 1
+    return 0
+  fi
+
+  echo
+  if [ "$failures" -eq 0 ]; then
+    echo "doctor: all prerequisites present (git, Node, a working shell)"
+  else
+    die "$failures prerequisite(s) missing - install the tool(s) above, reopen your terminal, then rerun: devblueprint doctor --env"
   fi
 }
 
@@ -1695,11 +1955,14 @@ cmd_detect() {
   while [ "$#" -gt 0 ]; do
     case "$1" in
       --target) target="$2"; shift 2 ;;
-      *) die "unknown option: $1" ;;
+      *) die "unknown option: $1" \
+           "run 'devblueprint help' to see the valid commands and their options" ;;
     esac
   done
-  [ -n "$target" ] || die "missing --target <dir>"
-  [ -d "$target" ] || die "target '$target' does not exist"
+  [ -n "$target" ] || die "missing --target <dir>" \
+    "point --target at the repo to inspect, e.g. devblueprint detect --target ."
+  [ -d "$target" ] || die "target '$target' does not exist" \
+    "check the path for typos - detect reads an existing folder's files to guess its stack"
   target="$(cd "$target" && pwd)"
 
   echo "Inspecting $target for stack fingerprints"
@@ -1800,16 +2063,20 @@ cmd_update() {
       --target) TARGET="$2"; shift 2 ;;
       --variant) VARIANT="$2"; shift 2 ;;
       --dry-run) DRY_RUN=1; shift ;;
-      *) die "unknown option: $1" ;;
+      *) die "unknown option: $1" \
+           "run 'devblueprint help' to see the valid commands and their options" ;;
     esac
   done
-  [ -n "$TARGET" ] || die "missing --target <dir>"
-  [ -d "$TARGET" ] || die "target '$TARGET' does not exist"
+  [ -n "$TARGET" ] || die "missing --target <dir>" \
+    "point --target at a scaffolded project to re-sync, e.g. devblueprint update --target ."
+  [ -d "$TARGET" ] || die "target '$TARGET' does not exist" \
+    "check the path for typos, or run 'devblueprint init' first - update re-syncs an already scaffolded project"
   TARGET="$(cd "$TARGET" && pwd)"
   # Refuse to run outside a scaffolded project so we never scatter core files
   # into an unrelated directory.
   if [ ! -d "$TARGET/docs/engineering" ] && [ ! -f "$TARGET/CLAUDE.md" ]; then
-    die "'$TARGET' does not look like a DevBlueprint project (no docs/engineering/ or CLAUDE.md)"
+    die "'$TARGET' does not look like a DevBlueprint project (no docs/engineering/ or CLAUDE.md)" \
+      "run 'devblueprint init --target $TARGET --variant <variant>' to scaffold it first, or point --target at an already scaffolded project"
   fi
 
   local vdir=""
@@ -1900,6 +2167,67 @@ cmd_update() {
   return 0
 }
 
+# cmd_update_wizard : the guided `update` (run when `devblueprint update` is given
+# no flags). Same plain-language shape as the init wizard (cmd_wizard): it explains
+# what an update is, asks only for the project folder (defaulting to the current
+# directory, since update is normally run from inside the project it refreshes),
+# detects drift by running the real update in dry-run, shows exactly what would
+# change, and only re-syncs on an explicit yes. The variant is read from the
+# project's stamp so the two variant-overlaid docs are refreshed too, with no flag
+# to remember. Answers are read from stdin, so a terminal drives it live and a
+# piped script drives it one-shot; an early EOF falls back to the shown default
+# and the final confirm defaults to "no", so a missing answer never writes to disk.
+cmd_update_wizard() {
+  echo "This will refresh an existing project's DevBlueprint core files - the"
+  echo "git-workflow and engineering docs, the worktree script and the GitHub"
+  echo "templates - to match the current kit. Your own files (CLAUDE.md, your code,"
+  echo "CI, wt.conf) are never touched, and local edits to managed files are merged,"
+  echo "not overwritten. Nothing is written until you confirm."
+  echo
+
+  # The only question: which project to refresh. Default to the current directory,
+  # since update is normally run from inside the project. Expand a leading ~/ by
+  # hand (data here, not a shell word - same idiom as cmd_wizard's target step).
+  echo "Which project folder should be refreshed? This is a scaffolded project, not"
+  echo "the kit itself. The current folder is a good default."
+  local target
+  target="$(ask "Project folder" ".")"
+  [ "${target#\~/}" != "$target" ] && target="$HOME/${target#\~/}"
+  echo
+
+  # Resolve the variant from the project's stamp so the two variant-overlaid docs
+  # (conventions.md, quality-and-testing.md) are refreshed in step - a beginner
+  # running the guided update wants everything brought up to date, not a partial
+  # sync. A project that predates the stamp has none, so those two are left to the
+  # manual path (cmd_update notes the skip).
+  local variant=""
+  [ -d "$target" ] && variant="$(stamp_variant "$target")"
+  local -a args=(--target "$target")
+  [ -n "$variant" ] && args+=(--variant "$variant")
+
+  # Detect drift by running the real update in dry-run: it prints exactly what
+  # would change and leaves the tallies in the globals it sets, so the same code
+  # path that applies the update is the one that previews it. A bad folder (missing
+  # or not a scaffold) dies here with the same guidance a direct `update` gives, so
+  # the wizard never proceeds on the wrong path.
+  echo "Here is exactly what an update would change - nothing has touched disk yet:"
+  echo
+  cmd_update --dry-run "${args[@]}"
+  echo
+
+  if [ "$CHANGED" -eq 0 ] && [ "$PRESERVED" -eq 0 ] && [ "$CONFLICTS" -eq 0 ]; then
+    echo "Everything is already in sync - there is nothing to update."
+    return 0
+  fi
+
+  if ! confirm "Apply these updates now?"; then
+    echo "Cancelled - nothing was written."
+    return 0
+  fi
+  echo
+  cmd_update "${args[@]}"
+}
+
 # diff_file <src> <dest-rel> : compare one managed file in the project against the
 # current kit's copy and classify it as in-sync, drifted, or missing. <src> is the
 # kit's version; <dest-rel> is the path relative to the target. Bumps SYNCED /
@@ -1934,16 +2262,20 @@ cmd_diff() {
     case "$1" in
       --target) target="$2"; shift 2 ;;
       --variant) variant="$2"; shift 2 ;;
-      *) die "unknown option: $1" ;;
+      *) die "unknown option: $1" \
+           "run 'devblueprint help' to see the valid commands and their options" ;;
     esac
   done
-  [ -n "$target" ] || die "missing --target <dir>"
-  [ -d "$target" ] || die "target '$target' does not exist"
+  [ -n "$target" ] || die "missing --target <dir>" \
+    "point --target at a scaffolded project to compare, e.g. devblueprint diff --target ."
+  [ -d "$target" ] || die "target '$target' does not exist" \
+    "check the path for typos - diff compares an already scaffolded project against the current kit"
   target="$(cd "$target" && pwd)"
   # Refuse to run outside a scaffolded project (same guard as update) so we never
   # report an unrelated directory as one big pile of "missing" managed files.
   if [ ! -d "$target/docs/engineering" ] && [ ! -f "$target/CLAUDE.md" ]; then
-    die "'$target' does not look like a DevBlueprint project (no docs/engineering/ or CLAUDE.md)"
+    die "'$target' does not look like a DevBlueprint project (no docs/engineering/ or CLAUDE.md)" \
+      "run 'devblueprint init --target $target --variant <variant>' to scaffold it first, or point --target at an already scaffolded project"
   fi
 
   # Resolve the variant for the overlaid docs: explicit --variant wins, else the
@@ -2021,7 +2353,8 @@ cmd_version() {
   while [ "$#" -gt 0 ]; do
     case "$1" in
       --json) json=1; shift ;;
-      *) die "unknown option: $1" ;;
+      *) die "unknown option: $1" \
+           "run 'devblueprint help' to see the valid commands and their options" ;;
     esac
   done
   if [ "$json" -eq 1 ]; then
@@ -2042,7 +2375,8 @@ fetch_url() {
   elif command -v wget >/dev/null 2>&1; then
     wget -qO- "$1"
   else
-    die "need curl or wget to reach $1"
+    die "need curl or wget to reach $1" \
+      "install curl (or wget) with your package manager, then rerun - 'devblueprint doctor --env' lists the tools the kit needs"
   fi
 }
 
@@ -2083,7 +2417,8 @@ fetch_kit() {
     tar -C "$DEVBLUEPRINT_UPGRADE_SRC" -cf - . | tar -C "$dest" -xf -
     return 0
   fi
-  command -v tar >/dev/null 2>&1 || die "need tar to unpack DevBlueprint"
+  command -v tar >/dev/null 2>&1 || die "need tar to unpack DevBlueprint" \
+    "install tar with your package manager, then rerun 'devblueprint upgrade'"
   case "$kind" in
     tag)  url="https://github.com/$REPO/archive/refs/tags/$ref.tar.gz" ;;
     *)    url="https://github.com/$REPO/archive/refs/heads/$ref.tar.gz" ;;
@@ -2140,7 +2475,8 @@ cmd_upgrade() {
       --version) version="$2"; shift 2 ;;
       --check | --dry-run) check=1; shift ;;
       --force) force=1; shift ;;
-      *) die "unknown option: $1" ;;
+      *) die "unknown option: $1" \
+           "run 'devblueprint help' to see the valid commands and their options" ;;
     esac
   done
 
@@ -2182,7 +2518,8 @@ cmd_upgrade() {
   local current target
   current="$(kit_version)"
   target="$(remote_version "$ref")"
-  [ -n "$target" ] || die "could not read the version for ref '$ref'"
+  [ -n "$target" ] || die "could not read the version for ref '$ref'" \
+    "check the ref exists (e.g. 'devblueprint upgrade --channel stable'), or your network connection to github.com"
 
   echo "Channel: $chan${pin:+ (pinned $pin)}   ref: $ref"
   echo "  installed: $current   available: $target"
@@ -2231,7 +2568,7 @@ cmd_upgrade() {
 }
 
 usage() {
-  sed -n '5,20p' "$0" | sed 's/^# \{0,1\}//'
+  sed -n '5,23p' "$0" | sed 's/^# \{0,1\}//'
 }
 
 main() {
@@ -2239,9 +2576,9 @@ main() {
   if [ "$#" -ge 1 ]; then shift; fi
   case "$cmd" in
     list) cmd_list "$@" ;;
-    init) cmd_init "$@" ;;
+    init) if [ "$#" -eq 0 ]; then cmd_wizard; else cmd_init "$@"; fi ;;
     plan) cmd_plan "$@" ;;
-    update) cmd_update "$@" ;;
+    update) if [ "$#" -eq 0 ]; then cmd_update_wizard; else cmd_update "$@"; fi ;;
     diff) cmd_diff "$@" ;;
     doctor) cmd_doctor "$@" ;;
     detect) cmd_detect "$@" ;;

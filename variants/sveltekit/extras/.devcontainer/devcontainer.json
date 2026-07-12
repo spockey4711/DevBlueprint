@@ -1,0 +1,17 @@
+{
+  "name": "Web app (SvelteKit + pnpm) - DevBlueprint",
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:22",
+  "forwardPorts": [5173],
+  "postCreateCommand": "corepack enable && bash setup.sh",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "svelte.svelte-vscode",
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode",
+        "EditorConfig.EditorConfig",
+        "github.vscode-github-actions"
+      ]
+    }
+  }
+}

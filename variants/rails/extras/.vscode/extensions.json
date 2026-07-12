@@ -1,0 +1,7 @@
+{
+  "recommendations": [
+    "Shopify.ruby-lsp",
+    "EditorConfig.EditorConfig",
+    "github.vscode-github-actions"
+  ]
+}

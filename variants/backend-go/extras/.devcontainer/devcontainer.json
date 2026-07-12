@@ -1,0 +1,15 @@
+{
+  "name": "Backend service (Go) - DevBlueprint",
+  "image": "mcr.microsoft.com/devcontainers/go:1.23",
+  "forwardPorts": [8080],
+  "postCreateCommand": "go install mvdan.cc/gofumpt@latest && go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest && bash setup.sh",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "golang.go",
+        "EditorConfig.EditorConfig",
+        "github.vscode-github-actions"
+      ]
+    }
+  }
+}

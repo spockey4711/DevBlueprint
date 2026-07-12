@@ -113,3 +113,90 @@ load helper
   [ "$status" -ne 0 ]
   [[ "$output" == *"unknown command"* ]]
 }
+
+# The no-flag interactive wizard: answers piped on stdin drive it in one shot.
+# Order: project name, target folder, variant, branch-workflow choice, confirm.
+
+@test "wizard (init with no flags) previews the plan, then scaffolds on confirm" {
+  run bash -c "printf 'Demo App\n%s\ngeneric\n1\ny\n' '$TARGET' | '$DEVBLUEPRINT' init"
+  [ "$status" -eq 0 ]
+
+  # It shows exactly what would be written before touching disk, reusing `plan`.
+  [[ "$output" == *"nothing has touched disk yet"* ]]
+  [[ "$output" == *"Plan: init would scaffold"* ]]
+
+  # Then it scaffolds for real: foundation files land and doctor passes.
+  [ -f "$TARGET/CLAUDE.md" ]
+  grep -q "Demo App" "$TARGET/CLAUDE.md"
+  run db doctor --target "$TARGET"
+  [ "$status" -eq 0 ]
+}
+
+@test "wizard writes nothing when the final confirm is declined" {
+  run bash -c "printf 'X\n%s\ngeneric\n1\nn\n' '$TARGET' | '$DEVBLUEPRINT' init"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"Cancelled - nothing was written"* ]]
+  [ ! -e "$TARGET" ]
+}
+
+@test "wizard re-prompts on an unknown variant" {
+  run bash -c "printf 'X\n%s\nnope\ngeneric\n1\nn\n' '$TARGET' | '$DEVBLUEPRINT' init"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"not a known variant"* ]]
+}
+
+@test "wizard with no input at all cancels without scaffolding" {
+  run bash -c "'$DEVBLUEPRINT' init </dev/null"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"Cancelled - nothing was written"* ]]
+  [ ! -e "$TARGET" ]
+}
+
+@test "wizard option 2 sets up a single-branch (trunk) workflow" {
+  run bash -c "printf 'X\n%s\ngeneric\n2\nmain\ny\n' '$TARGET' | '$DEVBLUEPRINT' init"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"git branch -M main"* ]]
+  [[ "$output" != *"git switch -c"* ]]
+}
+
+@test "wizard opens with a welcome and a one-line explanation per question" {
+  # Decline at the end so nothing is written; we only assert the guiding copy.
+  run bash -c "printf 'X\n%s\ngeneric\n1\nn\n' '$TARGET' | '$DEVBLUEPRINT' init"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"Welcome to DevBlueprint"* ]]
+  # Each question is prefaced by plain-language guidance, so no flag knowledge
+  # is needed to answer it.
+  [[ "$output" == *"friendly name for the docs"* ]]
+  [[ "$output" == *"This folder will be created"* ]]
+  [[ "$output" == *"Which project type (variant)"* ]]
+  [[ "$output" == *"How should branches work?"* ]]
+}
+
+@test "wizard accepts every default on empty input and Enter confirms" {
+  # All answers blank: name -> my-project, variant -> generic, flow -> 1, and a
+  # blank final line (Enter) means yes. Only the target is supplied, so the
+  # scaffold lands in a temp dir instead of the suggested ~/Projects path.
+  run bash -c "printf '\n%s\n\n\n\n' '$TARGET' | '$DEVBLUEPRINT' init"
+  [ "$status" -eq 0 ]
+
+  # Defaults flowed through to the plan and the real scaffold.
+  [[ "$output" == *"my-project"* ]]
+  [ -f "$TARGET/CLAUDE.md" ]
+  grep -q "my-project" "$TARGET/CLAUDE.md"
+  run db doctor --target "$TARGET"
+  [ "$status" -eq 0 ]
+}
+
+@test "wizard notes when the chosen folder already has files" {
+  mkdir -p "$TARGET"
+  : > "$TARGET/keep-me.txt"
+
+  # Decline at the end - we only assert the reassurance shown at the path step.
+  run bash -c "printf 'X\n%s\ngeneric\n1\nn\n' '$TARGET' | '$DEVBLUEPRINT' init"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"already has files"* ]]
+  [[ "$output" == *"never overwritten"* ]]
+  # Nothing was written, so the pre-existing file is untouched.
+  [ -f "$TARGET/keep-me.txt" ]
+  [ ! -f "$TARGET/CLAUDE.md" ]
+}

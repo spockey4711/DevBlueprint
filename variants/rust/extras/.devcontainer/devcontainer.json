@@ -1,0 +1,15 @@
+{
+  "name": "Rust (cargo) - DevBlueprint",
+  "image": "mcr.microsoft.com/devcontainers/rust:1",
+  "postCreateCommand": "bash setup.sh",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "rust-lang.rust-analyzer",
+        "tamasfe.even-better-toml",
+        "EditorConfig.EditorConfig",
+        "github.vscode-github-actions"
+      ]
+    }
+  }
+}

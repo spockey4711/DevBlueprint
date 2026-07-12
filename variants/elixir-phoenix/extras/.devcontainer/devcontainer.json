@@ -1,0 +1,16 @@
+{
+  "name": "Backend / web app (Elixir / Phoenix) - DevBlueprint",
+  "image": "elixir:1.18.3-otp-27",
+  "forwardPorts": [4000],
+  "postCreateCommand": "mix local.hex --force && mix local.rebar --force && bash setup.sh",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "JakeBecker.elixir-ls",
+        "phoenixframework.phoenix",
+        "EditorConfig.EditorConfig",
+        "github.vscode-github-actions"
+      ]
+    }
+  }
+}

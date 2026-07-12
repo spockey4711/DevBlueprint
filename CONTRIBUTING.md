@@ -6,7 +6,7 @@ years. This file is the short version; the full detail lives in
 
 ## Ground rules
 
-- **Language:** code, comments, docs, commits and PRs are in **English**. Localize user-facing copy in a dedicated layer, never as scattered string literals.
+- **Language:** code, comments, docs, commits and PRs are in **English**. Localize user-facing copy in a dedicated layer ([`i18n/`](i18n/README.md)), never as scattered string literals.
 - **Style:** plain and direct. No emojis anywhere in the repo. Use the regular hyphen `-` only.
 - **Small steps:** small commits and small PRs beat big ones. One logical change per commit.
 
@@ -24,11 +24,21 @@ promoted to the always-deployable `master` via a periodic release PR.
    ```bash
    make check
    ```
-   CI enforces two layers: `ci.yml` shellchecks the scripts and runs the `bats`
-   suite, and `scaffold-matrix.yml` scaffolds every variant into a throwaway dir,
+   CI enforces five layers: `ci.yml` shellchecks the scripts and runs the `bats`
+   suite; `scaffold-matrix.yml` scaffolds every variant into a throwaway dir,
    runs its `setup.sh`, and runs the quality gate (for variants that scaffold a
-   complete starter) - catching variant rot before a release. Reproduce one
-   variant locally with `scripts/scaffold-check.sh <variant>` (or `--all`).
+   complete starter) - catching variant rot before a release; `beginner-artifacts.yml`
+   asserts every variant ships its `.vscode/` and devcontainer artifacts and that
+   they match the promises in the beginner docs; `docs-check.yml` verifies the
+   beginner path (`GETTING-STARTED.md` and the `docs/` reference layer, plus the
+   German mirrors) has no dangling internal links and no commands that name a
+   removed subcommand; and `docs-freshness.yml` runs weekly (and on PRs that touch
+   the CLI or the guide) to actually walk the documented getting-started flow and
+   confirm the guide's quoted transcripts and version stamps still match what the
+   CLI prints. Reproduce them locally with
+   `scripts/scaffold-check.sh <variant>` (or `--all`),
+   `scripts/beginner-artifacts-check.sh`, `scripts/docs-check.sh` and
+   `scripts/docs-freshness.sh`.
 4. **Update the docs and the changelog** in the same PR as the code they describe.
 5. **Open a PR into `develop`** and fill in the checklist below.
 6. **Merge** with a merge commit once CI is green. The merged feature branch is auto-deleted;

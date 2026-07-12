@@ -23,7 +23,8 @@ in [`docs/`](docs/). Start there before non-trivial work.
   reviewed and merged. Never self-merge.
 - **Fetch before starting work.** `git fetch` at the start of a session and before creating a
   new branch, so you have the latest state from remote.
-- **English** in code, comments, docs, commits. Localize user-facing copy in a dedicated layer, never as scattered string literals.
+- **English** in code, comments, docs, commits. Localize user-facing copy in a dedicated layer
+  ([`i18n/`](i18n/README.md)), never as scattered string literals.
 - **No emojis, no fancy dashes** anywhere. Regular hyphen `-` only.
 - **Docs + `CHANGELOG.md` change in the same PR** as the code they describe. Update only the
   docs relevant to your change.

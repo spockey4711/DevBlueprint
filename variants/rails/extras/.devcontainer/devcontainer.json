@@ -1,0 +1,15 @@
+{
+  "name": "Web app (Ruby on Rails) - DevBlueprint",
+  "image": "mcr.microsoft.com/devcontainers/ruby:3.4",
+  "forwardPorts": [3000],
+  "postCreateCommand": "bash setup.sh",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "Shopify.ruby-lsp",
+        "EditorConfig.EditorConfig",
+        "github.vscode-github-actions"
+      ]
+    }
+  }
+}

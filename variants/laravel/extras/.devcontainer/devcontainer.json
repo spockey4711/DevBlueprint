@@ -1,0 +1,17 @@
+{
+  "name": "Backend / web app (PHP / Laravel) - DevBlueprint",
+  "image": "mcr.microsoft.com/devcontainers/php:8.4",
+  "forwardPorts": [8000],
+  "postCreateCommand": "bash setup.sh",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "bmewburn.vscode-intelephense-client",
+        "laravel.vscode-laravel",
+        "open-southeners.laravel-pint",
+        "EditorConfig.EditorConfig",
+        "github.vscode-github-actions"
+      ]
+    }
+  }
+}

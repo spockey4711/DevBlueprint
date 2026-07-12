@@ -5,8 +5,180 @@ All notable changes are documented here, following
 
 ## [Unreleased]
 
+### Added
+
+- New `vue-nuxt` variant - "Web app (Vue + Nuxt + pnpm)", the Vue-side sibling of `web-nextjs`:
+  Nuxt (Vue 3, SSR/SSG via Nitro), TypeScript (strict), Tailwind, Vitest + `@nuxt/test-utils` +
+  Vue Testing Library, Playwright, ESLint (`@nuxt/eslint-config`) + Prettier, and the same
+  quality gate `sh scripts/check-env.sh && pnpm lint && pnpm typecheck && pnpm test && pnpm build`.
+  Self-contained under `variants/vue-nuxt/` like the P2-4 variants: `setup.sh` wires the toolchain
+  idempotently (it does not scaffold the Nuxt app - run `pnpm create nuxt@latest .` first), a
+  multi-stage `Dockerfile` ships the Nitro `.output` on a slim non-root `node .output/server/index.mjs`
+  runtime, `deploy/` carries Vercel/Render/Fly/Terraform skeletons (Vercel is the primary managed
+  target and needs no Dockerfile - Nitro auto-detects its preset), and the `.env.schema` +
+  `check-env.sh` contract reflects Nuxt's runtime config model (`NUXT_PUBLIC_*` overrides
+  `runtimeConfig.public` and reaches the browser; unprefixed vars are server-only, both read at
+  server start not build time). Picked up automatically by `devblueprint list`, the scaffold-check
+  matrix and the `.vscode`/devcontainer self-CI. Refs: P15-3.
+
+- Periodic doc-freshness pass for the beginner path, wired as its own `docs-freshness.yml`
+  workflow (also reproducible locally with `scripts/docs-freshness.sh`). Where `docs-check.yml`
+  (P14-4) statically checks links and command names on every push, this pass actually *runs* the
+  getting-started flow - it scaffolds a throwaway `hello-world` generic project exactly as
+  "Your first run" documents (init, `setup.sh`, `git init`, `doctor`, `make check`) and confirms
+  that every output line the guide quotes as a "screenshot" is still printed by the CLI and still
+  quoted in both `GETTING-STARTED.md` and its German mirror, so drift on either side fails the
+  build. A companion version-stamp check holds every `DevBlueprint X.Y.Z` literal in the guides to
+  `./VERSION`, so a release bump cannot leave a stale number frozen in the `doctor` transcript. It
+  runs weekly (and on PRs that touch the CLI, the generic variant or the guide) since it is heavier
+  than a lint. Refs: P15-4.
+- Guided `devblueprint update`: running `update` with no flags now starts a plain-language
+  wizard, mirroring the no-flag `init` wizard. It explains what an update is, asks only for the
+  project folder (defaulting to the current directory), resolves the variant from the project's
+  `.devblueprint` stamp so the variant-overlaid docs are refreshed too - no `--variant` to
+  remember - previews exactly what would change by reusing the real update code path in dry-run,
+  and re-syncs only on an explicit yes. An early EOF falls back to the folder default and the
+  final confirm defaults to no, so a missing answer never writes to disk; an in-sync project
+  reports "already in sync" and stops before asking to apply. `test/update.bats` covers the
+  detect-and-apply, decline, in-sync, guidance-copy, stamp-resolved-variant and
+  non-scaffold-folder paths. Refs: P15-1.
+- Example gallery at `docs/example-gallery.md` - four small, real projects a beginner can build
+  after the first-project tutorial (a `generic` command-line greeting, a `web-nextjs` personal
+  homepage, a `node-express` JSON API, a `data-python` exploration script), ordered by how much
+  toolchain each installs. Each entry names the variant and why it fits, gives the exact
+  `devblueprint init` command, and suggests a concrete first task to copy from, linking back to
+  the `GETTING-STARTED.md` loop rather than repeating it. Linked from the tutorial's "Where to go
+  next". Docs only. Refs: P15-2.
+- Dedicated kit self-CI for the beginner artifacts: a new `Beginner artifacts` workflow
+  (`.github/workflows/beginner-artifacts.yml`) runs `scripts/beginner-artifacts-check.sh` on every
+  PR and on pushes to the long-lived branches. The checker asserts every variant ships the
+  `.vscode/` pair (`extensions.json` + `tasks.json`) and - bar the documented exceptions
+  (`ios-swift`) - a `.devcontainer/devcontainer.json`, that the devcontainer exception set on disk
+  matches the prose promises in `GETTING-STARTED.md`, `README.md` and `docs/codespaces.md`, and
+  that the zero-install doc stays linked from the beginner path. Adding a variant without the
+  artifacts, or changing the exception set without updating the docs, now fails the build. It
+  complements `test/vscode.bats` (which validates each artifact's contents) by owning the
+  docs-vs-artifacts consistency the bats suite does not cover. Refs: P14-3.
+- Doc-freshness + internal link check for the beginner path, wired as its own `docs-check.yml`
+  workflow (also reproducible locally with `scripts/docs-check.sh`). It fails the build when an
+  internal Markdown link in `GETTING-STARTED.md`, the `docs/` reference layer or their German
+  mirrors no longer resolves (missing target file/directory, or an `#anchor` with no matching
+  heading or `<a id>`), and when a command a beginner is told to run in a shell code block
+  (`devblueprint ...`, `scripts/wt.sh ...`, `make ...`) names a subcommand or target that no
+  longer exists - the valid sets are parsed from the CLI's own dispatch, `wt.sh`'s dispatch and
+  the `Makefile`, so the docs cannot drift out of sync with the tools unnoticed. The new script is
+  covered by `shellcheck` and `make lint`. Refs: P14-4.
+- Extended the `bats` suite to cover the beginner-facing interactive CLI paths introduced in
+  P10/P11/P12. A new `test/errors.bats` asserts that every friendly failure (missing `--target`,
+  unknown command, a non-DevBlueprint or missing target, an unknown variant) prints a `next:`
+  recovery hint on its own line, not just what broke. `test/init.bats` now checks the no-flag
+  wizard's welcome copy and per-question guidance, its all-defaults path (blank answers plus an
+  Enter confirm still scaffold), and the "folder already has files" reassurance. `test/doctor-env.bats`
+  now covers a host missing more than one prerequisite (pluralised count and a fix per tool, in both
+  human and `--json` output). Tests only - no `bin/devblueprint` change. Refs: P14-2.
+- German (`de`) translation of `GETTING-STARTED.md` at `i18n/de/GETTING-STARTED.md`, the first
+  locale in the new `i18n/` layer. It mirrors the English beginner path one-to-one, keeping every
+  command, path, filename, code block and tool output verbatim and translating only the prose;
+  cross-file links resolve back to the canonical English files. The file carries the
+  canonical-source header, the English source links to it, and the `i18n/README.md` status table
+  is updated. Refs: P13-2.
+- German (`de`) translations of the FAQ (`i18n/de/docs/faq.md`) and cheat sheet
+  (`i18n/de/docs/cheatsheet.md`), mirroring `docs/faq.md` and `docs/cheatsheet.md` under the
+  `i18n/de/` subtree. Each carries the canonical-source header (English stays authoritative) and
+  keeps every command, path, filename, code block and link target identical to its English source,
+  translating only the prose. The two English sources now link to their German versions, and the
+  `i18n/README.md` status table marks both as done. Refs: P13-4.
+- German translation of the glossary at `i18n/de/docs/glossary.md`, the first locale to land
+  under the `i18n/` layer. It mirrors `docs/glossary.md` one-to-one, carries the canonical-source
+  header that marks English as authoritative, keeps every term headword, command, path and anchor
+  verbatim while translating the prose, and is linked from the top of the English source. The
+  `i18n/README.md` status table now marks the `docs/glossary.md` cell done for `de`. Refs: P13-3.
+- New `i18n/` localization layer with a short policy at `i18n/README.md`: English is the source of
+  truth and stays the only language for code, engineering/reference docs, commits and PRs, while
+  beginner tutorial copy (`GETTING-STARTED.md`, `docs/glossary.md`, `docs/faq.md`,
+  `docs/cheatsheet.md`) may be translated under `i18n/<locale>/` in a subtree that mirrors the repo
+  root. The README documents the layout, BCP 47 locale codes, the canonical-source header every
+  translation carries, the add-a-translation steps and a per-locale status table. The existing
+  "dedicated layer" language rule in `CLAUDE.md` and `CONTRIBUTING.md` now points at it. The enabler
+  the P13 translations build on. Refs: P13-1.
+- New agent skill `agent/skills/devblueprint-mentor/` narrates the everyday task workflow while
+  you work. Where `devblueprint-setup` scaffolds a project once, the mentor rides along after
+  setup and, one step at a time, says *what* to do next and *why* - orienting from real git state
+  (which branch, which folder), then fetch + worktree, small Conventional Commits, the `make
+  check` gate, push + PR, and hand-off (never self-merge). Each step's *why* stays to a line and
+  links the P11-3/P11-4 concept notes (`docs/concepts/worktrees.md`,
+  `docs/concepts/commits-and-gate.md`) for the full reasoning, so the process teaches itself. It
+  runs the real `wt.sh` / git / `make check` commands, never a simulated flow, and is documented
+  in `GUIDE.md`. Agent files only. Refs: P12-2.
+- New `docs/concepts/README.md` indexes the "why we work this way" concept notes: it explains how
+  concept notes differ from reference docs, gives newcomers a reading order (worktrees, then
+  commits-and-gate) with a one-line hook for each, points at the glossary for unfamiliar terms,
+  and links on to the reference layer for the concrete *how*. Refs: P12-4.
+- Every variant except `ios-swift` (which needs macOS + Xcode) now ships a
+  `.devcontainer/devcontainer.json`, so a scaffolded project opens in GitHub Codespaces or a
+  local VS Code Dev Container with the toolchain and recommended extensions ready and no local
+  install - the first-class beginner path. Each container starts from the official image for its
+  stack (or a pinned vendor image for `elixir`/`flutter`/`android-kotlin`), auto-installs the same
+  extensions as the variant's `.vscode/extensions.json`, and runs `setup.sh` on create to warm the
+  toolchain and dependencies. A new `docs/codespaces.md` promotes the path (linked from
+  `GETTING-STARTED.md` and the README), and `test/vscode.bats` guards that every Linux-capable
+  variant carries a valid `devcontainer.json` whose extensions match its `extensions.json` and
+  that `init` scaffolds it. Refs: P11-2.
+- New `devblueprint doctor --env`: a host prerequisite check that needs no project (no `--target`).
+  It verifies git, Node and a working shell are present and, for anything missing, prints a
+  copy-paste install command for the detected OS (macOS via Homebrew, Windows via winget, Linux
+  via apt/NodeSource - matching the steps in `GETTING-STARTED.md`), then exits non-zero. Intended
+  as the first command a beginner runs, before a project even exists. `--json` mirrors the project
+  doctor's machine-readable shape (`{ok, os, failures, checks[]}`), with each check carrying an
+  optional `fix`. A new `test/doctor-env.bats` covers the pass path, each missing-tool path (via a
+  stubbed PATH), the JSON shape and option handling. Refs: P11-1.
+- New concept note `docs/concepts/worktrees.md` explains *why* we work one directory per branch -
+  the switching, stashing and collision costs of time-sharing a single working directory, what
+  worktrees buy instead, and the wider "isolate units of work" and "make throwaway things
+  disposable" habits behind the rule. Aimed at someone learning to be a good engineer, it links to
+  the glossary for terms and to the git-workflow doc for the concrete commands. Refs: P11-3.
+- New concept note `docs/concepts/commits-and-gate.md` explaining *why* the repo uses
+  Conventional Commits and a green quality gate, and what each buys you - aimed at someone
+  learning to be a good engineer, linking out to the glossary and the mechanics rather than
+  restating the rules. Refs: P11-4.
+- Every variant now ships a `.vscode/tasks.json`, so a scaffolded project wires its quality gate
+  into VS Code's task menu out of the box: `Cmd/Ctrl+Shift+B` runs the full gate (the default
+  build task), and **Run Task...** exposes the individual steps (lint, type-check, tests, build)
+  the gate is made of. Variants with a Makefile call `make <target>` so the tasks track the
+  Makefile with no duplication; the Makefile-less variants (`backend-python`, `ios-swift`,
+  `web-nextjs`) call the manifest gate directly. A beginner runs the gate without memorising
+  commands. Refs: P10-4.
+- Every variant now ships a `.vscode/extensions.json` with recommended extensions for its stack
+  (via the variant's `extras/` tree), so opening a scaffolded project in VS Code offers the right
+  tooling - the language server, formatter and linter that back the quality gate - in one click.
+  The lists are tailored per variant (e.g. `charliermarsh.ruff` + `ms-python.python` for the
+  Python variants, `dbaeumer.vscode-eslint` + `esbenp.prettier-vscode` for the TypeScript ones,
+  `rust-lang.rust-analyzer` for Rust), with `EditorConfig.EditorConfig` and
+  `github.vscode-github-actions` as the shared baseline. A new `test/vscode.bats` guards that every
+  variant carries a valid, non-empty list and that `init` scaffolds it. Refs: P10-3.
+- The `devblueprint-setup` interview skill gained a **Beginner mode**: when the user signals they
+  are new, it assumes zero prior knowledge, glosses every term the interview raises (variant,
+  deploy target, branch, two-branch vs. trunk, worktree, PR, quality gate, intake file) in one
+  line using the `docs/glossary.md` wording, and actively helps at the path step (glosses the
+  target path, offers a concrete default, shows `pwd`/`ls` when the user is lost, and confirms the
+  resolved absolute path before writing). Same five questions, same `plan`-before-`init`. Refs:
+  P10-2.
+- The static config builder (`web/config-builder/`) now covers everything the CLI accepts, not
+  just a subset. It gained the missing intake keys (`flavors`, `agents`, `extends`), refreshed the
+  variant dropdown to all 17 stacks, and added a **Target directory** field plus a second output
+  pane that renders the ready-to-run `devblueprint plan`/`init` command with `--target` (and, in
+  the new **Monorepo** layout, one `--package name:variant` flag per package) filled in. `--target`
+  and `--package` stay command-line only - the file still holds only *what*, the command carries
+  *where*.
+
 ### Fixed
 
+- Corrected three dangling internal links surfaced by the new beginner-path link check: the German
+  FAQ pointed at the English section anchor `#choosing-a-folder-for-your-project` (which resolves
+  against the German `GETTING-STARTED.md`, whose slug is `#einen-ordner-fuer-dein-projekt-waehlen`),
+  and the German FAQ and cheat sheet linked `engineering/git-workflow.md` relative to
+  `i18n/de/docs/`, where no translation exists - now `../../../docs/engineering/git-workflow.md`,
+  the canonical English source. Refs: P14-4.
 - The `elixir-phoenix`, `laravel`, `rails` and `sveltekit` variants shipped with an incomplete
   `github/` tree: added after the P6-4/P7-1 sweeps, they missed the security and release CI
   baseline every older variant (incl. `generic`) carries. Backfilled release automation
@@ -29,11 +201,75 @@ All notable changes are documented here, following
 
 ### Changed
 
+- Split the three onboarding surfaces by role so they stop overlapping: `README.md` is now the
+  pitch (value prop, install, a short "usage at a glance", the variants table) and no longer
+  carries the full command reference; `GUIDE.md` is the single reference and absorbs the detail
+  `README` shed - a per-command section (scaffold/inspect, `doctor`, `diff`/`update`/`upgrade`,
+  machine-readable `--json`), the monorepo `--package` mode, the flag/options list and
+  `protect-branches`, and the browser config-builder - so every command fact now lives in exactly
+  one place. `GETTING-STARTED.md` stays the plain-language beginner path. Each surface links to the
+  other two for its out-of-scope material. Docs only. Refs: P14-1.
+- Cross-linked the glossary and the reference-layer docs: every term in `docs/glossary.md` now
+  carries a stable anchor, and the first mention of each term in `docs/faq.md`,
+  `docs/cheatsheet.md`, `docs/reading-errors.md`, `docs/codespaces.md` and the `docs/concepts/`
+  notes links straight to its glossary entry (existing whole-file glossary links were upgraded to
+  the specific anchor), so no term is left unexplained. Refs: P12-3.
+- Beginner-friendly CLI failures: `devblueprint` now tells you what to do next, not just what
+  broke. Errors that used to be a bare one-liner (`missing --target`, `target does not exist`,
+  `unknown option`, an intake/config/baseline file that is not found, a target that is not a
+  scaffolded project) now print a second indented `next:` line with a concrete recovery step -
+  an example command, the flag to add, or the command to run first. `doctor --strict` on a
+  project with no git repo and `doctor`'s failure summary point at `git init` and
+  `doctor --fix` respectively. The `die` helper gained an optional second "next step" argument
+  that renders this line, so the guidance stays consistent across every command. Refs: P12-1.
+- Restructured the P8-P15 beginner-onboarding roadmap into eight phases of exactly four
+  parallel-first tasks each: at most one `(CLI)` task per phase, within-phase tasks touch
+  disjoint files and do not build on each other (enabler exceptions like P8-1/P13-1 marked),
+  so all four PRs of a wave can be opened at once. Cross-phase dependencies stay allowed.
+- Split `docs/project/backlog.md`: the completed P0-P7 phases moved to a new
+  `docs/project/backlog-archive.md`, leaving the active P8-P15 roadmap in the main backlog.
 - Reworked DevBlueprint from the `apkit` spec-scaffolding CLI into a documentation-first
   engineering-setup kit centered on the git workflow, quality gate and AI-assistant guidance.
 
 ### Added
 
+- `devblueprint init` with no flags now runs a guided interactive wizard: it asks a handful of
+  plain-language questions (each prefaced with a one-line explanation), suggests a sensible
+  default for every answer - especially a concrete `~/Projects/<slug>` target path - shows
+  exactly what would be written by reusing the `plan` (dry-run) output, and only scaffolds after
+  an explicit confirmation, so a newcomer can create a project without knowing a single flag.
+  Answers are read from stdin, so an early EOF falls back to the shown defaults and the final
+  confirm defaults to "no" - a missing answer never writes to disk. Refs: P10-1.
+- `docs/faq.md`: a plain-language FAQ answering the common "why did this happen, what now?"
+  moments a beginner hits (a directory/file already exists, "not a git repository", a red quality
+  gate, being on the wrong branch), with a symptom, a cause and a next step for each. Refs: P9-2.
+- `docs/cheatsheet.md`: a one-page everyday-commands reference a beginner can keep open beside
+  them - the normal loop top to bottom (`git fetch`, `wt.sh new`, small `git add`/`commit`
+  steps, `make check`, `git push`, `gh pr create`, `wt.sh gc`) plus quick-reference tables for
+  the `scripts/wt.sh`, daily git and `make check` commands and the commit-message format, with
+  bold terms linked to the glossary. Refs: P9-3.
+- `docs/reading-errors.md`: a plain-language guide to reading an unexpected error - the read /
+  look / change-one-thing / re-run loop, where the useful part of a message is, and how to read a
+  lint failure, a red CI log and a stack trace, with links to the glossary. Refs: P9-4.
+- `GETTING-STARTED.md`: filled the "Your first run" and "Your first task" sections with a
+  complete worked tutorial - one narrated run from `devblueprint init` through `setup.sh`, git
+  setup, `doctor`, creating the GitHub remote, then the everyday loop (worktree, edit, `make
+  check`, commit, push, PR, cleanup) - every command shown with its expected output, written
+  against the `generic` variant so a beginner needs no toolchain. Refs: P8-4.
+- `docs/glossary.md`: a plain-language glossary defining the everyday terms a beginner meets in
+  these docs (terminal, path, repo, branch, commit, PR, worktree, CI, lint, variant, quality
+  gate), one sentence each. Refs: P9-1.
+- `GETTING-STARTED.md` "Choosing a folder for your project" section: explains what a path is,
+  absolute vs. relative paths, what `~` (the home folder) means, why to keep spaces and odd
+  characters out of a path, a suggested `~/Projects/<name>` default, and how to open that folder
+  in both the terminal (`cd` / `pwd`) and the editor (`code`, or File > Open Folder). Refs: P8-3.
+- `GETTING-STARTED.md`: a beginner-onboarding guide skeleton linked from the top of the README,
+  with an intro and section headings for prerequisites, choosing a folder, the first run and the
+  first task. The anchor the rest of the P8 onboarding docs fill in. Refs: P8-1.
+- `GETTING-STARTED.md` Prerequisites section: plain-language, copy-paste install steps for a
+  terminal, git, Node and VS Code, split per OS (macOS via Homebrew, Windows via winget, Linux
+  via apt/NodeSource), each with a check command and the expected output so a beginner can
+  confirm every tool works. Refs: P8-2.
 - Governance scaffolding: every project now ships `scripts/protect-branches.sh`, an opt-in
   helper that turns the documented git workflow into an enforced one by applying GitHub branch
   protection (required PRs, approving reviews, optional code-owner review, no direct/force pushes
