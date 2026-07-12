@@ -1,10 +1,12 @@
 # DevBlueprint
 
-Run several Claude Code (or any AI) coding agents on one repo at once - without them clobbering
-each other's branches. DevBlueprint scaffolds the git workflow, quality gate, code conventions
-and AI-assistant guidance that make parallel AI-assisted development safe: two long-lived
-branches and one worktree per task, so every agent works in isolation and integrates through a
-PR. One command sets up this professional process from commit one.
+**Parallel Claude Code agents on one repo, without collisions.**
+
+Point a second coding agent (Claude or any other) at the same project and the two clobber each
+other's branches and half-finished work. DevBlueprint removes that collision: two long-lived
+branches (`develop` -> `master`) and one git worktree per task, so every agent works in isolation
+and integrates through a PR. One command sets up this whole professional workflow - git flow,
+quality gate, conventions and AI-assistant guidance - from commit one.
 
 Extracted from a real production-grade codebase and made stack-agnostic. It is
 **documentation-first** - the output is plain files you own and edit, not a framework you depend

@@ -11,6 +11,9 @@ All notable changes are documented here, following
   DevBlueprint solves (running several coding agents on one repo without branch collisions)
   before describing what the kit ships.
 
+- Lead the README with the parallel-AI-agents hook - the opening line is now the hook itself
+  ("parallel Claude Code agents on one repo, without collisions") and the first paragraph states
+  the pain point before describing what the kit ships.
 ### Added
 
 - Good-first-issue contributor funnel: a stocked shelf of 8-10 small, well-scoped starter tasks
