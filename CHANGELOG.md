@@ -176,6 +176,14 @@ All notable changes are documented here, following
 
 ### Changed
 
+- Split the three onboarding surfaces by role so they stop overlapping: `README.md` is now the
+  pitch (value prop, install, a short "usage at a glance", the variants table) and no longer
+  carries the full command reference; `GUIDE.md` is the single reference and absorbs the detail
+  `README` shed - a per-command section (scaffold/inspect, `doctor`, `diff`/`update`/`upgrade`,
+  machine-readable `--json`), the monorepo `--package` mode, the flag/options list and
+  `protect-branches`, and the browser config-builder - so every command fact now lives in exactly
+  one place. `GETTING-STARTED.md` stays the plain-language beginner path. Each surface links to the
+  other two for its out-of-scope material. Docs only. Refs: P14-1.
 - Cross-linked the glossary and the reference-layer docs: every term in `docs/glossary.md` now
   carries a stable anchor, and the first mention of each term in `docs/faq.md`,
   `docs/cheatsheet.md`, `docs/reading-errors.md`, `docs/codespaces.md` and the `docs/concepts/`
