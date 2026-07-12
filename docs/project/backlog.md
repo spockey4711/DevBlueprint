@@ -42,7 +42,7 @@ the other three fills a different section, so conflicts are limited to distinct 
 - [x] P8-1: Create a `GETTING-STARTED.md` skeleton (intro + section headings for
   prerequisites, choosing a folder, first run, first task) and link it from the top of the
   README. The anchor the rest of P8 fills in. (enabler - do first)
-- [ ] P8-2: Prerequisites section - install a terminal, git, Node and an editor, split per OS
+- [x] P8-2: Prerequisites section - install a terminal, git, Node and an editor, split per OS
   (macOS / Windows / Linux), as copy-paste blocks with "you should see this if it worked".
   (builds on P8-1; own section)
 - [x] P8-3: "Where do I put the project / which path do I pick" section - absolute vs. relative
