@@ -2,10 +2,7 @@ class Devblueprint < Formula
   desc "Documentation-first engineering-setup kit (git workflow + quality gate + AI guidance)"
   homepage "https://github.com/spockey4711/DevBlueprint"
   url "https://github.com/spockey4711/DevBlueprint/archive/refs/tags/v0.1.0.tar.gz"
-  # Replace with the sha256 of the release tarball above. Compute it with:
-  #   curl -fsSL <url> | shasum -a 256
-  # See packaging/homebrew/README.md for the full release runbook.
-  sha256 "REPLACE_WITH_RELEASE_TARBALL_SHA256"
+  sha256 "d6006b6fae81d601030aa5fb592738c803b4cb86cb797c743e496e1d6a4787dd"
   license "MIT"
 
   def install

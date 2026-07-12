@@ -173,6 +173,9 @@ All notable changes are documented here, following
 
 ### Fixed
 
+- Filled the real release-tarball `sha256` into the Homebrew formula
+  (`packaging/homebrew/devblueprint.rb`) for the `v0.1.0` tag, replacing the
+  `REPLACE_WITH_RELEASE_TARBALL_SHA256` placeholder so `brew install` verifies the download.
 - Corrected three dangling internal links surfaced by the new beginner-path link check: the German
   FAQ pointed at the English section anchor `#choosing-a-folder-for-your-project` (which resolves
   against the German `GETTING-STARTED.md`, whose slug is `#einen-ordner-fuer-dein-projekt-waehlen`),
