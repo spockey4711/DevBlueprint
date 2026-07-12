@@ -21,6 +21,17 @@ All notable changes are documented here, following
   server start not build time). Picked up automatically by `devblueprint list`, the scaffold-check
   matrix and the `.vscode`/devcontainer self-CI. Refs: P15-3.
 
+- Periodic doc-freshness pass for the beginner path, wired as its own `docs-freshness.yml`
+  workflow (also reproducible locally with `scripts/docs-freshness.sh`). Where `docs-check.yml`
+  (P14-4) statically checks links and command names on every push, this pass actually *runs* the
+  getting-started flow - it scaffolds a throwaway `hello-world` generic project exactly as
+  "Your first run" documents (init, `setup.sh`, `git init`, `doctor`, `make check`) and confirms
+  that every output line the guide quotes as a "screenshot" is still printed by the CLI and still
+  quoted in both `GETTING-STARTED.md` and its German mirror, so drift on either side fails the
+  build. A companion version-stamp check holds every `DevBlueprint X.Y.Z` literal in the guides to
+  `./VERSION`, so a release bump cannot leave a stale number frozen in the `doctor` transcript. It
+  runs weekly (and on PRs that touch the CLI, the generic variant or the guide) since it is heavier
+  than a lint. Refs: P15-4.
 - Guided `devblueprint update`: running `update` with no flags now starts a plain-language
   wizard, mirroring the no-flag `init` wizard. It explains what an update is, asks only for the
   project folder (defaulting to the current directory), resolves the variant from the project's
@@ -190,6 +201,14 @@ All notable changes are documented here, following
 
 ### Changed
 
+- Split the three onboarding surfaces by role so they stop overlapping: `README.md` is now the
+  pitch (value prop, install, a short "usage at a glance", the variants table) and no longer
+  carries the full command reference; `GUIDE.md` is the single reference and absorbs the detail
+  `README` shed - a per-command section (scaffold/inspect, `doctor`, `diff`/`update`/`upgrade`,
+  machine-readable `--json`), the monorepo `--package` mode, the flag/options list and
+  `protect-branches`, and the browser config-builder - so every command fact now lives in exactly
+  one place. `GETTING-STARTED.md` stays the plain-language beginner path. Each surface links to the
+  other two for its out-of-scope material. Docs only. Refs: P14-1.
 - Cross-linked the glossary and the reference-layer docs: every term in `docs/glossary.md` now
   carries a stable anchor, and the first mention of each term in `docs/faq.md`,
   `docs/cheatsheet.md`, `docs/reading-errors.md`, `docs/codespaces.md` and the `docs/concepts/`
