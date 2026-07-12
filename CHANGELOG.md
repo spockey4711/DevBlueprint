@@ -12,6 +12,12 @@ All notable changes are documented here, following
   before describing what the kit ships.
 ### Added
 
+- Landing page `web/landing/index.html` - a self-contained, backend-less page that leads with
+  the hook ("run parallel Claude agents without collisions"), a parallel-lanes schematic of the
+  worktree-per-task workflow, and a one-line install (`npx devblueprint list`) with copy
+  buttons and the full install trio. Honours the no-runtime principle: inline CSS/JS, no
+  dependencies, no external requests. First Phase 0 asset of the `docs/marketing/road-to-5k.md`
+  growth plan. Owns `web/landing/`.
 - Growth playbook `docs/marketing/road-to-5k.md` - a role-based, phased plan for taking the
   project from zero to 5,000 GitHub stars, with funnel math, a channel strategy, KPIs and a risk
   register.
