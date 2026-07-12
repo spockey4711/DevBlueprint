@@ -5,6 +5,12 @@ All notable changes are documented here, following
 
 ## [Unreleased]
 
+### Added
+
+- Growth playbook `docs/marketing/road-to-5k.md` - a role-based, phased plan for taking the
+  project from zero to 5,000 GitHub stars, with funnel math, a channel strategy, KPIs and a risk
+  register.
+
 ## [0.1.0] - 2026-07-12
 
 ### Added
