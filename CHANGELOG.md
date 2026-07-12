@@ -5,6 +5,8 @@ All notable changes are documented here, following
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-07-12
+
 ### Added
 
 - New `vue-nuxt` variant - "Web app (Vue + Nuxt + pnpm)", the Vue-side sibling of `web-nextjs`:
@@ -171,70 +173,6 @@ All notable changes are documented here, following
   and `--package` stay command-line only - the file still holds only *what*, the command carries
   *where*.
 
-### Fixed
-
-- Filled the real release-tarball `sha256` into the Homebrew formula
-  (`packaging/homebrew/devblueprint.rb`) for the `v0.1.0` tag, replacing the
-  `REPLACE_WITH_RELEASE_TARBALL_SHA256` placeholder so `brew install` verifies the download.
-- Corrected three dangling internal links surfaced by the new beginner-path link check: the German
-  FAQ pointed at the English section anchor `#choosing-a-folder-for-your-project` (which resolves
-  against the German `GETTING-STARTED.md`, whose slug is `#einen-ordner-fuer-dein-projekt-waehlen`),
-  and the German FAQ and cheat sheet linked `engineering/git-workflow.md` relative to
-  `i18n/de/docs/`, where no translation exists - now `../../../docs/engineering/git-workflow.md`,
-  the canonical English source. Refs: P14-4.
-- The `elixir-phoenix`, `laravel`, `rails` and `sveltekit` variants shipped with an incomplete
-  `github/` tree: added after the P6-4/P7-1 sweeps, they missed the security and release CI
-  baseline every older variant (incl. `generic`) carries. Backfilled release automation
-  (`workflows/release.yml` + `release-please-config.json` + `release-please-manifest.json`, each
-  variant's release-please strategy picked native where one exists - `elixir`, `php`, `ruby`,
-  `node` - else `simple`) into all four, and added a `codeql.yml` for the variants whose language
-  has a CodeQL target: `dotnet` (`csharp`), `laravel` (`php`), `rails` (`ruby`) and `sveltekit`
-  (`javascript-typescript`). `elixir-phoenix`, `flutter`, `rust` and `generic` stay without
-  CodeQL, matching the P6-4 note. Refs: P7-6.
-- The `terraform-iac` variant shipped without the provider-agnostic CI baseline: it landed
-  right after the P7-2 sweep and so had no `gitlab/.gitlab-ci.yml` or
-  `github/workflows/preview-deploy.yml`. The `init scaffolds provider-agnostic CI for every
-  variant` test iterates over all variants, so the gap turned the whole `bats` suite red. Added
-  a Terraform-flavored `.gitlab-ci.yml` (a `quality` stage running `terraform fmt`/`validate`/
-  `tflint`/`test` on the pinned versions) plus the stack-neutral `preview-deploy.yml`. Refs: P7-2.
-- `doctor --run-gate` test for the `backend-go` variant asserted the gate line started with
-  `gofumpt`, but the variant's gate is `test -z "$(gofumpt -l .)" && ...`. The assertion now
-  matches the real gate string, so CI's stricter `bats` (which aborts a test on any failing
-  command, not just the last) passes. Refs: P2-9.
-
-### Changed
-
-- Split the three onboarding surfaces by role so they stop overlapping: `README.md` is now the
-  pitch (value prop, install, a short "usage at a glance", the variants table) and no longer
-  carries the full command reference; `GUIDE.md` is the single reference and absorbs the detail
-  `README` shed - a per-command section (scaffold/inspect, `doctor`, `diff`/`update`/`upgrade`,
-  machine-readable `--json`), the monorepo `--package` mode, the flag/options list and
-  `protect-branches`, and the browser config-builder - so every command fact now lives in exactly
-  one place. `GETTING-STARTED.md` stays the plain-language beginner path. Each surface links to the
-  other two for its out-of-scope material. Docs only. Refs: P14-1.
-- Cross-linked the glossary and the reference-layer docs: every term in `docs/glossary.md` now
-  carries a stable anchor, and the first mention of each term in `docs/faq.md`,
-  `docs/cheatsheet.md`, `docs/reading-errors.md`, `docs/codespaces.md` and the `docs/concepts/`
-  notes links straight to its glossary entry (existing whole-file glossary links were upgraded to
-  the specific anchor), so no term is left unexplained. Refs: P12-3.
-- Beginner-friendly CLI failures: `devblueprint` now tells you what to do next, not just what
-  broke. Errors that used to be a bare one-liner (`missing --target`, `target does not exist`,
-  `unknown option`, an intake/config/baseline file that is not found, a target that is not a
-  scaffolded project) now print a second indented `next:` line with a concrete recovery step -
-  an example command, the flag to add, or the command to run first. `doctor --strict` on a
-  project with no git repo and `doctor`'s failure summary point at `git init` and
-  `doctor --fix` respectively. The `die` helper gained an optional second "next step" argument
-  that renders this line, so the guidance stays consistent across every command. Refs: P12-1.
-- Restructured the P8-P15 beginner-onboarding roadmap into eight phases of exactly four
-  parallel-first tasks each: at most one `(CLI)` task per phase, within-phase tasks touch
-  disjoint files and do not build on each other (enabler exceptions like P8-1/P13-1 marked),
-  so all four PRs of a wave can be opened at once. Cross-phase dependencies stay allowed.
-- Split `docs/project/backlog.md`: the completed P0-P7 phases moved to a new
-  `docs/project/backlog-archive.md`, leaving the active P8-P15 roadmap in the main backlog.
-- Reworked DevBlueprint from the `apkit` spec-scaffolding CLI into a documentation-first
-  engineering-setup kit centered on the git workflow, quality gate and AI-assistant guidance.
-
-### Added
 
 - `devblueprint init` with no flags now runs a guided interactive wizard: it asks a handful of
   plain-language questions (each prefaced with a one-line explanation), suggests a sensible
@@ -706,13 +644,76 @@ All notable changes are documented here, following
   modes (two-branch default and `--base master`), and token substitution in the rendered docs
   (P0-1).
 
+### Changed
+
+- Split the three onboarding surfaces by role so they stop overlapping: `README.md` is now the
+  pitch (value prop, install, a short "usage at a glance", the variants table) and no longer
+  carries the full command reference; `GUIDE.md` is the single reference and absorbs the detail
+  `README` shed - a per-command section (scaffold/inspect, `doctor`, `diff`/`update`/`upgrade`,
+  machine-readable `--json`), the monorepo `--package` mode, the flag/options list and
+  `protect-branches`, and the browser config-builder - so every command fact now lives in exactly
+  one place. `GETTING-STARTED.md` stays the plain-language beginner path. Each surface links to the
+  other two for its out-of-scope material. Docs only. Refs: P14-1.
+- Cross-linked the glossary and the reference-layer docs: every term in `docs/glossary.md` now
+  carries a stable anchor, and the first mention of each term in `docs/faq.md`,
+  `docs/cheatsheet.md`, `docs/reading-errors.md`, `docs/codespaces.md` and the `docs/concepts/`
+  notes links straight to its glossary entry (existing whole-file glossary links were upgraded to
+  the specific anchor), so no term is left unexplained. Refs: P12-3.
+- Beginner-friendly CLI failures: `devblueprint` now tells you what to do next, not just what
+  broke. Errors that used to be a bare one-liner (`missing --target`, `target does not exist`,
+  `unknown option`, an intake/config/baseline file that is not found, a target that is not a
+  scaffolded project) now print a second indented `next:` line with a concrete recovery step -
+  an example command, the flag to add, or the command to run first. `doctor --strict` on a
+  project with no git repo and `doctor`'s failure summary point at `git init` and
+  `doctor --fix` respectively. The `die` helper gained an optional second "next step" argument
+  that renders this line, so the guidance stays consistent across every command. Refs: P12-1.
+- Restructured the P8-P15 beginner-onboarding roadmap into eight phases of exactly four
+  parallel-first tasks each: at most one `(CLI)` task per phase, within-phase tasks touch
+  disjoint files and do not build on each other (enabler exceptions like P8-1/P13-1 marked),
+  so all four PRs of a wave can be opened at once. Cross-phase dependencies stay allowed.
+- Split `docs/project/backlog.md`: the completed P0-P7 phases moved to a new
+  `docs/project/backlog-archive.md`, leaving the active P8-P15 roadmap in the main backlog.
+- Reworked DevBlueprint from the `apkit` spec-scaffolding CLI into a documentation-first
+  engineering-setup kit centered on the git workflow, quality gate and AI-assistant guidance.
+
 ### Removed
 
 - The `apkit` Node CLI, its web interface, examples, prompt library and templates.
 
 ### Fixed
 
+- Filled the real release-tarball `sha256` into the Homebrew formula
+  (`packaging/homebrew/devblueprint.rb`) for the `v0.1.0` tag, replacing the
+  `REPLACE_WITH_RELEASE_TARBALL_SHA256` placeholder so `brew install` verifies the download.
+- Corrected three dangling internal links surfaced by the new beginner-path link check: the German
+  FAQ pointed at the English section anchor `#choosing-a-folder-for-your-project` (which resolves
+  against the German `GETTING-STARTED.md`, whose slug is `#einen-ordner-fuer-dein-projekt-waehlen`),
+  and the German FAQ and cheat sheet linked `engineering/git-workflow.md` relative to
+  `i18n/de/docs/`, where no translation exists - now `../../../docs/engineering/git-workflow.md`,
+  the canonical English source. Refs: P14-4.
+- The `elixir-phoenix`, `laravel`, `rails` and `sveltekit` variants shipped with an incomplete
+  `github/` tree: added after the P6-4/P7-1 sweeps, they missed the security and release CI
+  baseline every older variant (incl. `generic`) carries. Backfilled release automation
+  (`workflows/release.yml` + `release-please-config.json` + `release-please-manifest.json`, each
+  variant's release-please strategy picked native where one exists - `elixir`, `php`, `ruby`,
+  `node` - else `simple`) into all four, and added a `codeql.yml` for the variants whose language
+  has a CodeQL target: `dotnet` (`csharp`), `laravel` (`php`), `rails` (`ruby`) and `sveltekit`
+  (`javascript-typescript`). `elixir-phoenix`, `flutter`, `rust` and `generic` stay without
+  CodeQL, matching the P6-4 note. Refs: P7-6.
+- The `terraform-iac` variant shipped without the provider-agnostic CI baseline: it landed
+  right after the P7-2 sweep and so had no `gitlab/.gitlab-ci.yml` or
+  `github/workflows/preview-deploy.yml`. The `init scaffolds provider-agnostic CI for every
+  variant` test iterates over all variants, so the gap turned the whole `bats` suite red. Added
+  a Terraform-flavored `.gitlab-ci.yml` (a `quality` stage running `terraform fmt`/`validate`/
+  `tflint`/`test` on the pinned versions) plus the stack-neutral `preview-deploy.yml`. Refs: P7-2.
+- `doctor --run-gate` test for the `backend-go` variant asserted the gate line started with
+  `gofumpt`, but the variant's gate is `test -z "$(gofumpt -l .)" && ...`. The assertion now
+  matches the real gate string, so CI's stricter `bats` (which aborts a test on any failing
+  command, not just the last) passes. Refs: P2-9.
+
+
 - Single-branch scaffolding (`init --base master`, or any `BASE_BRANCH == MAIN_BRANCH`) no longer
   renders garbled two-branch prose in `CLAUDE.md`/`CONTRIBUTING.md`. The templates now carry
   `{{#TWO_BRANCH}}`/`{{#SINGLE_BRANCH}}` conditional blocks, and `init` keeps the trunk-flow
   variant (no release-PR step) when base equals main.
+
