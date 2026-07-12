@@ -21,7 +21,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Run shellcheck
-        run: shellcheck bin/devblueprint scripts/wt.sh scripts/scaffold-check.sh variants/*/setup.sh
+        run: shellcheck bin/devblueprint scripts/wt.sh scripts/scaffold-check.sh scripts/docs-check.sh variants/*/setup.sh
 
   bats:
     name: Bats

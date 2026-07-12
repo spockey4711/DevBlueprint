@@ -24,11 +24,17 @@ promoted to the always-deployable `master` via a periodic release PR.
    ```bash
    make check
    ```
-   CI enforces two layers: `ci.yml` shellchecks the scripts and runs the `bats`
-   suite, and `scaffold-matrix.yml` scaffolds every variant into a throwaway dir,
+   CI enforces four layers: `ci.yml` shellchecks the scripts and runs the `bats`
+   suite; `scaffold-matrix.yml` scaffolds every variant into a throwaway dir,
    runs its `setup.sh`, and runs the quality gate (for variants that scaffold a
-   complete starter) - catching variant rot before a release. Reproduce one
-   variant locally with `scripts/scaffold-check.sh <variant>` (or `--all`).
+   complete starter) - catching variant rot before a release; `beginner-artifacts.yml`
+   asserts every variant ships its `.vscode/` and devcontainer artifacts and that
+   they match the promises in the beginner docs; and `docs-check.yml` verifies the
+   beginner path (`GETTING-STARTED.md` and the `docs/` reference layer, plus the
+   German mirrors) has no dangling internal links and no commands that name a
+   removed subcommand. Reproduce them locally with
+   `scripts/scaffold-check.sh <variant>` (or `--all`),
+   `scripts/beginner-artifacts-check.sh` and `scripts/docs-check.sh`.
 4. **Update the docs and the changelog** in the same PR as the code they describe.
 5. **Open a PR into `develop`** and fill in the checklist below.
 6. **Merge** with a merge commit once CI is green. The merged feature branch is auto-deleted;
