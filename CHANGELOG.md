@@ -7,6 +7,16 @@ All notable changes are documented here, following
 
 ### Added
 
+- Guided `devblueprint update`: running `update` with no flags now starts a plain-language
+  wizard, mirroring the no-flag `init` wizard. It explains what an update is, asks only for the
+  project folder (defaulting to the current directory), resolves the variant from the project's
+  `.devblueprint` stamp so the variant-overlaid docs are refreshed too - no `--variant` to
+  remember - previews exactly what would change by reusing the real update code path in dry-run,
+  and re-syncs only on an explicit yes. An early EOF falls back to the folder default and the
+  final confirm defaults to no, so a missing answer never writes to disk; an in-sync project
+  reports "already in sync" and stops before asking to apply. `test/update.bats` covers the
+  detect-and-apply, decline, in-sync, guidance-copy, stamp-resolved-variant and
+  non-scaffold-folder paths. Refs: P15-1.
 - Extended the `bats` suite to cover the beginner-facing interactive CLI paths introduced in
   P10/P11/P12. A new `test/errors.bats` asserts that every friendly failure (missing `--target`,
   unknown command, a non-DevBlueprint or missing target, an unknown variant) prints a `next:`

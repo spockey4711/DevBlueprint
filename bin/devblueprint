@@ -4,6 +4,7 @@
 #
 # Usage:
 #   devblueprint init            (no flags: guided interactive wizard)
+#   devblueprint update          (no flags: guided interactive drift check + re-sync)
 #   devblueprint list [--json]
 #   devblueprint init --target <dir> --variant <variant> [--name <name>] \
 #       [--from <intake.yml>] [--extends <baseline>] [--base <branch>] [--main <branch>] \
@@ -2166,6 +2167,67 @@ cmd_update() {
   return 0
 }
 
+# cmd_update_wizard : the guided `update` (run when `devblueprint update` is given
+# no flags). Same plain-language shape as the init wizard (cmd_wizard): it explains
+# what an update is, asks only for the project folder (defaulting to the current
+# directory, since update is normally run from inside the project it refreshes),
+# detects drift by running the real update in dry-run, shows exactly what would
+# change, and only re-syncs on an explicit yes. The variant is read from the
+# project's stamp so the two variant-overlaid docs are refreshed too, with no flag
+# to remember. Answers are read from stdin, so a terminal drives it live and a
+# piped script drives it one-shot; an early EOF falls back to the shown default
+# and the final confirm defaults to "no", so a missing answer never writes to disk.
+cmd_update_wizard() {
+  echo "This will refresh an existing project's DevBlueprint core files - the"
+  echo "git-workflow and engineering docs, the worktree script and the GitHub"
+  echo "templates - to match the current kit. Your own files (CLAUDE.md, your code,"
+  echo "CI, wt.conf) are never touched, and local edits to managed files are merged,"
+  echo "not overwritten. Nothing is written until you confirm."
+  echo
+
+  # The only question: which project to refresh. Default to the current directory,
+  # since update is normally run from inside the project. Expand a leading ~/ by
+  # hand (data here, not a shell word - same idiom as cmd_wizard's target step).
+  echo "Which project folder should be refreshed? This is a scaffolded project, not"
+  echo "the kit itself. The current folder is a good default."
+  local target
+  target="$(ask "Project folder" ".")"
+  [ "${target#\~/}" != "$target" ] && target="$HOME/${target#\~/}"
+  echo
+
+  # Resolve the variant from the project's stamp so the two variant-overlaid docs
+  # (conventions.md, quality-and-testing.md) are refreshed in step - a beginner
+  # running the guided update wants everything brought up to date, not a partial
+  # sync. A project that predates the stamp has none, so those two are left to the
+  # manual path (cmd_update notes the skip).
+  local variant=""
+  [ -d "$target" ] && variant="$(stamp_variant "$target")"
+  local -a args=(--target "$target")
+  [ -n "$variant" ] && args+=(--variant "$variant")
+
+  # Detect drift by running the real update in dry-run: it prints exactly what
+  # would change and leaves the tallies in the globals it sets, so the same code
+  # path that applies the update is the one that previews it. A bad folder (missing
+  # or not a scaffold) dies here with the same guidance a direct `update` gives, so
+  # the wizard never proceeds on the wrong path.
+  echo "Here is exactly what an update would change - nothing has touched disk yet:"
+  echo
+  cmd_update --dry-run "${args[@]}"
+  echo
+
+  if [ "$CHANGED" -eq 0 ] && [ "$PRESERVED" -eq 0 ] && [ "$CONFLICTS" -eq 0 ]; then
+    echo "Everything is already in sync - there is nothing to update."
+    return 0
+  fi
+
+  if ! confirm "Apply these updates now?"; then
+    echo "Cancelled - nothing was written."
+    return 0
+  fi
+  echo
+  cmd_update "${args[@]}"
+}
+
 # diff_file <src> <dest-rel> : compare one managed file in the project against the
 # current kit's copy and classify it as in-sync, drifted, or missing. <src> is the
 # kit's version; <dest-rel> is the path relative to the target. Bumps SYNCED /
@@ -2506,7 +2568,7 @@ cmd_upgrade() {
 }
 
 usage() {
-  sed -n '5,22p' "$0" | sed 's/^# \{0,1\}//'
+  sed -n '5,23p' "$0" | sed 's/^# \{0,1\}//'
 }
 
 main() {
@@ -2516,7 +2578,7 @@ main() {
     list) cmd_list "$@" ;;
     init) if [ "$#" -eq 0 ]; then cmd_wizard; else cmd_init "$@"; fi ;;
     plan) cmd_plan "$@" ;;
-    update) cmd_update "$@" ;;
+    update) if [ "$#" -eq 0 ]; then cmd_update_wizard; else cmd_update "$@"; fi ;;
     diff) cmd_diff "$@" ;;
     doctor) cmd_doctor "$@" ;;
     detect) cmd_detect "$@" ;;

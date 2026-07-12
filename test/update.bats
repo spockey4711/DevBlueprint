@@ -145,3 +145,76 @@ load helper
   [ "$status" -eq 0 ]
   [ -z "$output" ]
 }
+
+# --- P15-1: guided `update` (no-flag interactive drift check + re-sync) -----
+#
+# `update` with no flags runs a plain-language wizard: it explains what an update
+# is, asks only for the project folder, previews the drift by reusing the real
+# update code path in dry-run, and re-syncs only on an explicit yes. Answers are
+# piped on stdin (folder, then the final confirm) so the flow runs in one shot.
+
+@test "guided update (no flags) detects drift and re-syncs on confirm" {
+  db init --target "$TARGET" --name demo --variant generic >/dev/null
+  rm "$TARGET/.editorconfig"
+
+  # Folder, then confirm the apply.
+  run bash -c "printf '%s\ny\n' '$TARGET' | '$DEVBLUEPRINT' update"
+  [ "$status" -eq 0 ]
+  # It previews the change before touching disk, then applies it.
+  [[ "$output" == *"nothing has touched disk yet"* ]]
+  [[ "$output" == *"would create .editorconfig"* ]]
+  [[ "$output" == *"created .editorconfig"* ]]
+  [ -f "$TARGET/.editorconfig" ]
+}
+
+@test "guided update writes nothing when the final confirm is declined" {
+  db init --target "$TARGET" --name demo --variant generic >/dev/null
+  rm "$TARGET/.editorconfig"
+
+  run bash -c "printf '%s\nn\n' '$TARGET' | '$DEVBLUEPRINT' update"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"Cancelled - nothing was written"* ]]
+  [ ! -e "$TARGET/.editorconfig" ]
+}
+
+@test "guided update reports an in-sync project and asks for no confirm" {
+  db init --target "$TARGET" --name demo --variant generic >/dev/null
+
+  # Only the folder is supplied; a fresh scaffold has no drift, so the wizard
+  # never reaches the confirm and writes nothing.
+  run bash -c "printf '%s\n' '$TARGET' | '$DEVBLUEPRINT' update"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"already in sync"* ]]
+  [[ "$output" != *"Apply these updates now?"* ]]
+}
+
+@test "guided update opens with an explanation before the one question" {
+  db init --target "$TARGET" --name demo --variant generic >/dev/null
+
+  run bash -c "printf '%s\n' '$TARGET' | '$DEVBLUEPRINT' update"
+  [ "$status" -eq 0 ]
+  # Plain-language framing, matching the init wizard's shape.
+  [[ "$output" == *"never touched"* ]]
+  [[ "$output" == *"Which project folder should be refreshed?"* ]]
+}
+
+@test "guided update resolves the variant from the stamp to refresh overlaid docs" {
+  db init --target "$TARGET" --name demo --variant node-express >/dev/null
+  # Drift a variant-owned doc; the wizard must consider it (not skip it), which it
+  # only can if it resolved node-express from the stamp without a --variant flag.
+  echo "local drift" > "$TARGET/docs/engineering/quality-and-testing.md"
+
+  run bash -c "printf '%s\nn\n' '$TARGET' | '$DEVBLUEPRINT' update"
+  [ "$status" -eq 0 ]
+  [[ "$output" != *"pass --variant to refresh"* ]]
+  [[ "$output" == *"quality-and-testing.md"* ]]
+}
+
+@test "guided update on a non-scaffold folder fails with recovery guidance" {
+  mkdir -p "$TARGET"
+  : > "$TARGET/random.txt"
+
+  run bash -c "printf '%s\n' '$TARGET' | '$DEVBLUEPRINT' update"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"does not look like a DevBlueprint project"* ]]
+}

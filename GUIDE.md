@@ -190,6 +190,10 @@ Full detail lands in the target project's `docs/engineering/git-workflow.md`.
   their next `init`; existing projects pull it in with
   `devblueprint update --target <dir>` (add `--variant <name>` to also refresh the
   variant-overlaid `conventions.md` / `quality-and-testing.md`, `--dry-run` to preview).
+  Unsure which flags to pass? Run `devblueprint update` with no arguments for a guided
+  drift check: it asks only for the project folder, resolves the variant from the project's
+  stamp so the overlaid docs are refreshed too, shows exactly what would change, and re-syncs
+  only once you confirm. The flag form above is the same thing, scripted.
   `update` only rewrites the core-owned files, so it never disturbs a project's `CLAUDE.md`,
   `wt.conf`, CI or code. Local edits to the managed files are three-way merged (not
   overwritten) against the `.devblueprint-base/` cache of the last-synced kit copy; a genuine
