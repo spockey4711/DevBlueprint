@@ -1,0 +1,76 @@
+name: Repo traffic log
+
+# Daily snapshot of the GitHub Traffic API into a committed CSV, because the API
+# only keeps a rolling 14-day window - miss a fortnight and the early numbers are
+# gone for good. scripts/repo-traffic.sh is the engine: it merges today's window
+# into the log (upserting recent days, preserving older history). See
+# docs/marketing/analytics.md for how the log feeds the growth KPIs.
+#
+# The series accumulates on a dedicated, unprotected data branch (analytics-log),
+# never on master/develop - so this bot never pushes to a protected branch and
+# never opens a daily pull request. The default branch keeps only the header-only
+# template at docs/marketing/data/repo-traffic.csv; the live rows live on the data
+# branch.
+#
+# The Traffic API rejects read-only tokens, and the default GITHUB_TOKEN cannot
+# read another repository's traffic, so running this in a real project means
+# adding a REPO_TRAFFIC_TOKEN secret: a fine-grained PAT (or a classic token with
+# `repo` scope) that has push access. The step falls back to GITHUB_TOKEN when the
+# secret is absent, which is enough for a repository running this on itself.
+
+on:
+  schedule:
+    # Daily at 05:00 UTC.
+    - cron: '0 5 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+# Never let two runs race on the data branch; a queued run picks up the latest log.
+concurrency:
+  group: repo-traffic
+  cancel-in-progress: false
+
+jobs:
+  repo-traffic:
+    name: Append today's traffic numbers
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Update and publish the traffic log
+        env:
+          GH_TOKEN: ${{ secrets.REPO_TRAFFIC_TOKEN || secrets.GITHUB_TOKEN }}
+          LOG_BRANCH: analytics-log
+          LOG_PATH: docs/marketing/data/repo-traffic.csv
+        run: |
+          set -euo pipefail
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          # Hold the data branch in a throwaway worktree while the script (from the
+          # default branch we are checked out on) merges into it. Checking the
+          # branch out first seeds the merge with all prior history.
+          work="$(mktemp -d)"
+          if git ls-remote --exit-code --heads origin "$LOG_BRANCH" >/dev/null 2>&1; then
+            git fetch --depth 1 origin "$LOG_BRANCH"
+            git worktree add "$work" -B "$LOG_BRANCH" "origin/$LOG_BRANCH"
+          else
+            # First ever run: start the branch with no history and an empty tree.
+            git worktree add --detach "$work"
+            git -C "$work" checkout --orphan "$LOG_BRANCH"
+            git -C "$work" rm -rf . >/dev/null 2>&1 || true
+          fi
+
+          scripts/repo-traffic.sh --out "$work/$LOG_PATH"
+
+          if [ -z "$(git -C "$work" status --porcelain)" ]; then
+            echo "No traffic change today - nothing to commit."
+          else
+            git -C "$work" add "$LOG_PATH"
+            git -C "$work" commit -m "chore(analytics): repo-traffic log for $(date -u +%Y-%m-%d)"
+            git -C "$work" push origin "$LOG_BRANCH"
+          fi
+          git worktree remove --force "$work"
