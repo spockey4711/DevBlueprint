@@ -24,7 +24,7 @@ unberuehrt blieb; alles andere wurde trotzdem geschrieben.
 - Wenn das genau die Dateien sind, die du willst, bist du fertig - die Skips sind erwartet.
 - Wenn du in einem leeren Ordner neu anfangen wolltest, waehle einen neuen, leeren
   [Pfad](glossary.md#path) (siehe
-  [Einen Ordner waehlen](../GETTING-STARTED.md#choosing-a-folder-for-your-project)) und fuehre den
+  [Einen Ordner waehlen](../GETTING-STARTED.md#einen-ordner-fuer-dein-projekt-waehlen)) und fuehre den
   Befehl erneut aus.
 - Wenn du wirklich ersetzen willst, was dort liegt, fuehre den Befehl erneut mit `--force` aus -
   aber erst, wenn du sicher bist, dass nichts in diesem Ordner wichtig ist.
@@ -85,7 +85,7 @@ bedeutet meist, dass der Worktree-Schritt uebersprungen wurde.
   aus - erledige dort deine gesamte Arbeit.
 - Wenn du **bereits auf den falschen Branch committet hast**, halte vor dem Push inne und bitte um
   Hilfe beim Verschieben des Commits, statt zu raten - die Loesung (ein Branch plus ein Reset) ist
-  einfach, aber leicht falsch zu machen. Siehe [den Git-Workflow](engineering/git-workflow.md), wie
+  einfach, aber leicht falsch zu machen. Siehe [den Git-Workflow](../../../docs/engineering/git-workflow.md), wie
   die Branches zusammenpassen.
 
 ---

@@ -5,7 +5,7 @@
 
 Die alltaeglichen Befehle, in der Reihenfolge, in der du sie benutzt. Halte diesen Zettel offen
 neben dir, bis sie sitzen. Jeder **fett** gedruckte Begriff ist im [Glossar](glossary.md) definiert;
-die vollstaendige Begruendung steht im [Git-Workflow](engineering/git-workflow.md).
+die vollstaendige Begruendung steht im [Git-Workflow](../../../docs/engineering/git-workflow.md).
 
 Ersetze alles in `<angle brackets>` durch deinen eigenen Wert. Tippe die Klammern nicht mit.
 
@@ -45,7 +45,7 @@ gh pr create --base develop --fill
 ## Worktree-Befehle (`scripts/wt.sh`)
 
 Ein Ordner pro Branch, damit parallele Aufgaben nie kollidieren. Warum, steht im
-[Git-Workflow](engineering/git-workflow.md).
+[Git-Workflow](../../../docs/engineering/git-workflow.md).
 
 | Befehl | Was er tut |
 | --- | --- |
@@ -100,7 +100,7 @@ erneut `make check` aus.
 
 - **Unsicher, was ein Wort bedeutet?** Wirf einen Blick ins [Glossar](glossary.md).
 - **Willst du die vollstaendige Begruendung** hinter dem Workflow? Siehe den
-  [Git-Workflow](engineering/git-workflow.md).
+  [Git-Workflow](../../../docs/engineering/git-workflow.md).
 - **Bei einem roten Gate oder einem unerwarteten Fehler festgefahren?** Lies den ersten Fehler Zeile
   fuer Zeile, behebe die eine Sache, die er nennt, und fuehre erneut `make check` aus, bevor du
   irgendetwas anderes tust.
