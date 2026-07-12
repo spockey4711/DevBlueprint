@@ -7,9 +7,9 @@ All notable changes are documented here, following
 
 ### Changed
 
-- Lead the README with the parallel-AI-agents hook - the first paragraph now states the problem
-  DevBlueprint solves (running several coding agents on one repo without branch collisions)
-  before describing what the kit ships.
+- Lead the README with the parallel-AI-agents hook - the opening line is now the hook itself
+  ("parallel Claude Code agents on one repo, without collisions") and the first paragraph states
+  the pain point before describing what the kit ships.
 ### Added
 
 - Growth playbook `docs/marketing/road-to-5k.md` - a role-based, phased plan for taking the
