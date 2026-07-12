@@ -7,9 +7,9 @@ All notable changes are documented here, following
 
 ### Changed
 
-- Lead the README with the parallel-AI-agents hook - the first paragraph now states the problem
-  DevBlueprint solves (running several coding agents on one repo without branch collisions)
-  before describing what the kit ships.
+- - Lead the README with the parallel-AI-agents hook - the opening line is now the hook itself
+  ("parallel Claude Code agents on one repo, without collisions") and the first paragraph states
+  the pain point before describing what the kit ships.
 
 ### Added
 
@@ -21,6 +21,14 @@ All notable changes are documented here, following
   `utm_*` tagging convention (source/medium/campaign taxonomy, spelling rules, per-channel
   values, worked examples) and `docs/marketing/analytics.md` explains how the log and UTM
   attribution feed the weekly KPIs.
+
+- Good-first-issue contributor funnel: a stocked shelf of 8-10 small, well-scoped starter tasks
+  at `docs/project/good-first-issues.md` (each with context, steps and an acceptance check), a
+  repo-level `.github/ISSUE_TEMPLATE/` (a `good_first_issue` template plus a chooser `config.yml`
+  that points newcomers at CONTRIBUTING, GETTING-STARTED and the shelf), and a "Your first
+  contribution" section in `CONTRIBUTING.md`. Delivers the Phase 0 contributor-funnel task from
+  the growth playbook (`docs/marketing/road-to-5k.md`).
+
 - Growth playbook `docs/marketing/road-to-5k.md` - a role-based, phased plan for taking the
   project from zero to 5,000 GitHub stars, with funnel math, a channel strategy, KPIs and a risk
   register.
