@@ -1,0 +1,13 @@
+# Issue-template chooser for the DevBlueprint repo itself.
+# (The templates shipped into scaffolded projects live under core/github/.)
+blank_issues_enabled: true
+contact_links:
+  - name: New contributor? Start here
+    url: https://github.com/spockey4711/DevBlueprint/blob/master/CONTRIBUTING.md
+    about: How we work - branches, worktrees, the quality gate and the PR checklist.
+  - name: Never used the terminal or git before?
+    url: https://github.com/spockey4711/DevBlueprint/blob/master/GETTING-STARTED.md
+    about: A plain-language walkthrough from nothing installed to your first pull request.
+  - name: Looking for a good first issue?
+    url: https://github.com/spockey4711/DevBlueprint/blob/master/docs/project/good-first-issues.md
+    about: A shelf of small, well-scoped starter tasks with everything you need to finish them.
