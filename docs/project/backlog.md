@@ -133,7 +133,7 @@ Each task is a brand-new standalone file, so all four are independent with zero 
 - [x] P14-2: Extend the bats suite to cover the new interactive CLI paths (wizard, `doctor
   --env`, error messages). Owns `test/` only, no `bin/devblueprint` edit. (builds on
   P10-1/P11-1/P12-1)
-- [ ] P14-3: Harden the kit self-CI for the new beginner artifacts (`.vscode/`, devcontainer,
+- [x] P14-3: Harden the kit self-CI for the new beginner artifacts (`.vscode/`, devcontainer,
   getting-started links) so they cannot rot silently. Own workflow file. (builds on P10, P11)
 - [ ] P14-4: Doc-freshness + link-check CI for the beginner path - fail the build when a
   getting-started command or an internal doc link no longer resolves. Own workflow file.
@@ -143,7 +143,7 @@ Each task is a brand-new standalone file, so all four are independent with zero 
 
 - [x] P15-1: (CLI) Guided `update` - detect drift and offer to apply it interactively, in the
   same plain language as the P10-1 wizard. (builds on P10-1)
-- [ ] P15-2: An example gallery - a few real mini-projects built with DevBlueprint, linked as
+- [x] P15-2: An example gallery - a few real mini-projects built with DevBlueprint, linked as
   references a beginner can copy from. (builds on P8-4)
 - [ ] P15-3: New variants as the ecosystem demands, each self-contained like P2-4.
   (per-variant fan-out)
