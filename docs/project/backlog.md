@@ -127,7 +127,7 @@ Each task is a brand-new standalone file, so all four are independent with zero 
 
 #### P14 - Consolidation & drift control (four parallel; disjoint files)
 
-- [ ] P14-1: Clarify the onboarding surfaces so they stop overlapping - README = the pitch,
+- [x] P14-1: Clarify the onboarding surfaces so they stop overlapping - README = the pitch,
   `GETTING-STARTED.md` = the beginner path, `GUIDE.md` = the reference; trim duplicated
   content. (builds on P8, P13)
 - [x] P14-2: Extend the bats suite to cover the new interactive CLI paths (wizard, `doctor
