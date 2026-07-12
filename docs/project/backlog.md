@@ -145,7 +145,7 @@ Each task is a brand-new standalone file, so all four are independent with zero 
   same plain language as the P10-1 wizard. (builds on P10-1)
 - [x] P15-2: An example gallery - a few real mini-projects built with DevBlueprint, linked as
   references a beginner can copy from. (builds on P8-4)
-- [ ] P15-3: New variants as the ecosystem demands, each self-contained like P2-4.
-  (per-variant fan-out)
+- [x] P15-3: New variants as the ecosystem demands, each self-contained like P2-4.
+  (per-variant fan-out) - `vue-nuxt` shipped; re-open per new variant the ecosystem needs.
 - [x] P15-4: A periodic doc-freshness pass - verify the getting-started flow and screenshots
   still match the current CLI, so the beginner path never drifts out of date.

@@ -1,0 +1,35 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Nuxt / Nitro build output
+.nuxt/
+.output/
+.nitro/
+.data/
+dist/
+
+# Test / coverage
+coverage/
+.nyc_output/
+playwright-report/
+test-results/
+.lighthouseci/
+
+# Env (keep the example)
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# OS / editor cruft
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json

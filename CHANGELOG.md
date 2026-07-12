@@ -7,6 +7,20 @@ All notable changes are documented here, following
 
 ### Added
 
+- New `vue-nuxt` variant - "Web app (Vue + Nuxt + pnpm)", the Vue-side sibling of `web-nextjs`:
+  Nuxt (Vue 3, SSR/SSG via Nitro), TypeScript (strict), Tailwind, Vitest + `@nuxt/test-utils` +
+  Vue Testing Library, Playwright, ESLint (`@nuxt/eslint-config`) + Prettier, and the same
+  quality gate `sh scripts/check-env.sh && pnpm lint && pnpm typecheck && pnpm test && pnpm build`.
+  Self-contained under `variants/vue-nuxt/` like the P2-4 variants: `setup.sh` wires the toolchain
+  idempotently (it does not scaffold the Nuxt app - run `pnpm create nuxt@latest .` first), a
+  multi-stage `Dockerfile` ships the Nitro `.output` on a slim non-root `node .output/server/index.mjs`
+  runtime, `deploy/` carries Vercel/Render/Fly/Terraform skeletons (Vercel is the primary managed
+  target and needs no Dockerfile - Nitro auto-detects its preset), and the `.env.schema` +
+  `check-env.sh` contract reflects Nuxt's runtime config model (`NUXT_PUBLIC_*` overrides
+  `runtimeConfig.public` and reaches the browser; unprefixed vars are server-only, both read at
+  server start not build time). Picked up automatically by `devblueprint list`, the scaffold-check
+  matrix and the `.vscode`/devcontainer self-CI. Refs: P15-3.
+
 - Periodic doc-freshness pass for the beginner path, wired as its own `docs-freshness.yml`
   workflow (also reproducible locally with `scripts/docs-freshness.sh`). Where `docs-check.yml`
   (P14-4) statically checks links and command names on every push, this pass actually *runs* the
