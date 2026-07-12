@@ -61,7 +61,8 @@ Do not launch onto a raw repo; a launch spends the one-time attention spike. Pol
 - `npx devblueprint` flow is frictionless, error messages are clear, `doctor` is green. (7)
 - CONTRIBUTING plus 8-10 `good-first-issue`s prepared. (8)
 - CHANGELOG updated and a v1.0.0 release tagged. (1, 6)
-- Analytics live: daily repo-traffic log, UTM convention defined. (10)
+- Analytics live: daily repo-traffic log, UTM convention defined. (10) See
+  [analytics.md](analytics.md) and [utm-convention.md](utm-convention.md).
 
 Exit criterion: a stranger understands what it is and why it matters now within ten seconds, and
 gets from `npx` to a first green PR in under two minutes.
@@ -179,5 +180,6 @@ marketing - prioritize Core Eng B and the Writer, do not push out more posts.
 1. Upload the social preview image - the biggest click lever.
 2. Rewrite the README intro around the hook - first sentence is the pain point.
 3. Record the demo GIF with `vhs` and put it in the README.
-4. Stand up the analytics baseline: daily traffic-API log plus a UTM convention.
+4. Stand up the analytics baseline: daily traffic-API log plus a UTM convention -
+   done, see [analytics.md](analytics.md).
 5. Build the partnerships longlist of 40 targets and send the first ten pitches.
