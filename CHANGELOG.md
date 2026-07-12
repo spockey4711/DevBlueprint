@@ -7,6 +7,14 @@ All notable changes are documented here, following
 
 ### Added
 
+- Example gallery at `docs/example-gallery.md` - four small, real projects a beginner can build
+  after the first-project tutorial (a `generic` command-line greeting, a `web-nextjs` personal
+  homepage, a `node-express` JSON API, a `data-python` exploration script), ordered by how much
+  toolchain each installs. Each entry names the variant and why it fits, gives the exact
+  `devblueprint init` command, and suggests a concrete first task to copy from, linking back to
+  the `GETTING-STARTED.md` loop rather than repeating it. Linked from the tutorial's "Where to go
+  next". Docs only. Refs: P15-2.
+
 - Extended the `bats` suite to cover the beginner-facing interactive CLI paths introduced in
   P10/P11/P12. A new `test/errors.bats` asserts that every friendly failure (missing `--target`,
   unknown command, a non-DevBlueprint or missing target, an unknown variant) prints a `next:`

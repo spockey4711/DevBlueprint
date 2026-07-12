@@ -512,6 +512,8 @@ docs is detail on top of it.
 
 ## Where to go next
 
+- [Example gallery](docs/example-gallery.md) - a few small, real projects to build next, each
+  with the variant and a first task to copy from.
 - [Zero-install setup: Codespaces and Dev Containers](docs/codespaces.md) - open any project in
   a ready cloud environment, no local install.
 - [README](README.md) - the fast overview and full command reference.
