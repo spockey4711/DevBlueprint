@@ -5,6 +5,12 @@ All notable changes are documented here, following
 
 ## [Unreleased]
 
+### Changed
+
+- Lead the README with the parallel-AI-agents hook - the first paragraph now states the problem
+  DevBlueprint solves (running several coding agents on one repo without branch collisions)
+  before describing what the kit ships.
+
 ## [0.1.0] - 2026-07-12
 
 ### Added
