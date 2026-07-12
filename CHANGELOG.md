@@ -34,6 +34,15 @@ All notable changes are documented here, following
   artifacts, or changing the exception set without updating the docs, now fails the build. It
   complements `test/vscode.bats` (which validates each artifact's contents) by owning the
   docs-vs-artifacts consistency the bats suite does not cover. Refs: P14-3.
+- Doc-freshness + internal link check for the beginner path, wired as its own `docs-check.yml`
+  workflow (also reproducible locally with `scripts/docs-check.sh`). It fails the build when an
+  internal Markdown link in `GETTING-STARTED.md`, the `docs/` reference layer or their German
+  mirrors no longer resolves (missing target file/directory, or an `#anchor` with no matching
+  heading or `<a id>`), and when a command a beginner is told to run in a shell code block
+  (`devblueprint ...`, `scripts/wt.sh ...`, `make ...`) names a subcommand or target that no
+  longer exists - the valid sets are parsed from the CLI's own dispatch, `wt.sh`'s dispatch and
+  the `Makefile`, so the docs cannot drift out of sync with the tools unnoticed. The new script is
+  covered by `shellcheck` and `make lint`. Refs: P14-4.
 - Extended the `bats` suite to cover the beginner-facing interactive CLI paths introduced in
   P10/P11/P12. A new `test/errors.bats` asserts that every friendly failure (missing `--target`,
   unknown command, a non-DevBlueprint or missing target, an unknown variant) prints a `next:`
@@ -139,6 +148,12 @@ All notable changes are documented here, following
 
 ### Fixed
 
+- Corrected three dangling internal links surfaced by the new beginner-path link check: the German
+  FAQ pointed at the English section anchor `#choosing-a-folder-for-your-project` (which resolves
+  against the German `GETTING-STARTED.md`, whose slug is `#einen-ordner-fuer-dein-projekt-waehlen`),
+  and the German FAQ and cheat sheet linked `engineering/git-workflow.md` relative to
+  `i18n/de/docs/`, where no translation exists - now `../../../docs/engineering/git-workflow.md`,
+  the canonical English source. Refs: P14-4.
 - The `elixir-phoenix`, `laravel`, `rails` and `sveltekit` variants shipped with an incomplete
   `github/` tree: added after the P6-4/P7-1 sweeps, they missed the security and release CI
   baseline every older variant (incl. `generic`) carries. Backfilled release automation

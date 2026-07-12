@@ -135,7 +135,7 @@ Each task is a brand-new standalone file, so all four are independent with zero 
   P10-1/P11-1/P12-1)
 - [x] P14-3: Harden the kit self-CI for the new beginner artifacts (`.vscode/`, devcontainer,
   getting-started links) so they cannot rot silently. Own workflow file. (builds on P10, P11)
-- [ ] P14-4: Doc-freshness + link-check CI for the beginner path - fail the build when a
+- [x] P14-4: Doc-freshness + link-check CI for the beginner path - fail the build when a
   getting-started command or an internal doc link no longer resolves. Own workflow file.
   (builds on P8, P9)
 

@@ -1,0 +1,27 @@
+name: Docs check
+
+# Doc-freshness + internal link check for the beginner path (GETTING-STARTED.md
+# and the docs/ reference layer, plus their German mirrors). A newcomer copies
+# these verbatim, so a dangling internal link or a command that no longer names a
+# real subcommand breaks someone on their first run. scripts/docs-check.sh is the
+# engine; this workflow just runs it on every change. See P14-4.
+
+on:
+  pull_request:
+  push:
+    branches: [master, develop]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  docs-check:
+    name: Beginner-path links and commands
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check beginner-path docs
+        run: scripts/docs-check.sh
