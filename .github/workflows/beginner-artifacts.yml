@@ -1,0 +1,37 @@
+name: Beginner artifacts
+
+# Kit self-CI: guard the zero-install onboarding surface so it cannot rot
+# silently. Every variant ships a .vscode/ pair (extensions + tasks) and - bar
+# the documented exceptions - a .devcontainer, and GETTING-STARTED.md, README.md
+# and docs/codespaces.md promise exactly that in prose. This workflow runs
+# scripts/beginner-artifacts-check.sh, which asserts the *set* of shipped
+# artifacts matches those promises, so adding a variant without the artifacts or
+# changing the exception set without updating the docs fails the build.
+#
+# The bats suite (test/vscode.bats, run by the CI workflow) already validates
+# each artifact's contents - valid JSON, a default build task, extensions
+# matching recommendations - so this workflow deliberately does not repeat that;
+# it owns the docs-vs-artifacts consistency the bats suite does not cover.
+
+on:
+  pull_request:
+  push:
+    branches: [master, develop]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  beginner-artifacts:
+    name: Beginner artifacts
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Shellcheck the checker
+        run: shellcheck scripts/beginner-artifacts-check.sh
+
+      - name: Check beginner artifacts against the docs
+        run: scripts/beginner-artifacts-check.sh
