@@ -143,7 +143,7 @@ Each task is a brand-new standalone file, so all four are independent with zero 
 
 - [ ] P15-1: (CLI) Guided `update` - detect drift and offer to apply it interactively, in the
   same plain language as the P10-1 wizard. (builds on P10-1)
-- [ ] P15-2: An example gallery - a few real mini-projects built with DevBlueprint, linked as
+- [x] P15-2: An example gallery - a few real mini-projects built with DevBlueprint, linked as
   references a beginner can copy from. (builds on P8-4)
 - [ ] P15-3: New variants as the ecosystem demands, each self-contained like P2-4.
   (per-variant fan-out)
