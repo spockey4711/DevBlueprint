@@ -1,11 +1,14 @@
 # DevBlueprint
 
-A reusable engineering setup for new projects: the git workflow, quality bar, code conventions
-and AI-assistant guidance, extracted from a real production-grade codebase and made
-stack-agnostic. One command scaffolds a project with a professional process from commit one.
+Run several Claude Code (or any AI) coding agents on one repo at once - without them clobbering
+each other's branches. DevBlueprint scaffolds the git workflow, quality gate, code conventions
+and AI-assistant guidance that make parallel AI-assisted development safe: two long-lived
+branches and one worktree per task, so every agent works in isolation and integrates through a
+PR. One command sets up this professional process from commit one.
 
-It is **documentation-first** - the output is plain files you own and edit, not a framework you
-depend on. There is no runtime, no lock-in; delete DevBlueprint afterwards and nothing breaks.
+Extracted from a real production-grade codebase and made stack-agnostic. It is
+**documentation-first** - the output is plain files you own and edit, not a framework you depend
+on. There is no runtime, no lock-in; delete DevBlueprint afterwards and nothing breaks.
 
 > **New to the terminal, git or programming?** Start with
 > [**GETTING-STARTED.md**](GETTING-STARTED.md) - a plain-language walkthrough from nothing
