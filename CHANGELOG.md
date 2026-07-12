@@ -13,6 +13,12 @@ All notable changes are documented here, following
 
 ### Added
 
+- Landing page `web/landing/index.html` - a self-contained, backend-less page that leads with
+  the hook ("run parallel Claude agents without collisions"), a parallel-lanes schematic of the
+  worktree-per-task workflow, and a one-line install (`npx devblueprint list`) with copy
+  buttons and the full install trio. Honours the no-runtime principle: inline CSS/JS, no
+  dependencies, no external requests. First Phase 0 asset of the `docs/marketing/road-to-5k.md`
+  growth plan. Owns `web/landing/`.
 - Analytics baseline for the growth plan (Phase 0): `scripts/repo-traffic.sh` snapshots the
   GitHub Traffic API (which only keeps a rolling 14-day window) and merges it into a durable
   per-day CSV log, upserting recent days and preserving older history; `.github/workflows/repo-
@@ -21,14 +27,12 @@ All notable changes are documented here, following
   `utm_*` tagging convention (source/medium/campaign taxonomy, spelling rules, per-channel
   values, worked examples) and `docs/marketing/analytics.md` explains how the log and UTM
   attribution feed the weekly KPIs.
-
 - Good-first-issue contributor funnel: a stocked shelf of 8-10 small, well-scoped starter tasks
   at `docs/project/good-first-issues.md` (each with context, steps and an acceptance check), a
   repo-level `.github/ISSUE_TEMPLATE/` (a `good_first_issue` template plus a chooser `config.yml`
   that points newcomers at CONTRIBUTING, GETTING-STARTED and the shelf), and a "Your first
   contribution" section in `CONTRIBUTING.md`. Delivers the Phase 0 contributor-funnel task from
   the growth playbook (`docs/marketing/road-to-5k.md`).
-
 - Growth playbook `docs/marketing/road-to-5k.md` - a role-based, phased plan for taking the
   project from zero to 5,000 GitHub stars, with funnel math, a channel strategy, KPIs and a risk
   register.
@@ -50,7 +54,6 @@ All notable changes are documented here, following
   `runtimeConfig.public` and reaches the browser; unprefixed vars are server-only, both read at
   server start not build time). Picked up automatically by `devblueprint list`, the scaffold-check
   matrix and the `.vscode`/devcontainer self-CI. Refs: P15-3.
-
 - Periodic doc-freshness pass for the beginner path, wired as its own `docs-freshness.yml`
   workflow (also reproducible locally with `scripts/docs-freshness.sh`). Where `docs-check.yml`
   (P14-4) statically checks links and command names on every push, this pass actually *runs* the

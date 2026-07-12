@@ -1,0 +1,650 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>DevBlueprint - run parallel Claude agents without collisions</title>
+  <meta name="description"
+    content="Run several AI coding agents on one repo at once - each in its own git worktree, integrating through a PR. One command scaffolds the whole workflow. No runtime, no lock-in." />
+  <meta property="og:title" content="DevBlueprint - parallel Claude agents without collisions" />
+  <meta property="og:description"
+    content="One command scaffolds a git workflow, quality gate and conventions that let several AI coding agents work one repo at once without clobbering each other's branches." />
+  <meta property="og:type" content="website" />
+  <style>
+    :root {
+      /* Blueprint drafting palette - the name is the brief */
+      --ground: #0a1622;
+      --ground-2: #0e1e2e;
+      --grid-line: rgba(120, 176, 224, 0.07);
+      --grid-strong: rgba(120, 176, 224, 0.13);
+      --ink: #eaf1f8;
+      --muted: #93a7bd;
+      --faint: #64788e;
+      --cyan: #58c6ff;
+      --cyan-strong: #9ce0ff;
+      --cyan-dim: rgba(88, 198, 255, 0.5);
+      --signal: #ffb35c;      /* reserved for the merge / master point */
+      --signal-dim: rgba(255, 179, 92, 0.5);
+      --hairline: rgba(147, 167, 189, 0.22);
+      --hairline-soft: rgba(147, 167, 189, 0.12);
+      --mono: ui-monospace, "SF Mono", "JetBrains Mono", "Cascadia Code", Menlo, Consolas, monospace;
+      --sans: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      margin: 0;
+      font-family: var(--sans);
+      color: var(--ink);
+      line-height: 1.6;
+      background-color: var(--ground);
+      /* Faint blueprint grid, drawn once over the whole page */
+      background-image:
+        linear-gradient(var(--grid-line) 1px, transparent 1px),
+        linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+      background-size: 32px 32px;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    a { color: var(--cyan); text-decoration: none; }
+    a:hover { color: var(--cyan-strong); }
+
+    :focus-visible {
+      outline: 2px solid var(--cyan);
+      outline-offset: 3px;
+      border-radius: 3px;
+    }
+
+    .wrap {
+      max-width: 1080px;
+      margin: 0 auto;
+      padding: 0 1.5rem;
+    }
+
+    /* ---- Drafting labels: the recurring structural device ---- */
+    .stamp {
+      font-family: var(--mono);
+      font-size: 0.72rem;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: var(--faint);
+    }
+    .stamp .dot { color: var(--cyan); }
+
+    /* ---- Top bar ---- */
+    header.bar {
+      border-bottom: 1px solid var(--hairline-soft);
+      backdrop-filter: blur(4px);
+    }
+    header.bar .wrap {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      min-height: 60px;
+      gap: 1rem;
+    }
+    .brand {
+      font-family: var(--mono);
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      color: var(--ink);
+      display: inline-flex;
+      align-items: center;
+      gap: 0.55rem;
+    }
+    .brand .tick {
+      width: 11px; height: 11px;
+      border: 1.5px solid var(--cyan);
+      border-radius: 2px;
+      transform: rotate(45deg);
+      position: relative;
+    }
+    .brand .tick::after {
+      content: "";
+      position: absolute; inset: 2px;
+      background: var(--signal);
+      border-radius: 1px;
+    }
+    .bar nav { display: flex; gap: 1.4rem; align-items: center; }
+    .bar nav a { color: var(--muted); font-size: 0.9rem; }
+    .bar nav a:hover { color: var(--ink); }
+    .bar .ghlink { color: var(--ink); font-family: var(--mono); font-size: 0.85rem; }
+    @media (max-width: 640px) { .bar nav .hide-sm { display: none; } }
+
+    /* ---- Hero ---- */
+    .hero { padding: 4.5rem 0 2rem; }
+    .hero .eyebrow { margin-bottom: 1.4rem; }
+
+    h1 {
+      font-family: var(--mono);
+      font-weight: 600;
+      font-size: clamp(2.1rem, 6.4vw, 4rem);
+      line-height: 1.04;
+      letter-spacing: -0.02em;
+      margin: 0 0 1.3rem;
+      max-width: 16ch;
+    }
+    h1 .collide {
+      color: var(--signal);
+      position: relative;
+      white-space: nowrap;
+    }
+    /* strike-through the word "collisions" - the thing that does not happen */
+    h1 .collide::after {
+      content: "";
+      position: absolute;
+      left: -2%; right: -2%; top: 54%;
+      height: 3px;
+      background: var(--signal);
+      transform: scaleX(0);
+      transform-origin: left;
+      animation: strike 0.5s ease 1.1s forwards;
+    }
+    @keyframes strike { to { transform: scaleX(1); } }
+
+    .lede {
+      font-size: clamp(1.05rem, 2.2vw, 1.28rem);
+      color: var(--muted);
+      max-width: 60ch;
+      margin: 0 0 2.2rem;
+    }
+    .lede strong { color: var(--ink); font-weight: 600; }
+
+    /* ---- Install strip (primary CTA) ---- */
+    .install-strip { max-width: 640px; margin-bottom: 0.9rem; }
+    .install-strip .stamp { display: block; margin-bottom: 0.5rem; }
+    .cmd {
+      display: flex;
+      align-items: stretch;
+      border: 1px solid var(--hairline);
+      border-radius: 8px;
+      background: rgba(6, 14, 22, 0.75);
+      overflow: hidden;
+    }
+    .cmd .line {
+      flex: 1;
+      min-width: 0;            /* let it shrink so overflow-x scrolls instead of widening the page */
+      display: flex;
+      align-items: center;
+      gap: 0.7rem;
+      padding: 0.85rem 1rem;
+      font-family: var(--mono);
+      font-size: 0.98rem;
+      color: var(--ink);
+      overflow-x: auto;
+      white-space: nowrap;
+    }
+    .cmd .line .prompt { color: var(--cyan); user-select: none; }
+    .cmd .line code { color: var(--cyan-strong); }
+    .copy {
+      flex: none;
+      border: none;
+      border-left: 1px solid var(--hairline);
+      background: transparent;
+      color: var(--muted);
+      font-family: var(--mono);
+      font-size: 0.8rem;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      padding: 0 1.1rem;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+    }
+    .copy:hover { background: var(--cyan); color: #06121e; }
+    .copy.copied { color: var(--signal); }
+    .copy.copied:hover { background: var(--signal); color: #06121e; }
+
+    .install-note {
+      font-size: 0.86rem;
+      color: var(--faint);
+      margin: 0 0 2.6rem;
+    }
+    .install-note a { color: var(--muted); border-bottom: 1px dashed var(--hairline); }
+    .install-note a:hover { color: var(--ink); }
+
+    /* ---- Signature: the parallel-lanes blueprint schematic ---- */
+    .schematic {
+      border: 1px solid var(--hairline-soft);
+      border-radius: 12px;
+      background:
+        radial-gradient(120% 140% at 15% 0%, rgba(88, 198, 255, 0.05), transparent 60%),
+        var(--ground-2);
+      padding: 1.1rem 1.1rem 0.6rem;
+      position: relative;
+    }
+    .schematic .caption {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 1rem;
+      margin-bottom: 0.3rem;
+      flex-wrap: wrap;
+    }
+    .schematic .caption .stamp { color: var(--faint); }
+    .schematic svg { display: block; width: 100%; height: auto; }
+
+    /* schematic strokes */
+    .lane-rail { stroke: var(--hairline); stroke-width: 1; fill: none; }
+    .lane-path {
+      stroke: var(--cyan);
+      stroke-width: 2;
+      fill: none;
+      stroke-dasharray: 620;
+      stroke-dashoffset: 620;
+      animation: draw 1.5s ease forwards;
+    }
+    .lane-path.l2 { animation-delay: 0.22s; }
+    .lane-path.l3 { animation-delay: 0.44s; }
+    .trunk-path {
+      stroke: var(--signal);
+      stroke-width: 2.5;
+      fill: none;
+      stroke-dasharray: 260;
+      stroke-dashoffset: 260;
+      animation: draw 0.9s ease 1.05s forwards;
+    }
+    @keyframes draw { to { stroke-dashoffset: 0; } }
+
+    .node { fill: var(--ground-2); stroke: var(--cyan); stroke-width: 1.6; }
+    .node-fill { fill: var(--cyan); opacity: 0; animation: pop 0.3s ease forwards; }
+    .node-fill.d1 { animation-delay: 0.6s; }
+    .node-fill.d2 { animation-delay: 0.85s; }
+    .node-fill.d3 { animation-delay: 1.1s; }
+    @keyframes pop { to { opacity: 1; } }
+
+    .merge-node { fill: var(--ground-2); stroke: var(--signal); stroke-width: 2; }
+    .merge-fill { fill: var(--signal); opacity: 0; animation: pop 0.3s ease 1.75s forwards; }
+
+    .commit {
+      fill: var(--cyan-strong);
+      opacity: 0;
+      animation: travel 3.4s linear infinite;
+    }
+    .commit.c2 { animation-delay: 1.13s; }
+    .commit.c3 { animation-delay: 2.26s; }
+    @keyframes travel {
+      0%   { opacity: 0; }
+      6%   { opacity: 1; }
+      88%  { opacity: 1; }
+      100% { opacity: 0; }
+    }
+
+    .sch-label { font-family: var(--mono); font-size: 11px; letter-spacing: 0.04em; }
+    .sch-label.dim { fill: var(--faint); }
+    .sch-label.ink { fill: var(--muted); }
+    .sch-label.cy  { fill: var(--cyan); }
+    .sch-label.sig { fill: var(--signal); }
+    .dim-line { stroke: var(--hairline-soft); stroke-width: 1; stroke-dasharray: 3 3; }
+
+    /* ---- Section scaffolding ---- */
+    section { padding: 4.2rem 0; border-top: 1px solid var(--hairline-soft); }
+    .section-head { margin-bottom: 2.2rem; }
+    .section-head h2 {
+      font-family: var(--mono);
+      font-weight: 600;
+      font-size: clamp(1.5rem, 3.4vw, 2.1rem);
+      letter-spacing: -0.015em;
+      margin: 0.6rem 0 0.4rem;
+    }
+    .section-head p { color: var(--muted); max-width: 58ch; margin: 0; }
+
+    /* ---- What you get: drafting-numbered cards ---- */
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 1px;
+      background: var(--hairline-soft);
+      border: 1px solid var(--hairline-soft);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    @media (max-width: 720px) { .grid { grid-template-columns: 1fr; } }
+    .card {
+      background: var(--ground-2);
+      padding: 1.7rem 1.6rem;
+      position: relative;
+      min-width: 0;            /* grid item: allow the track to shrink below content */
+    }
+    .card .idx {
+      font-family: var(--mono);
+      font-size: 0.72rem;
+      letter-spacing: 0.14em;
+      color: var(--cyan);
+      display: block;
+      margin-bottom: 0.7rem;
+    }
+    .card h3 {
+      font-size: 1.12rem;
+      margin: 0 0 0.5rem;
+      letter-spacing: -0.01em;
+    }
+    .card p { margin: 0; color: var(--muted); font-size: 0.96rem; }
+    .card code {
+      font-family: var(--mono);
+      font-size: 0.85em;
+      color: var(--cyan-strong);
+      background: rgba(88, 198, 255, 0.08);
+      padding: 0.05em 0.35em;
+      border-radius: 3px;
+    }
+
+    /* ---- Install options ---- */
+    .installs { display: grid; gap: 0.9rem; max-width: 760px; }
+    .opt {
+      border: 1px solid var(--hairline-soft);
+      border-radius: 10px;
+      background: var(--ground-2);
+      padding: 1.1rem 1.2rem;
+      min-width: 0;            /* grid item: shrink instead of stretching to the curl command */
+    }
+    .opt .opt-head {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 0.8rem;
+      margin-bottom: 0.7rem;
+      flex-wrap: wrap;
+    }
+    .opt .opt-head .name { font-family: var(--mono); font-weight: 600; color: var(--ink); }
+    .opt .opt-head .when { font-size: 0.82rem; color: var(--faint); }
+    .env-note { font-size: 0.86rem; color: var(--muted); margin: 1.3rem 0 0; }
+    .env-note code {
+      font-family: var(--mono);
+      color: var(--cyan-strong);
+      font-size: 0.85em;
+    }
+
+    /* ---- Footer ---- */
+    footer {
+      border-top: 1px solid var(--hairline-soft);
+      padding: 2.6rem 0 3.4rem;
+    }
+    footer .wrap { display: flex; justify-content: space-between; gap: 1.4rem; flex-wrap: wrap; }
+    footer .links { display: flex; gap: 1.4rem; flex-wrap: wrap; }
+    footer .links a { color: var(--muted); font-size: 0.9rem; }
+    footer .links a:hover { color: var(--ink); }
+    footer .colophon { color: var(--faint); font-size: 0.82rem; max-width: 46ch; }
+    footer .colophon .stamp { display: block; margin-bottom: 0.4rem; }
+
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      * { animation: none !important; }
+      .lane-path, .trunk-path { stroke-dashoffset: 0; }
+      .node-fill, .merge-fill, .commit { opacity: 1; }
+      .commit { display: none; }
+      h1 .collide::after { transform: scaleX(1); }
+    }
+  </style>
+</head>
+<body>
+  <header class="bar">
+    <div class="wrap">
+      <span class="brand"><span class="tick" aria-hidden="true"></span>DevBlueprint</span>
+      <nav aria-label="Primary">
+        <a class="hide-sm" href="#what">What you get</a>
+        <a class="hide-sm" href="#install">Install</a>
+        <a class="ghlink" href="https://github.com/spockey4711/DevBlueprint">GitHub -&gt;</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <!-- HERO -->
+    <div class="hero">
+      <div class="wrap">
+        <p class="stamp eyebrow"><span class="dot">+</span> git workflow for parallel AI agents</p>
+
+        <h1>Run parallel Claude agents without <span class="collide">collisions</span>.</h1>
+
+        <p class="lede">
+          Point several AI coding sessions at one repo at once - each isolated in its own
+          <strong>git worktree</strong>, each integrating through a <strong>pull request</strong>.
+          One command scaffolds the whole workflow: two long-lived branches, a quality gate,
+          conventions, and a <code>CLAUDE.md</code> that teaches the agent the rules.
+        </p>
+
+        <div class="install-strip">
+          <span class="stamp">Start here - nothing to install</span>
+          <div class="cmd">
+            <div class="line">
+              <span class="prompt" aria-hidden="true">$</span>
+              <code id="cmd-hero">npx devblueprint list</code>
+            </div>
+            <button class="copy" data-copy="npx devblueprint list" aria-label="Copy command to clipboard">Copy</button>
+          </div>
+        </div>
+        <p class="install-note">
+          Needs Node. Prefer a real install? <a href="#install">Homebrew and curl below</a>.
+        </p>
+
+        <!-- SIGNATURE: parallel-lanes blueprint schematic -->
+        <figure class="schematic">
+          <figcaption class="caption">
+            <span class="stamp">Fig 1 - three agents, three worktrees, one trunk</span>
+            <span class="stamp">develop <span style="color:var(--faint)">-&gt;</span> <span style="color:var(--signal)">master</span></span>
+          </figcaption>
+          <svg viewBox="0 0 640 196" role="img"
+            aria-label="Schematic: three agent worktree lanes run in parallel and merge through pull requests into the develop branch, which is promoted to master.">
+            <!-- lane rails -->
+            <line class="lane-rail" x1="30" y1="48" x2="430" y2="48" />
+            <line class="lane-rail" x1="30" y1="108" x2="430" y2="108" />
+            <line class="lane-rail" x1="30" y1="168" x2="430" y2="168" />
+
+            <!-- lane labels -->
+            <text class="sch-label dim" x="30" y="36">agent 1  ·  feat/parser</text>
+            <text class="sch-label dim" x="30" y="96">agent 2  ·  fix/scroll-jitter</text>
+            <text class="sch-label dim" x="30" y="156">agent 3  ·  docs/readme</text>
+
+            <!-- lane paths curving into the develop trunk at x=470 -->
+            <path class="lane-path l1" d="M30,48 H400 C440,48 450,110 470,110" />
+            <path class="lane-path l2" d="M30,108 H470" />
+            <path class="lane-path l3" d="M30,168 H400 C440,168 450,110 470,110" />
+
+            <!-- commit nodes on each lane -->
+            <circle class="node" cx="120" cy="48" r="5" />
+            <circle class="node-fill d1" cx="120" cy="48" r="2.4" />
+            <circle class="node" cx="230" cy="48" r="5" />
+            <circle class="node-fill d2" cx="230" cy="48" r="2.4" />
+
+            <circle class="node" cx="150" cy="108" r="5" />
+            <circle class="node-fill d1" cx="150" cy="108" r="2.4" />
+            <circle class="node" cx="300" cy="108" r="5" />
+            <circle class="node-fill d3" cx="300" cy="108" r="2.4" />
+
+            <circle class="node" cx="180" cy="168" r="5" />
+            <circle class="node-fill d2" cx="180" cy="168" r="2.4" />
+
+            <!-- travelling commits (motion) -->
+            <circle class="commit c1" cx="0" cy="0" r="3.2">
+              <animateMotion dur="3.4s" repeatCount="indefinite"
+                path="M30,48 H400 C440,48 450,110 470,110" />
+            </circle>
+            <circle class="commit c2" cx="0" cy="0" r="3.2">
+              <animateMotion dur="3.4s" repeatCount="indefinite"
+                path="M30,108 H470" />
+            </circle>
+            <circle class="commit c3" cx="0" cy="0" r="3.2">
+              <animateMotion dur="3.4s" repeatCount="indefinite"
+                path="M30,168 H400 C440,168 450,110 470,110" />
+            </circle>
+
+            <!-- "PR" annotation where the lanes converge -->
+            <text class="sch-label cy" x="404" y="102">PR</text>
+
+            <!-- develop node (where the three lanes merge) -->
+            <path class="trunk-path" d="M478,110 H556" />
+            <circle class="merge-node" cx="470" cy="110" r="8" />
+            <text class="sch-label ink" x="450" y="136">develop</text>
+
+            <!-- promoted to master -->
+            <rect class="merge-node" x="556" y="100" width="20" height="20" rx="3" />
+            <rect class="merge-fill" x="561" y="105" width="10" height="10" rx="2" />
+            <text class="sch-label sig" x="548" y="136">master</text>
+
+            <!-- dimension line: the isolation gap -->
+            <line class="dim-line" x1="360" y1="48" x2="360" y2="108" />
+            <text class="sch-label dim" x="366" y="82">isolated</text>
+          </svg>
+        </figure>
+      </div>
+    </div>
+
+    <!-- WHAT YOU GET -->
+    <section id="what">
+      <div class="wrap">
+        <div class="section-head">
+          <span class="stamp"><span style="color:var(--cyan)">//</span> what lands in your repo</span>
+          <h2>A professional workflow, from commit one.</h2>
+          <p>
+            Extracted from a real production codebase and made stack-agnostic. The output is
+            plain files you own and edit - not a framework you depend on.
+          </p>
+        </div>
+        <div class="grid">
+          <div class="card">
+            <span class="idx">A - isolation</span>
+            <h3>Parallel by construction</h3>
+            <p>
+              One worktree per task, branched off <code>develop</code>. Several agent chats run
+              at once and never touch each other's branch, so sessions never collide.
+            </p>
+          </div>
+          <div class="card">
+            <span class="idx">B - quality gate</span>
+            <h3>A gate that travels with you</h3>
+            <p>
+              <code>lint</code>, <code>typecheck</code>, <code>test</code>, <code>build</code> -
+              wired to your stack and enforced on every commit and in CI. One clear definition of
+              done.
+            </p>
+          </div>
+          <div class="card">
+            <span class="idx">C - conventions</span>
+            <h3>Rules the agent already knows</h3>
+            <p>
+              A <code>CLAUDE.md</code> and an engineering-standards mindset that teach the
+              assistant the workflow up front - keeping a solo repo at team quality.
+            </p>
+          </div>
+          <div class="card">
+            <span class="idx">D - no lock-in</span>
+            <h3>Files you own, no runtime</h3>
+            <p>
+              Everything is copied into your project. There is no runtime and nothing hosted -
+              delete DevBlueprint afterward and nothing breaks.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- INSTALL -->
+    <section id="install">
+      <div class="wrap">
+        <div class="section-head">
+          <span class="stamp"><span style="color:var(--cyan)">//</span> pick one</span>
+          <h2>Install.</h2>
+          <p>All three ship the whole kit, so <code style="font-family:var(--mono);color:var(--cyan-strong)">devblueprint</code> runs without a clone.</p>
+        </div>
+
+        <div class="installs">
+          <div class="opt">
+            <div class="opt-head">
+              <span class="name">npx</span>
+              <span class="when">no install &middot; needs Node</span>
+            </div>
+            <div class="cmd">
+              <div class="line"><span class="prompt" aria-hidden="true">$</span><code>npx devblueprint list</code></div>
+              <button class="copy" data-copy="npx devblueprint list" aria-label="Copy npx command">Copy</button>
+            </div>
+          </div>
+
+          <div class="opt">
+            <div class="opt-head">
+              <span class="name">Homebrew</span>
+              <span class="when">macOS / Linux</span>
+            </div>
+            <div class="cmd">
+              <div class="line"><span class="prompt" aria-hidden="true">$</span><code>brew install spockey4711/devblueprint/devblueprint</code></div>
+              <button class="copy" data-copy="brew install spockey4711/devblueprint/devblueprint" aria-label="Copy Homebrew command">Copy</button>
+            </div>
+          </div>
+
+          <div class="opt">
+            <div class="opt-head">
+              <span class="name">curl | sh</span>
+              <span class="when">installs into ~/.devblueprint, drops a command on your PATH</span>
+            </div>
+            <div class="cmd">
+              <div class="line"><span class="prompt" aria-hidden="true">$</span><code>curl -fsSL https://raw.githubusercontent.com/spockey4711/DevBlueprint/master/install.sh | sh</code></div>
+              <button class="copy" data-copy="curl -fsSL https://raw.githubusercontent.com/spockey4711/DevBlueprint/master/install.sh | sh" aria-label="Copy curl install command">Copy</button>
+            </div>
+          </div>
+        </div>
+
+        <p class="env-note">
+          Then scaffold a project:
+          <code>devblueprint init --target ~/Projects/myapp --name myapp --variant web-nextjs</code>.
+          The installer honours <code>DEVBLUEPRINT_PREFIX</code>, <code>DEVBLUEPRINT_BIN</code>
+          and <code>DEVBLUEPRINT_VERSION</code> if you want to override the defaults.
+        </p>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="wrap">
+      <div class="colophon">
+        <span class="stamp">DevBlueprint</span>
+        Documentation-first scaffolding for AI-assisted development. No runtime, no lock-in.
+      </div>
+      <nav class="links" aria-label="Documentation">
+        <a href="https://github.com/spockey4711/DevBlueprint">Source</a>
+        <a href="https://github.com/spockey4711/DevBlueprint/blob/master/README.md">README</a>
+        <a href="https://github.com/spockey4711/DevBlueprint/blob/master/GETTING-STARTED.md">Getting started</a>
+        <a href="https://github.com/spockey4711/DevBlueprint/blob/master/GUIDE.md">Guide</a>
+      </nav>
+    </div>
+  </footer>
+
+  <script>
+    // Copy-to-clipboard for every command. No dependencies; degrades to a select-all hint.
+    (function () {
+      var buttons = document.querySelectorAll(".copy");
+      buttons.forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          var text = btn.getAttribute("data-copy") || "";
+          var done = function () {
+            var original = btn.textContent;
+            btn.textContent = "Copied";
+            btn.classList.add("copied");
+            setTimeout(function () {
+              btn.textContent = original;
+              btn.classList.remove("copied");
+            }, 1600);
+          };
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text).then(done).catch(fallback);
+          } else {
+            fallback();
+          }
+          function fallback() {
+            var ta = document.createElement("textarea");
+            ta.value = text;
+            ta.setAttribute("readonly", "");
+            ta.style.position = "absolute";
+            ta.style.left = "-9999px";
+            document.body.appendChild(ta);
+            ta.select();
+            try { document.execCommand("copy"); done(); } catch (e) { /* no-op */ }
+            document.body.removeChild(ta);
+          }
+        });
+      });
+    })();
+  </script>
+</body>
+</html>
