@@ -141,7 +141,7 @@ Each task is a brand-new standalone file, so all four are independent with zero 
 
 #### P15 - Smoother lifecycle & show, don't tell (one CLI task + three parallel supports)
 
-- [ ] P15-1: (CLI) Guided `update` - detect drift and offer to apply it interactively, in the
+- [x] P15-1: (CLI) Guided `update` - detect drift and offer to apply it interactively, in the
   same plain language as the P10-1 wizard. (builds on P10-1)
 - [ ] P15-2: An example gallery - a few real mini-projects built with DevBlueprint, linked as
   references a beginner can copy from. (builds on P8-4)
