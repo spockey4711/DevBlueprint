@@ -7,6 +7,17 @@ All notable changes are documented here, following
 
 ### Added
 
+- Periodic doc-freshness pass for the beginner path, wired as its own `docs-freshness.yml`
+  workflow (also reproducible locally with `scripts/docs-freshness.sh`). Where `docs-check.yml`
+  (P14-4) statically checks links and command names on every push, this pass actually *runs* the
+  getting-started flow - it scaffolds a throwaway `hello-world` generic project exactly as
+  "Your first run" documents (init, `setup.sh`, `git init`, `doctor`, `make check`) and confirms
+  that every output line the guide quotes as a "screenshot" is still printed by the CLI and still
+  quoted in both `GETTING-STARTED.md` and its German mirror, so drift on either side fails the
+  build. A companion version-stamp check holds every `DevBlueprint X.Y.Z` literal in the guides to
+  `./VERSION`, so a release bump cannot leave a stale number frozen in the `doctor` transcript. It
+  runs weekly (and on PRs that touch the CLI, the generic variant or the guide) since it is heavier
+  than a lint. Refs: P15-4.
 - Guided `devblueprint update`: running `update` with no flags now starts a plain-language
   wizard, mirroring the no-flag `init` wizard. It explains what an update is, asks only for the
   project folder (defaulting to the current directory), resolves the variant from the project's
