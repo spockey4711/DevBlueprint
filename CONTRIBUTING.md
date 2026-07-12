@@ -4,6 +4,15 @@ This may be a personal project, but it is run like a real one so it stays mainta
 years. This file is the short version; the full detail lives in
 [`docs/engineering/git-workflow.md`](docs/engineering/git-workflow.md).
 
+## Your first contribution
+
+New here? Start with a **[good first issue](docs/project/good-first-issues.md)** - a shelf of
+small, well-scoped starter tasks (one file or one section, an hour or less), each with everything
+you need to finish it. If the terminal, git or worktrees are new to you, read
+[`GETTING-STARTED.md`](GETTING-STARTED.md) first for the plain-language walkthrough. Comment on
+the issue to claim it, then follow the workflow below. Questions are welcome - a slow, confused
+first PR is on us to prevent, not on you to avoid.
+
 ## Ground rules
 
 - **Language:** code, comments, docs, commits and PRs are in **English**. Localize user-facing copy in a dedicated layer ([`i18n/`](i18n/README.md)), never as scattered string literals.
